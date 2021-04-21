@@ -5,7 +5,7 @@
 
 ***
 #### 快速导航
-[前往汉化文件下载界面](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases)
+[前往下载界面](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases)
 
 ***
 [麻烦向我捐赠](https://github.com/ender-zhao/EZc)
