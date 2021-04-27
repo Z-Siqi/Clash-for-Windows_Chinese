@@ -10,4 +10,4 @@
 [前往Clash下载界面](https://github.com/Fndroid/clash_for_windows_pkg/releases)
 
 ***
-[麻烦向我捐赠](https://github.com/ender-zhao/EZc)
+#### [向我捐赠](https://github.com/ender-zhao/EZc)
