@@ -4,7 +4,7 @@
 **提供clash for windows的汉化版以及汉化文件**
 
 效果图
-![效果图](https://github.com/ender-zhao/Clash-for-Windows_Chinese/blob/main/image.png?raw=true)
+![效果图](https://github.com/ender-zhao/Clash-for-Windows_Chinese/blob/main/image_Chinese.png?raw=true)
 
 ***
 #### 快速导航
