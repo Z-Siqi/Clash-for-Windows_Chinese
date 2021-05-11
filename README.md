@@ -1,5 +1,5 @@
 # Clash-for-Windows_Chinese<img src="https://github.com/ender-zhao/Clash-for-Windows_Chinese/blob/main/image/image_clash.png?raw=true" width="30" height="30">
-### Clash 0.15X汉化版
+### Clash 汉化版
 
 **提供clash for windows的汉化版以及汉化文件**
 
