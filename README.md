@@ -2,6 +2,7 @@
 ### Clash 汉化版
 
 **提供clash for windows的汉化版以及汉化文件**
+支持的clash版本: 0.15.3,0.15.4,0.15.5
 
 效果图
 ![效果图](https://github.com/ender-zhao/Clash-for-Windows_Chinese/blob/main/image/image_Chinese.png?raw=true)
