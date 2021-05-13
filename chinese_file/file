@@ -1,6 +1,6 @@
 //收集的替换列表版本: V6
 //替换对照表由Ender zhao Club收集
-//asar程序安装命令: npm install -g asar
+//asar解压打包程序安装命令: npm install -g asar
 /*
 这个文件并不是汉化后的clash文件，因此即使你下载这个文件后也无法使clash以中文运行
 该文件是汉化时将替换的内容
