@@ -6,7 +6,7 @@
 支持的clash版本: 0.15.3,0.15.4,0.15.5
 
 效果图
-![效果图](https://github.com/ender-zhao/Clash-for-Windows_Chinese/blob/main/image/image_Chinese.png?raw=true)
+![文件未正常加载或正在被调试](https://github.com/ender-zhao/Clash-for-Windows_Chinese/blob/main/image/Image_Clash_Chinese-0.15.6.png?raw=true)
 
 ***
 #### 快速导航
