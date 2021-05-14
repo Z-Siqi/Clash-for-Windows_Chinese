@@ -3,10 +3,10 @@
 
 **提供clash for windows的汉化版以及汉化文件**
 
-支持的clash版本: 0.15.3,0.15.4,0.15.5,0.15.6
-
 效果图
 ![文件未正常加载或正在被调试](https://github.com/ender-zhao/Clash-for-Windows_Chinese/blob/main/image/Image_Clash_Chinese-0.15.6.png?raw=true)
+
+支持的clash版本: 0.15.3,0.15.4,0.15.5,0.15.6
 
 ***
 #### 快速导航
