@@ -1,4 +1,4 @@
-//收集的替换列表版本: V6
+//收集的替换列表版本: V7
 //替换对照表由Ender zhao Club收集
 //asar解压打包程序安装命令: npm install -g asar
 /*
@@ -509,6 +509,12 @@ text:"选择"
 title:"Error"
 title:"错误"
 
+"Run Time Format"
+"运行时间格式"
+
+"Show/Hide Dashboard"
+"显示/隐藏仪表板"
+
 /*****main.js file*****/
 "Dashboard"
 "仪表盘"
@@ -551,3 +557,6 @@ title:"错误"
 
 "Quit Clash for Windows"
 "退出 Clash for Windows"
+
+"Toggle DevTools"
+"切换DevTools"
