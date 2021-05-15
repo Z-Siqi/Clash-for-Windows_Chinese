@@ -6,7 +6,7 @@
 效果图
 ![文件未正常加载或正在被调试](https://github.com/ender-zhao/Clash-for-Windows_Chinese/blob/main/image/Image_Clash_Chinese-0.15.6.png?raw=true)
 
-支持的clash版本: 0.15.3,0.15.4,0.15.5,0.15.6
+支持的clash版本: [0.15.3](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.15.3_CN-V4),[0.15.4](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.15.4_CN-V4),[0.15.5](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.15.5_CN-V6),[0.15.6](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.15.6_CN-V7)
 
 ***
 #### 快速导航
