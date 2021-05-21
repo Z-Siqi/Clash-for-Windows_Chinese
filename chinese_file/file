@@ -521,6 +521,9 @@ Force Quit\n
 [e._v("Quit")]
 [e._v("退出")]
 
+"You are awesome",content:"The current version is up to date."
+"你太棒了",content:"当前版本是最新的"
+
 /*****main.js file*****/
 "Dashboard"
 "仪表盘"
