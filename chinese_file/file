@@ -515,6 +515,12 @@ title:"错误"
 "Show/Hide Dashboard"
 "显示/隐藏仪表板"
 
+Force Quit\n
+强制退出\n
+
+[e._v("Quit")]
+[e._v("退出")]
+
 /*****main.js file*****/
 "Dashboard"
 "仪表盘"
