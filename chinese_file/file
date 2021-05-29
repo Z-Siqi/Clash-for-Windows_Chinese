@@ -1,16 +1,7 @@
-//收集的替换列表版本: V8
-//替换对照表由Ender zhao Club收集
-//asar解压打包程序安装命令: npm install -g asar
-/*
-这个文件并不是汉化后的clash文件，因此即使你下载这个文件后也无法使clash以中文运行
-该文件是汉化时将替换的内容
-通过文本替换工具以快速搜索并替换英文内容，以使到我快速汉化新版clash for chinese
-还请不要利用我搜集的替换表去做自己的clash汉化项目
-上方没有中文的为原英文字符
-下方有中文的为替换后的内容
-*/
+//英汉对照替换表
+//同时该表也将帮助我更快的汉化clash
+/*****renderer.js*****/
 
-/*****renderer.js file*****/
 "Settings"
 "设置"
 
@@ -209,9 +200,6 @@ title:"日志"
 Update All\n
 更新全部\n
 
-"Timeout":"".concat(
-"超时":"".concat(
-
 "Check"
 "测试"
 
@@ -338,9 +326,6 @@ saveBtnText:"保存"
 "Change information"
 "变更资料"
 
-"silent","error","warning","info","debug"
-"静默","错误","警告","信息","调试"
-
 "Update this profile"
 "更新此配置"
 
@@ -398,8 +383,8 @@ title:"关于"
 "Advertisement"
 "广告"
 
-"Thanks"
-"致谢"
+"Credits"
+"项目"
 
 "Relevance"
 "关联"
@@ -524,7 +509,26 @@ Force Quit\n
 "You are awesome",content:"The current version is up to date."
 "你太棒了",content:"当前版本是最新的"
 
-/*****main.js file*****/
+"Update installed successfully, do you want to restart the APP?"
+"更新安装成功，要重启APP吗?"
+
+"Package downloaded successfully, do you want to execute it?"
+"包下载成功，要执行吗?"
+
+"Select a terminal"
+"选择一个终端"
+
+text:"Detected: "
+text:"侦测到: "
+
+"[ Reset ]"
+"[ 重启 ]"
+
+text: e.settings.interfaceName || "Select"
+text: e.settings.interfaceName || "选择"
+
+/*****main.js*****/
+
 "Dashboard"
 "仪表盘"
 
