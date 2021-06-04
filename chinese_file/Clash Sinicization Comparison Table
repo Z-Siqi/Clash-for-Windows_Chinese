@@ -1,0 +1,610 @@
+//英汉对照替换表
+//同时该表也将帮助我更快的汉化clash
+
+/*****renderer.js*****/
+
+"Settings"
+"设置"
+
+"Outbound"
+"出站"
+
+"Interface Name"
+"接口名称"
+
+"Detected: "+e.detectedInterfaceName,clickable:!1
+"侦测到:"+e.detectedInterfaceName,clickable:!1
+
+"Display Chain Type"
+"显示链类型"
+
+"Proxy","Group","Both"
+"代理人","团体","两个都"
+
+"Break When Proxy Change"
+"代理更改时中断"
+
+"None","Chain","All"
+"不中断","链接","所有"
+
+"Break When Mode Change"
+"模式更改时中断"
+
+"Break When Profile Change"
+"配置文件更改时中断"
+
+"Connections"
+"连接"
+
+"Hide Unselectable Group"
+"隐藏无法选择的组"
+
+"Show Filter"
+"显示过滤器"
+
+"Latency Test URL"
+"延迟测试网址"
+
+"Latency Test Timeout"
+"延迟测试超时"
+
+"Order By"
+"订购依据"
+
+"Proxy Item Width"
+"代理项目宽度"
+
+"Proxies"
+"代理"
+
+"Type"
+"类型"
+
+"Connected"
+"已连接"
+
+"Appearance"
+"外观"
+
+[e._v("Theme")]
+[e._v(""主题"")]
+
+"Follow System Theme"
+"遵循系统主题"
+
+"Light","Dark","国庆中秋","Cyberpunk"
+"明亮","深色","国庆中秋","赛博朋克"
+
+"Font Family"
+"字体系列"
+
+"Default Icon Path"
+"默认图标路径"
+
+"System Proxy On Icon Path"
+"图标路径上的系统代理"
+
+"Enhanced Tray"
+"悬浮窗口"
+
+[e._v("Text")]
+[e._v("文本")]
+
+"Text to display in tray"
+"要显示在悬浮窗中的文本"
+
+"Manual Run"
+"手动运行"
+
+"Transparent"
+"透明"
+
+"Show New Version Icon"
+"显示新版本图标"
+
+title:"General"
+title:"主页"
+
+"Notifications"
+"通知事项"
+
+"Silent Start"
+"沉默的开始"
+
+"Random Controller Port"
+"随机控制器端口"
+
+"Lightweight Mode"
+"轻量模式"
+
+"GUI Log Folder"
+"GUI日志文件夹"
+
+"Open"
+"打开"
+
+"Bypass Domain/IPNet"
+"绕过域/ IPNet"
+
+"Specify Protocol"
+"指定协议"
+
+"ICO(.ico) asset path"
+"ICO(.ico) 资产路径"
+
+"Profile Mixin"
+"资料混淆"
+
+"Upload Speed","Download Speed","Upload Traffic","Download Traffic","Time"
+"上传速度","下载速度","上传流量","下载流量","时间"
+
+Connections\n
+连接\n
+
+"Resume":"Pause"
+"恢复":"暂停"
+
+Close All\n
+全部关闭\n
+
+type:"text",placeholder:"search"
+type:"文本",placeholder:"搜索"
+
+"Request Logs"
+"请求日志"
+
+"Clear"
+"清除"
+
+"Empty log list"
+"空日志列表"
+
+"Refresh your browser to make requests."
+"刷新浏览器以发出请求"
+
+"Stop":"Start"
+"停":"开始"
+
+Stop Sorting\n
+停止排序\n
+
+Logs Folder\n
+日志文件夹\n
+
+title:"Logs"
+title:"日志"
+
+"Download progress: "
+"下载进度: "
+
+"Success!":"Download"
+"成功!":"下载"
+
+"Update","Download","Copy URL","Cancel"
+"更新","下载","复制URL","取消"
+
+"Download from a URL"
+"从URL下载"
+
+"Import"
+"导入"
+
+"Update All"
+"更新全部"
+
+" ms":"Timeout"
+" ms":"超时"
+
+"Edit in text mode"
+"以文本模式编辑"
+
+Update All\n
+更新全部\n
+
+"Check"
+"测试"
+
+"Port"
+"端口"
+
+"Allow LAN"
+"允许局域网"
+
+"Log Level"
+"日志级别"
+
+"Home Directory"
+"主目录"
+
+Manage\n
+管理\n
+
+"Clash Core"
+"Clash 核心版本"
+
+Open Folder\n
+打开文件夹\n
+
+Launch Helper\n
+启动助手\n
+
+"UWP Loopback"
+"UWP回路"
+
+"TAP device",data:c,hint:"You need to reinstall the TAP device after you change these fields!"
+"TAP设备",data:c,hint:"更改这些字段后，您需要重新安装TAP设备！"
+
+"TAP device management",message:'An adapter named "cfw-tap" will route your data into clash.<br /><br />If the installation box pops up, keep clicking "Next" until the installation is complete.',items:["Install","Remove","Customize"]
+"TAP设备管理",message:'名为“ cfw-tap”的适配器会将您的数据路由到冲突中<br /><br />如果弹出安装框，请继续单击“下一步”，直到安装完成',items:["安装","卸载","定制"]
+
+"Service management",message:"It might take a while.<br/>The APP will be relaunched automatically.<br/><br/>Current status: ".concat(e.isLocalMode?"Inactive":"Active"
+"服务管理",message:"这可能需要一段时间<br/>该APP将自动重新启动<br/><br/>当前状态: ".concat(e.isLocalMode?"未安装":"已安装"
+
+"Install","Uninstall"
+"安装","卸载"
+
+"Service Mode"
+"服务模式"
+
+Mixin allows you to overwrite the original configuration file.\n
+Mixin允许您覆盖原始配置文件\n
+
+"Start with Windows"
+"开机时运行"
+
+"Loading..."
+"正在加载..."
+
+"Timeout"
+"超时"
+
+"Docs"
+"文件"
+
+"Choose outbound interface",message:"only works when TAP mode enabled"
+"选择出站接口",message:"仅在启用TAP模式时有效"
+
+"foreground color"
+"前景色"
+
+"Connection Info"
+"连接信息"
+
+"Disconnected"
+"未连接"
+
+message:'Are you sure to delete "'.concat(i,'"?'),buttons:["Yes","No"]
+message:'您确定要删除吗 "'.concat(i,'"?'),buttons:["是","否"]
+
+"updated":"installed"," Service Mode to control system proxy."),buttons:["".concat(e.serviceNeedUpdate?"Update":"Install"," Now"
+"已更新":"已安装"," 用于控制系统代理的服务模式"),buttons:["".concat(e.serviceNeedUpdate?"更新":"安装"," 现在"
+
+"No proxy group in this profile"
+"此配置文件中没有代理组"
+
+Go to\n
+前往\n
+
+to import/switch a profile\n
+导入/切换配置文件\n
+
+"Edit profile information"
+"编辑配置信息"
+
+"Edit policies"
+"修改规则"
+
+"Special Proxies"
+"特殊代理"
+
+"Close the editing file to Save."
+"关闭编辑文件以保存"
+
+saveBtnText:"Save"
+saveBtnText:"保存"
+
+"Cancel"
+"取消"
+
+"Drag to sort or add to the list on the right."
+"拖动以排序或添加到右侧列表中"
+
+"Proxy Groups"
+"代理组"
+
+"Edit rules"
+"编辑规则"
+
+"Duplicate profile"
+"复制配置文件"
+
+"Go to URL"
+"打开链接"
+
+"Parsers info"
+"解析器信息"
+
+"Change information"
+"变更资料"
+
+"Update this profile"
+"更新此配置"
+
+"Warning",content:"Are you sure to reset all settings?"
+"警告",content:"您确定要重设所有设置吗?"
+
+"IP Address"
+"IP地址"
+
+"Subnet Mask"
+"子网掩码"
+
+"Default Gateway"
+"默认网关"
+
+Cancel\n
+取消\n
+
+[e._v("OK")]
+[e._v("确定")]
+
+[e._v("Add")]
+[e._v("添加")]
+
+"Save"
+"保存"
+
+"Top 100 matching rules
+"前100个匹配规则
+
+"Restarting core..."
+"重新启动核心..."
+
+"fiter by keywords"
+"按关键字过滤"
+
+"Name"
+"名字"
+
+"Update Interval (hour)"
+"更新间隔(小时)"
+
+title:"Providers"
+title:"提供"
+
+title:"Feedback"
+title:"关于"
+
+"Image not found"
+"找不到图片.但希望你能给汉化clash的我捐赠!"
+
+"Advertisement"
+"广告"
+
+"Credits"
+"项目"
+
+"Relevance"
+"关联"
+
+"Developer"
+"作者"
+
+"Default","Latency","Alphabet"
+"默认","延迟","字母"
+
+"Reset All Settings"
+"重置所有设置"
+
+"Child Processes"
+"子进程"
+
+"Processes"
+"工艺流程"
+
+"Profiles"
+"配置"
+
+text:"Edit"
+text:"编辑"
+
+"Open File"
+"打开文件"
+
+"Parsers"
+"解析器"
+
+"Console Output"
+"控制台输出"
+
+"Folder Path"
+"资料夹路径"
+
+"Profiles folder path"
+"配置文件文件夹路径"
+
+"Open terminal with proxy set up"
+"打开终端并设置代理"
+
+text:"Select"
+text:"选择"
+
+"Request Headers"
+"请求标题"
+
+"Select After Updated"
+"更新后选择"
+
+"Shortcuts"
+"快捷键"
+
+"System Proxy"
+"系统代理"
+
+"Mixin"
+"混淆"
+
+"Global Mode"
+"全局模式"
+
+"Rule Mode"
+"规则模式"
+
+[e._v("Direct Mode")]
+[e._v("直连模式")]
+
+"Script Mode"
+"脚本模式"
+
+"Run Tray Script"
+"运行纸盘脚本"
+
+"recording..."
+"记录中..."
+
+"Record"
+"点击以录制热键"
+
+"Script to run"
+"要运行的脚本"
+
+"Settings Editor"
+"设定编辑器"
+
+"Health Check All"
+"检查全部连接"
+
+"Proxy Providers"
+"代理提供者"
+
+"Image is on the way"
+"图片正在加载"
+
+"Change Log Level"
+"更改日志级别"
+
+"TAP Device"
+"TAP 设备"
+
+"Downloading":1===this.btnType?"Error!"
+"下载中":1===this.btnType?"错误!"
+
+title:"Error"
+title:"错误"
+
+"Run Time Format"
+"运行时间格式"
+
+"Show/Hide Dashboard"
+"显示/隐藏仪表板"
+
+Force Quit\n
+强制退出\n
+
+[e._v("Quit")]
+[e._v("退出")]
+
+"You are awesome",content:"The current version is up to date."
+"你太棒了",content:"当前版本是最新的"
+
+"Update installed successfully, do you want to restart the APP?"
+"更新安装成功，要重启APP吗?"
+
+"Package downloaded successfully, do you want to execute it?"
+"包下载成功，要执行吗?"
+
+"Select a terminal"
+"选择一个终端"
+
+text:"Detected: "
+text:"侦测到: "
+
+"[ Reset ]"
+"[ 重启 ]"
+
+text:e.settings.interfaceName||"Select"
+text:e.settings.interfaceName||"选择"
+
+Press Enter to stop\n
+按 Enter 停止\n
+
+/*****main.js*****/
+
+"Dashboard"
+"仪表盘"
+
+"Dashboard has crashed!"
+"仪表板崩溃了!"
+
+"Run Tray Script"
+"运行任务栏脚本"
+
+"System Proxy"
+"系统代理"
+
+"Mixin"
+"混淆"
+
+"Proxy Mode"
+"代理模式"
+
+"Global"
+"全局"
+
+"Rule"
+"规则"
+
+"Direct"
+"直连"
+
+"Script"
+"脚本"
+
+"More"
+"更多"
+
+"Force Quit"
+"强制退出"
+
+"Quit"
+"退出"
+
+"Quit Clash for Windows"
+"退出 Clash for Windows"
+
+"Toggle DevTools"
+"切换Dev工具"
+
+/*****在将renderer.js格式化到人看的懂之后需加入的汉化代码******/
+
+
+/*** "代理中" 上方的四个选项***/
+//这个方法借鉴以前版本0.14.1的某个人汉化的clash for windows (由于0.14.1的renderer.js的代码太乱，我也是才看懂那人汉化的思路)
+//替换内容
+
+["global", "rule", "direct", "script"]
+["全局", "规则", "直连", "脚本"]
+
+//添加内容
+
+/*     var t = ["btn"]; 的下一行添加     */
+
+"全局" == e ? e = "global" : "规则" == e ? e = "rule" : "直连" == e ? e = "direct" : "脚本" == e && (e = "script");
+
+/*      }, switchMode: function (e) { 的下一行添加       */
+
+"全局" == e ? e = "global" : "规则" == e ? e = "rule" : "直连" == e ? e = "direct" : "脚本" == e && (e = "script");
+
+/***主页 "日志级别" 中的五个选项***/
+
+//这个方法借鉴以前版本0.14.1的某个人汉化的clash for windows (由于0.14.1的renderer.js的代码太乱，我也是才看懂那人汉化的思路)
+//替换内容
+
+message: "silent will prevent .log file to generate on next startup"
+message: "静默:&nbsp;&nbsp;&nbsp;下次启动时不再生成.log文件<br/>错误:&nbsp;&nbsp;&nbsp;记录错误和异常信息到.log文件<br/>警告:&nbsp;&nbsp;&nbsp;记录错误，异常和警告信息到.log文件<br/>信息:&nbsp;&nbsp;&nbsp;记录运行时的信息到.log文件<br/>调试:&nbsp;&nbsp;&nbsp;记录一切运行时产生的信息(通常用于开发<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;者调试，诊断问题)",
+
+items: n
+items: ["静默", "错误", "警告", "信息", "调试"],
+
+e._s(e.logLevel)
+("silent" == e._s(e.logLevel) ? "静默" : "error" == e._s(e.logLevel) ? "错误" : "warning" == e._s(e.logLevel) ? "警告" : "info" == e._s(e.logLevel) ? "信息" : "debug" == e._s(e.logLevel) ? "调试" : e._s(e.logLevel))
