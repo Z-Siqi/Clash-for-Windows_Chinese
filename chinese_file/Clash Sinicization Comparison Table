@@ -528,6 +528,30 @@ text:e.settings.interfaceName||"选择"
 Press Enter to stop\n
 按 Enter 停止\n
 
+[e._v("\n        Add\n      ")]
+[e._v("\n        添加\n      ")]
+
+title:"Copy profile"
+title:"复制配置文件"
+
+"Update Interval must be an integer"
+"更新间隔必须是整数"
+
+"Input a new file name"
+"输入一个新的文件名"
+
+"Remove":"Include"
+"删除":"包括"
+
+"Edit Parsers","OK"
+"编辑解析器","确认"
+
+Scheme\n
+跳转方案\n
+
+e._s("Total
+e._s("总共
+
 /*****main.js*****/
 
 "Dashboard"
@@ -608,3 +632,12 @@ items: ["静默", "错误", "警告", "信息", "调试"],
 
 e._s(e.logLevel)
 ("silent" == e._s(e.logLevel) ? "静默" : "error" == e._s(e.logLevel) ? "错误" : "warning" == e._s(e.logLevel) ? "警告" : "info" == e._s(e.logLevel) ? "信息" : "debug" == e._s(e.logLevel) ? "调试" : e._s(e.logLevel))
+
+[e._v("mode: " + e._s(e.mode))]
+[e._v("模式: " + ("global" == e._s(e.mode) ? "全局" : "rule" == e._s(e.mode) ? "规则" : "direct" == e._s(e.mode) ? "直连" : "script" == e._s(e.mode) ? "脚本" : e._s(e.mode)))]
+
+a = void 0 === i ? "Select" : i,
+a = void 0 === i ? "选择" : i,
+
+title: "Found ".concat(r.length, " matching parsers")
+title: "找到 ".concat(r.length, " 匹配解析器")
