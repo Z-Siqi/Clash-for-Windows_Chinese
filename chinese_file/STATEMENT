@@ -1,6 +1,6 @@
 声明:
   1,原软件为"Clash For Windows"
-  2,"Clash For Windows chinese"的汉化原理是通过修改"app.asar"文件中的"renderer.js"以及"main.js"中的相应字符
+  2,"Clash For Windows chinese"的汉化原理是通过修改"app.asar"文件中的"renderer.js"以及"main.js"里的相应字符
   3,请勿用该软件做任何违反大陆法律的事情,违者后果自负
   4,该软件仅用于查资料,科学上网,观看奈飞等正规影视平台以及浏览器游戏
   5,由于clash是基于Shadowsocks的代理协议,因此无法代理到游戏所使用的的网络层级,所以想用于玩电脑游戏的请前去购买加速器或软路由
