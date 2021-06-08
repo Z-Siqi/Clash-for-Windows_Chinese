@@ -1,5 +1,6 @@
 //英汉对照替换表
 //同时该表也将帮助我更快的汉化clash
+//asar解压打包工具安装命令 npm install -g asar
 
 /*****renderer.js*****/
 
