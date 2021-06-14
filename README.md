@@ -15,6 +15,6 @@
 
 [前往Clash下载界面](https://github.com/Fndroid/clash_for_windows_pkg/releases)
 
-[前往下载免费翻墙配置](https://github.com/ender-zhao/Clash_Configuration)
+[前往下载免费配置](https://github.com/ender-zhao/Clash_Configuration)
 ***
 #### [向我捐赠](https://github.com/ender-zhao/EZc)
