@@ -7,7 +7,11 @@
 
 ![文件未正常加载](https://github.com/ender-zhao/Clash-for-Windows_Chinese/blob/main/image/Image_Clash_Chinese-0.16.3.png?raw=true)
 
-支持的clash版本: [0.15.3](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.15.3_CN-V4)~[0.15.10](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.15.10_CN),[0.16.0](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.16.0_CN),[0.16.1](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.16.1_CN),[0.16.2](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.16.2_CN),[0.16.3](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.16.3_CN)[](https://raw.githubusercontent.com/ender-zhao/Clash-for-Windows_Chinese/main/chinese_file/Update)[](https://raw.githubusercontent.com/ender-zhao/Clash-for-Windows_Chinese/main/chinese_file/Update-New)
+支持的clash版本: 
+
+[0.15.3](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.15.3_CN-V4)~[0.15.10](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.15.10_CN)
+
+[0.16.0](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.16.0_CN),[0.16.1](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.16.1_CN),[0.16.2](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.16.2_CN),[0.16.3](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.16.3_CN)[](https://raw.githubusercontent.com/ender-zhao/Clash-for-Windows_Chinese/main/chinese_file/Update)[](https://raw.githubusercontent.com/ender-zhao/Clash-for-Windows_Chinese/main/chinese_file/Update-New)
 
 ***
 ### 快速导航
