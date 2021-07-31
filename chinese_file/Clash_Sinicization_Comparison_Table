@@ -1,10 +1,16 @@
-#英汉对照替换表
-#同时该表也将帮助我更快的汉化clash
-#asar解压打包工具安装命令 npm install -g asar
 *****************
 *  renderer.js  *
 *****************
 
+
+************************************
+下个版本将新增的汉化
+************************************
+
+Network Error
+网络错误
+
+详情: https://github.com/ender-zhao/Clash-for-Windows_Chinese/projects
 
 ************************************
 全局调用的文本
@@ -45,9 +51,6 @@ Cancel\n
 
 [e._v("Add")]
 [e._v("添加")]
-
-failed with error:
-失败，错误：
 
 "Error"
 "错误"
@@ -104,7 +107,7 @@ Stop Sorting\n
 ************************************
 
 "You are awesome",content:"The current version is up to date."
-"你太棒了",content:"当前版本是最新的"
+"当前版本是最新的",content:"当前汉化版本也是最新的"
 
 "Update installed successfully, do you want to restart the APP?"
 "更新安装成功，要重启APP吗?"
@@ -169,6 +172,9 @@ Mixin允许您覆盖原始配置文件\n
 
 "TAP device management",message:'An adapter named "cfw-tap" will route your data into clash.<br /><br />If the installation box pops up, keep clicking "Next" until the installation is complete.',items:["Install","Remove","Customize"]
 "TAP设备管理",message:'名为“ cfw-tap”的适配器会将您的数据路由到冲突中<br /><br />如果弹出安装框，请继续单击“下一步”，直到安装完成',items:["安装","卸载","定制"]
+
+"Service management",message:"It might take a while.<br/>The APP will be relaunched automatically.".concat(r,"<br/><br/>Current status: ").concat(e.isLocalMode?"Inactive":"Active")
+"服务管理",message:"这可能需要一段时间<br/>该APP将自动重新启动.".concat(r,"<br/><br/>当前状态: ").concat(e.isLocalMode?"未安装":"已安装")
 
 "Service management",message:"It might take a while.<br/>The APP will be relaunched automatically.<br/><br/>Current status: ".concat(e.isLocalMode?"Inactive":"Active"
 "服务管理",message:"这可能需要一段时间<br/>该APP将自动重新启动<br/><br/>当前状态: ".concat(e.isLocalMode?"未安装":"已安装"
@@ -508,36 +514,6 @@ text:"编辑"
 "Select After Updated"
 "更新后选择"
 
-"Shortcuts"
-"快捷键"
-
-"Global Mode"
-"全局模式"
-
-"Rule Mode"
-"规则模式"
-
-[e._v("Direct Mode")]
-[e._v("直连模式")]
-
-"Script Mode"
-"脚本模式"
-
-"Show/Hide Dashboard"
-"显示/隐藏仪表板"
-
-"Run Tray Script"
-"运行纸盘脚本"
-
-"recording..."
-"记录中..."
-
-Press Enter to stop\n
-按 Enter 停止\n
-
-"Record"
-"点击以录制热键"
-
 Force Quit\n
 强制退出\n
 
@@ -576,6 +552,40 @@ Open Folder\n
 
 Launch Helper\n
 启动助手\n
+
+************************************
+快捷键选项
+************************************
+
+"Shortcuts"
+"快捷键"
+
+"Global Mode"
+"全局模式"
+
+"Rule Mode"
+"规则模式"
+
+[e._v("Direct Mode")]
+[e._v("直连模式")]
+
+"Script Mode"
+"脚本模式"
+
+"Show/Hide Dashboard"
+"显示/隐藏仪表板"
+
+"Run Tray Script"
+"运行纸盘脚本"
+
+"recording..."
+"记录中..."
+
+Press Enter to stop\n
+按 Enter 停止\n
+
+"Record"
+"点击以录制热键"
 
 ************************************
 关于
@@ -644,6 +654,33 @@ Manage\n
 
 Update All\n
 更新全部\n
+
+message: "unknow error"
+message: "未知错误"
+
+update failed(Network Error)!
+更新失败(网络错误)!
+
+"Could not switch to this profile!"
+"无法切换到此配置文件!"
+
+"Download GeoIP database
+"下载 GeoIP 数据库
+
+"Input fields are alternative"
+"输入字段是替代的"
+
+"Update GeoIP database
+"更新 GeoIP 数据库
+
+"Updating GeoIP database is not allowed in CFW, please do it manually."
+"CFW 不允许更新 GeoIP 数据库，请手动进行."
+
+"Copy proxy setting commands"
+"复制代理设置命令"
+
+"Copy Command"
+"复制命令"
 
 *****************
 *    main.js    *
