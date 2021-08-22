@@ -1,7 +1,7 @@
 # Clash for Windows Chinese<img src="https://github.com/ender-zhao/Clash-for-Windows_Chinese/blob/main/image/image_clash.png?raw=true" width="30" height="30">
 ### Clash 汉化版
 
-**提供clash for windows的汉化版以及汉化补丁**
+**提供clash for windows的汉化版, 汉化补丁以及汉化版Clash安装程序**
 
 效果图
 
@@ -17,7 +17,7 @@
 ### 快速导航
 [前往汉化下载界面](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases)
 
-[前往Clash下载界面](https://github.com/Fndroid/clash_for_windows_pkg/releases)
+[前往原版Clash下载界面](https://github.com/Fndroid/clash_for_windows_pkg/releases)
 
 [前往下载免费配置](https://github.com/ender-zhao/Clash_Configuration)
 
