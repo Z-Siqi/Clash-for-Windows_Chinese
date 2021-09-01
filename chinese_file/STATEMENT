@@ -1,17 +1,7 @@
-声明:
-  1,原软件为"Clash For Windows"
-  2,"Clash For Windows chinese"的汉化原理是通过修改"app.asar"文件中的"renderer.js"以及"main.js"里的相应字符
-  3,请勿用该软件做任何违反大陆法律的事情,违者后果自负
-  4,该软件仅用于查资料,科学上网,观看奈飞等正规影视平台以及浏览器游戏
-  5,由于clash是基于Shadowsocks的代理协议,因此无法代理到游戏所使用的的网络层级,所以想用于玩电脑游戏的请前去购买加速器或软路由
-  6,这个软件不包含机场节点链接,如要正常使用请到别处购买
-汉化声明:
-  1,解压app.asar的软件安装命令: npm install -g asar
-  2,Clash For Windows Chinese"代理"中的上方四个选项以及"主页"中的"日志级别"内的五个选项借鉴了以前0.14.1的一个完全汉化的"renderer.js"文件
-  3,对clash的非官方更改1：防止在想更新clash汉化版时忘记这个网址,因此在关于>项目中植入了这个网站的超链接
-  4,对clash的非官方更改2：在主页>日志级别中添加详细的说明
-关于分享:
-  本人不反对将这个软件分享,盗用,但分享后请不要做任何违法大陆法律的事情
-免责声明:
-  一切由使用者产生的法律问题与本人无关,本人仅汉化了Clash For Windows
- 
+版权归Clash for Windows原开发者所有
+对Clash for Windows进行的修改:
+  1, 修改"app.asar"文件中的"renderer.js"
+  2, 修改"app.asar"文件中的"main.js"
+对Clash for Windows植入的第三方链接:
+  1, https://github.com/ender-zhao/Clash-for-Windows_Chinese-Attached
+软件仅共学习使用，请在下载后24小时内删除相关信息
