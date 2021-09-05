@@ -21,7 +21,7 @@
 
 [前往下载免费配置](https://github.com/ender-zhao/Clash_Configuration)
 
-[前往下载机场推广版](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-custom-made)
+[前往下载机场推广版 (去广告和更新检测)](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-custom-made)
 
 #### 能够解压7z格式的软件
 
