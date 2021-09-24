@@ -5,7 +5,7 @@
 
 效果图
 
-![文件未正常加载](https://github.com/ender-zhao/Clash-for-Windows_Chinese/blob/main/image/Image_Clash_Chinese-0.18.1.png?raw=true)
+![文件未正常加载](https://github.com/ender-zhao/Clash-for-Windows_Chinese/blob/main/image/Image_Clash_Chinese-0.18.2.png?raw=true)
 
 支持的clash版本: 
 
