@@ -30,4 +30,4 @@
 [WinRAR](https://www.rarlab.com/)
 
 ***
-### [向我捐赠](https://github.com/ender-zhao/EZc)
+### [向我捐赠](https://github.com/ender-zhao/EZ)
