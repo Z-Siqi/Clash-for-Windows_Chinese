@@ -2,16 +2,6 @@
 *  renderer.js  *
 *****************
 
-
-************************************
-下个版本将新增的汉化
-************************************
-
-Network Error
-网络错误
-
-详情: https://github.com/ender-zhao/Clash-for-Windows_Chinese/projects
-
 ************************************
 全局调用的文本
 ************************************
@@ -64,8 +54,41 @@ Cancel\n
 "Connection Info"
 "连接信息"
 
-return l()(t).fromNow()
-return l()(t).locale('zh-cn').fromNow()
+return l()(t).
+return l()(t).locale('zh-cn').
+
+fromNow()
+locale('zh-cn').fromNow()
+
+"Clash is running in the background","Enjoy your free time!"
+"Clash 正在后台运行","享受您的自由时间!"
+
+("fail to update profile with url: ".concat(c)),Object(L.c)("Profile update failed",c)
+("无法使用 url 更新配置资料: ".concat(c)),Object(L.c)("配置资料更新失败",c)
+
+"Profile had been downloaded successfully."
+"配置资料已成功下载."
+
+"app exiting, turn off system proxy"
+"应用退出, 关闭系统代理"
+
+http server failed to start with error
+http 服务器因错误而无法启动
+
+http server started at
+http服务器开始于
+
+first luanch, creating
+首次发布, 创建
+
+app start with mode
+应用程序以模式开始
+
+fail to load general config.yaml with error
+无法加载常规 config.yaml 并出现错误
+
+load data from general
+从一般加载数据
 
 ************************************
 左边菜单
@@ -92,9 +115,11 @@ title:"日志"
 title:"Feedback"
 title:"关于"
 
+"Providers"
+"提供"
+
 Stop Sorting\n
 停止排序\n
-
 
 "Connected"
 "已连接"
@@ -113,19 +138,19 @@ Stop Sorting\n
 "更新安装成功，要重启APP吗?"
 
 "Package downloaded successfully, do you want to execute it?"
-"包下载成功，要执行吗?"
+"原版包下载成功，要执行吗?"
 
-"Update","Download","Copy URL","Cancel"
-"更新","下载","复制URL","取消"
+"Update","Download","Copy URL","取消"
+"更新(原版)","下载(原版)","复制URL(原版)","取消"
 
 "Port"
 "端口"
 
-title: "Change Mixed Port"
-title: "更改混合端口"
+title:"Change Mixed Port"
+title:"更改混合端口"
 
-name: "New Port"
-name: "新端口"
+name:"New Port"
+name:"新端口"
 
 "Allow LAN"
 "允许局域网"
@@ -140,10 +165,10 @@ name: "新端口"
 "主目录"
 
 "UWP Loopback"
-"UWP回路"
+"UWP 应用联网限制解除工具"
 
 "TAP Device"
-"TAP 设备"
+"虚拟网卡安装"
 
 "Service Mode"
 "服务模式"
@@ -163,21 +188,21 @@ Mixin允许您覆盖原始配置文件\n
 "Drag to sort or add to the list on the right."
 "拖动以排序或添加到右侧列表中"
 
+Manage\n
+管理\n
+
 ************************************
 主页中的TAP选项
 ************************************
 
-"TAP device",data:a,hint:"You need to reinstall the TAP device after you change these fields!"
-"TAP设备",data:a,hint:"更改这些字段后，您需要重新安装TAP设备！"
+"You need to reinstall the TAP device after you change these fields!"
+"更改这些字段后，您需要重新安装虚拟网卡！"
 
 "TAP device management",message:'An adapter named "cfw-tap" will route your data into clash.<br /><br />If the installation box pops up, keep clicking "Next" until the installation is complete.',items:["Install","Remove","Customize"]
-"TAP设备管理",message:'名为“ cfw-tap”的适配器会将您的数据路由到冲突中<br /><br />如果弹出安装框，请继续单击“下一步”，直到安装完成',items:["安装","卸载","定制"]
+"虚拟网卡设置管理",message:'名为“ cfw-tap”的适配器会将您的数据路由到冲突中<br /><br />如果弹出安装框，请继续单击“下一步”，直到安装完成',items:["安装","卸载","定制"]
 
 "Service management",message:"It might take a while.<br/>The APP will be relaunched automatically.".concat(r,"<br/><br/>Current status: ").concat(e.isLocalMode?"Inactive":"Active")
 "服务管理",message:"这可能需要一段时间<br/>该APP将自动重新启动.".concat(r,"<br/><br/>当前状态: ").concat(e.isLocalMode?"未安装":"已安装")
-
-"Service management",message:"It might take a while.<br/>The APP will be relaunched automatically.<br/><br/>Current status: ".concat(e.isLocalMode?"Inactive":"Active"
-"服务管理",message:"这可能需要一段时间<br/>该APP将自动重新启动<br/><br/>当前状态: ".concat(e.isLocalMode?"未安装":"已安装"
 
 "IP Address"
 "IP地址"
@@ -187,6 +212,21 @@ Mixin允许您覆盖原始配置文件\n
 
 "Default Gateway"
 "默认网关"
+
+"Success","cfw-tap device had been installed"
+"成功","cfw-tap 已安装"
+
+"Failed","counld not install cfw-tap device."
+"失败","无法安装 cfw-tap"
+
+"Success","cfw-tap device had been removed"
+"成功","cfw-tap 已被移除"
+
+"Failed","counld not remove cfw-tap device."
+"失败", "无法移除 cfw-tap"
+
+"Commands have been copied to Clipboad!"
+"命令已复制到剪贴板!"
 
 ************************************
 代理
@@ -201,6 +241,15 @@ Mixin允许您覆盖原始配置文件\n
 "Timeout"
 "超时"
 
+"scroll to selected porxy"
+"移动到选定的代理上"
+
+"test latency"
+"测试延迟"
+
+"show or hide proxies"
+"显示或隐藏代理"
+
 ************************************
 配置
 ************************************
@@ -208,41 +257,47 @@ Mixin允许您覆盖原始配置文件\n
 "Download from a URL"
 "从URL下载"
 
-"Update this profile"
-"更新此配置"
+"refresh"
+"更新"
 
-"Success!":"Download"
-"成功!":"下载"
+"Error!":2===this.btnType?"Success!":"Download"
+"错误!":2===this.btnType?"成功!":"下载"
+
+"Downloading"
+"下载中"
 
 "Update All"
 "更新全部"
 
+Update All\n
+更新全部\n
+
 "Import"
 "导入"
 
-"Edit in text mode"
-"以文本模式编辑"
+"edit"
+"编辑"
 
-"Edit policies"
+"edit policies"
 "修改规则"
 
-"Edit rules"
+"edit rules"
 "编辑规则"
 
-"Duplicate profile"
+"duplicate profile"
 "复制配置文件"
-
-"Go to URL"
-"打开链接"
 
 Scheme\n
 跳转方案\n
 
-"Parsers info"
-"解析器信息"
+"matching parsers"
+"匹配解析器"
 
-"Change information"
-"变更资料"
+"settings"
+"设置"
+
+"delete"
+"删除"
 
 "Edit profile information"
 "编辑配置信息"
@@ -279,7 +334,7 @@ to import/switch a profile\n
 "请求日志"
 
 "Stop":"Start"
-"停":"开始"
+"暂停":"开始"
 
 "Empty log list"
 "空日志列表"
@@ -318,14 +373,14 @@ Close All\n
 Chains:
 模式:
 
-Rule:
-规则:
+Rule:"".concat
+规则:"".concat
 
 Destination:
 目的地:
 
-Source:
-来源:
+Source:""
+来源:""
 
 Traffic:
 流量:
@@ -356,16 +411,16 @@ Host:
 "外观"
 
 "Settings Editor"
-"设定编辑器"
+"配置编辑器"
 
 "Notifications"
-"通知事项"
+"向系统通知栏发送相关信息"
 
 "Silent Start"
 "开启Clash时默认缩小到任务栏"
 
 "Random Controller Port"
-"随机控制器端口"
+"随机占用端口"
 
 "Lightweight Mode"
 "轻量模式"
@@ -395,13 +450,16 @@ Use System Emoji
 使用系统表情符号
 
 "Default Icon Path"
-"默认图标路径"
+"自定义状态栏图标"
 
 "System Proxy On Icon Path"
-"图标路径上的系统代理"
+"状态栏图标上的系统代理"
+
+ICO(.ico) asset path
+ICO(.ico) 路径
 
 "Enhanced Tray"
-"悬浮窗口"
+"悬浮窗"
 
 "Text to display in tray"
 "要显示在悬浮窗中的文本"
@@ -437,7 +495,7 @@ text:"选择"
 "静态主机"
 
 "Profile Mixin"
-"资料混淆"
+"配置文件Mixin"
 
 text:"Edit"
 text:"编辑"
@@ -445,8 +503,11 @@ text:"编辑"
 "Proxy Item Width"
 "代理项目宽度"
 
+"Mini List Width"
+"迷你列表宽度"
+
 "Order By"
-"订购依据"
+"自定义节点排序"
 
 "Default","Latency","Alphabet"
 "默认","延迟","字母"
@@ -458,31 +519,31 @@ text:"编辑"
 "延迟测试超时"
 
 "Show Filter"
-"显示过滤器"
+"显示筛选过滤器"
 
 "Hide Unselectable Group"
-"隐藏无法选择的组"
+"隐藏无法选择的代理组"
 
 "Break When Proxy Change"
-"代理更改时中断"
+"代理更改时中断连接"
 
 "None","Chain","All"
 "不中断","链接","所有"
 
 "Break When Profile Change"
-"配置文件更改时中断"
+"配置文件更改时中断连接"
 
 "Break When Mode Change"
-"模式更改时中断"
+"模式更改时中断连接"
 
 "Display Chain Type"
-"显示链类型"
+"显示链接类型"
 
 "Proxy","Group","Both"
 "节点名","分组名","全部"
 
 "Outbound"
-"出站"
+"选择流量出接口"
 
 "Interface Name"
 "接口名称"
@@ -494,10 +555,10 @@ text:"编辑"
 "子进程"
 
 "Processes"
-"工艺流程"
+"启动其他应用"
 
 "Parsers"
-"解析器"
+"配置文件预处理"
 
 "Console Output"
 "控制台输出"
@@ -509,7 +570,7 @@ text:"编辑"
 "资料夹路径"
 
 "Request Headers"
-"请求标题"
+"自定义请求头"
 
 "Select After Updated"
 "更新后选择"
@@ -522,9 +583,6 @@ Force Quit\n
 
 text:e.settings.interfaceName||"Select"
 text:e.settings.interfaceName||"选择"
-
-"Providers"
-"提供"
 
 "Profiles folder path"
 "配置文件文件夹路径"
@@ -539,7 +597,7 @@ text:e.settings.interfaceName||"选择"
 "代理提供者"
 
 "Choose outbound interface",message:"only works when TAP mode enabled"
-"选择出站接口",message:"仅在启用TAP模式时有效"
+"选择出接口",message:"仅在启用TAP模式时有效"
 
 "Docs"
 "文件"
@@ -566,8 +624,8 @@ Launch Helper\n
 "Rule Mode"
 "规则模式"
 
-[e._v("Direct Mode")]
-[e._v("直连模式")]
+Direct Mode
+直连模式
 
 "Script Mode"
 "脚本模式"
@@ -637,9 +695,6 @@ Press Enter to stop\n
 failed with error: HTTP Response Status Code
 失败，错误：HTTP 响应状态代码
 
-"Downloading":1===this.btnType?"Error!"
-"下载中":1===this.btnType?"错误!"
-
 "updated":"installed"," Service Mode to control system proxy."),buttons:["".concat(e.serviceNeedUpdate?"Update":"Install"," Now"
 "已更新":"已安装"," 用于控制系统代理的服务模式"),buttons:["".concat(e.serviceNeedUpdate?"更新":"安装"," 现在"
 
@@ -649,14 +704,8 @@ failed with error: HTTP Response Status Code
 Go to\n
 前往\n
 
-Manage\n
-管理\n
-
-Update All\n
-更新全部\n
-
-message: "unknow error"
-message: "未知错误"
+message:"unknow error"
+message:"未知错误"
 
 update failed(Network Error)!
 更新失败(网络错误)!
@@ -699,7 +748,7 @@ update failed(Network Error)!
 "系统代理"
 
 "Mixin"
-"混淆"
+"混合配置"
 
 "Proxy Mode"
 "代理模式"
