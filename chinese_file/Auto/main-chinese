@@ -1,0 +1,35 @@
+ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
+
+<find>"Dashboard"</find>
+<replace>"仪表盘"</replace>
+<find>"Dashboard has crashed</find>
+<replace>"仪表板崩溃了</replace>
+<find>"Run Tray Script"</find>
+<replace>"运行任务栏脚本"</replace>
+<find>"System Proxy"</find>
+<replace>"系统代理"</replace>
+<find>"Mixin"</find>
+<replace>"混合配置"</replace>
+<find>"Proxy Mode"</find>
+<replace>"代理模式"</replace>
+<find>"Global"</find>
+<replace>"全局"</replace>
+<find>"Rule"</find>
+<replace>"规则"</replace>
+<find>"Direct"</find>
+<replace>"直连"</replace>
+<find>"Script"</find>
+<replace>"脚本"</replace>
+<find>"More"</find>
+<replace>"更多"
+</replace>
+<find>"Force Quit"</find>
+<replace>"强制退出"</replace>
+<find>"Quit"</find>
+<replace>"退出"</replace>
+<find>"Quit Clash for Windows"</find>
+<replace>"退出 Clash for Windows"</replace>
+<find>"Toggle DevTools"</find>
+<replace>"切换Dev工具"</replace>
+<find>"Restart"</find>
+<replace>"重启"</replace>
