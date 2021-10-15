@@ -331,7 +331,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>"Proxy Item Width"</find>
 <replace>"代理项目宽度"</replace>
 <find>"Mini List Width"</find>
-<replace>"迷你列表宽度"</replace>
+<replace>"策略组导航器宽度"</replace>
 <find>"Order By"</find>
 <replace>"自定义节点排序"</replace>
 <find>"Default","Latency","Alphabet"</find>
@@ -476,8 +476,8 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"复制命令"</replace>
 <find>"global","rule","direct","script"</find>
 <replace>"全局","规则","直连","脚本"</replace>
-<find>"scroll to selected porxy"</find>
-<replace>"移动到选定的代理上"</replace>
+<find>scroll to selected proxy</find>
+<replace>移动到选定的节点</replace>
 <find>"test latency"</find>
 <replace>"测试延迟"</replace>
 <find>"show or hide proxies"</find>
@@ -508,7 +508,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>message: "静默:&nbsp;&nbsp;&nbsp;下次启动时不再生成.log文件<br/>错误:&nbsp;&nbsp;&nbsp;记录错误和异常信息到.log文件<br/>警告:&nbsp;&nbsp;&nbsp;记录错误，异常和警告信息到.log文件<br/>信息:&nbsp;&nbsp;&nbsp;记录运行时的信息到.log文件<br/>调试:&nbsp;&nbsp;&nbsp;记录一切运行时产生的信息(通常用于开发<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;者调试，诊断问题)",</replace>
 <find>"https://github.com/Fndroid/clash_for_windows_pkg"</find>
 <replace>"https://github.com/ender-zhao/Clash-for-Windows_Chinese-Attached"</replace>
-<find>e._v\("mode: "+e._s\(e.mode\)\)</find>
+<find>e._v\("mode: "\+e._s\(e.mode\)\)</find>
 <replace>e._v\("模式: "+\("global"==e._s\(e.mode\)?"全局":"rule"==e._s\(e.mode\)?"规则":"direct"==e._s\(e.mode\)?"直连":"script"==e._s\(e.mode\)?"脚本":e._s\(e.mode\)\)\)</replace>
 <find>Restarting core</find>
 <replace>重启内核</replace>
@@ -522,3 +522,75 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>return this.isRecording\?"记录中</replace>
 <find>CMD with proxy</find>
 <replace>终端和代理</replace>
+<find>=hide</find>
+<replace>=隐藏</replace>
+<find>could not update provider</find>
+<replace>无法更新提供者</replace>
+<find>DHCP Server</find>
+<replace>DHCP 服务器</replace>
+<find>Local IP 添加ress</find>
+<replace>本地 IP 地址</replace>
+<find>Configuration</find>
+<replace>配置</replace>
+<find>Do you want to restart the APP</find>
+<replace>是否要重启APP</replace>
+<find>"Restart"</find>
+<replace>"重新启动"</replace>
+<find>clash core startup failed</find>
+<replace>clash核心启动失败</replace>
+<find>restore proxy group </find>
+<replace>恢复代理组 </replace>
+<find>netsh interface show interface</find>
+<replace>netsh 界面 显示界面</replace>
+<find>TUN mode enable but no interface-name in this YAML</find>
+<replace>启用 TUN 模式但此 YAML 中没有接口名称</replace>
+<find>Could not edit proxy gorup type</find>
+<replace>无法编辑代理组类型</replace>
+<find>"Server"</find>
+<replace>"服务器"</replace>
+<find>PAC Content</find>
+<replace>PAC内容</replace>
+<find>Script Interval</find>
+<replace>脚本间隔</replace>
+<find>Automatic Upgrade</find>
+<replace>自动升级</replace>
+<find>Try to repair</find>
+<replace>尝试修复</replace>
+<find>Logs Folder</find>
+<replace>日志文件夹</replace>
+<find>Home Directory</find>
+<replace>主目录</replace>
+<find>"Errors"</find>
+<replace>"错误"</replace>
+<find>Stop Sorting</find>
+<replace>停止排序</replace>
+<find>Proxy or Policy</find>
+<replace>代理或策略</replace>
+<find>  Content</find>
+<replace>  内容</replace>
+<find>Create a new rule</find>
+<replace>创建新规则</replace>
+<find>Skip Cert Verify</find>
+<replace>跳过证书验证</replace>
+<find>Script Interval</find>
+<replace>脚本间隔</replace>
+<find>"Automatic Upgrade"</find>
+<replace>"自动升级"</replace>
+<find>Automatic Upgrade completed</find>
+<replace>自动升级完成</replace>
+<find>make diff</find>
+<replace>制作diff</replace>
+<find>You can make some changes to a profile then we merge them for you when you refresh the profile</find>
+<replace>你可以对配置文件进行一些更改，然后会在你更新配置文件时为你合并它们</replace>
+<find>Init diff files</find>
+<replace>初始化 diff 文件</replace>
+<find>Delete diff files","Make changes</find>
+<replace>删除 diff 文件","修改文件</replace>
+<find>Update provider</find>
+<replace>更新提供者</replace>
+<find>Update Cron </find>
+<replace>更新 Cron </replace>
+<find>matching parsers</find>
+<replace>个匹配解析器</replace>
+<find>Found </find>
+<replace>找到 </replace>
