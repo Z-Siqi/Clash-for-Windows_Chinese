@@ -21,8 +21,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>"Script"</find>
 <replace>"脚本"</replace>
 <find>"More"</find>
-<replace>"更多"
-</replace>
+<replace>"更多"</replace>
 <find>"Force Quit"</find>
 <replace>"强制退出"</replace>
 <find>"Quit"</find>
