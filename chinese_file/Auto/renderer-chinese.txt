@@ -16,8 +16,8 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"取消"</replace>
 <find> Cancel</find>
 <replace> 取消</replace>
-<find> Add</find>
-<replace> 添加</replace>
+<find>  Add</find>
+<replace>  添加</replace>
 <find>"Loading</find>
 <replace>"正在加载</replace>
 <find>"Quit"</find>
@@ -194,8 +194,8 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"匹配解析器"</replace>
 <find>"settings"</find>
 <replace>"设置"</replace>
-<find>"delete"</find>
-<replace>"删除"</replace>
+<find>text:"Delete"</find>
+<replace>text:"删除"</replace>
 <find>"Edit profile information"</find>
 <replace>"编辑配置信息"</replace>
 <find>title:"Copy profile"</find>
@@ -412,8 +412,8 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>直连模式</replace>
 <find>"Script Mode"</find>
 <replace>"脚本模式"</replace>
-<find>"Show</find>
-<replace>"显示</replace>
+<find>"Show connections"</find>
+<replace>"显示连接"</replace>
 <find>Hide Dashboard"</find>
 <replace>隐藏仪表板"</replace>
 <find>"Run Tray Script"</find>
@@ -528,7 +528,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>无法更新提供者</replace>
 <find>DHCP Server</find>
 <replace>DHCP 服务器</replace>
-<find>Local IP 添加ress</find>
+<find>Local IP Address</find>
 <replace>本地 IP 地址</replace>
 <find>Configuration</find>
 <replace>配置</replace>
@@ -594,3 +594,17 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>个匹配解析器</replace>
 <find>Found </find>
 <replace>找到 </replace>
+<find>"Update",</find>
+<replace>"更新",</replace>
+<find>"Show in folder"</find>
+<replace>"显示文件夹"</replace>
+<find>"TAP device"</find>
+<replace>"虚拟网卡安装"</replace>
+<find>"Rules"</find>
+<replace>"规则"</replace>
+<find>"QRCode",</find>
+<replace>"二维码",</replace>
+<find>text:"Copy"</find>
+<replace>text:"复制"</replace>
+<find>text:"Reorder"</find>
+<replace>text:"重新排序"</replace>
