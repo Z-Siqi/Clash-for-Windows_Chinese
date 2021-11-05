@@ -414,8 +414,8 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"脚本模式"</replace>
 <find>"Show connections"</find>
 <replace>"显示连接"</replace>
-<find>Hide Dashboard"</find>
-<replace>隐藏仪表板"</replace>
+<find>Show/Hide Dashboard"</find>
+<replace>显示/隐藏仪表板"</replace>
 <find>"Run Tray Script"</find>
 <replace>"运行纸盘脚本"</replace>
 <find> Press Enter to stop</find>
@@ -608,3 +608,9 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>text:"复制"</replace>
 <find>text:"Reorder"</find>
 <replace>text:"重新排序"</replace>
+<find>hint:"update"</find>
+<replace>hint:"更新"</replace>
+<find>"Show:"</find>
+<replace>"显示:"</replace>
+<find>"Hide:"</find>
+<replace>"隐藏:"</replace>
