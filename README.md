@@ -26,11 +26,9 @@
 ### 快速导航
 [前往汉化下载界面](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases)
 
-[前往原版Clash下载界面](https://github.com/Fndroid/clash_for_windows_pkg/releases)
-
-[前往下载免费配置](https://github.com/ender-zhao/Clash_Configuration)
-
 [前往下载机场引流推广版 (去广告和更新检测)](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-custom-made)
+
+[前往原版Clash下载界面](https://github.com/Fndroid/clash_for_windows_pkg/releases)
 
 #### 能够解压7z格式的软件
 
