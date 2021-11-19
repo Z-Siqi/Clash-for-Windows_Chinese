@@ -325,7 +325,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>"Static Host"</find>
 <replace>"静态主机"</replace>
 <find>"Profile Mixin"</find>
-<replace>"配置文件Mixin"</replace>
+<replace>"配置文件 Mixin"</replace>
 <find>text:"Edit"</find>
 <replace>text:"编辑"</replace>
 <find>"Proxy Item Width"</find>
@@ -614,3 +614,41 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"显示:"</replace>
 <find>"Hide:"</find>
 <replace>"隐藏:"</replace>
+<find>IPNet"</find>
+<replace>网络"</replace>
+<find>Run script</find>
+<replace>运行脚本</replace>
+<find>"Actions"</find>
+<replace>"操作(Actions)"</replace>
+<find>"General"</find>
+<replace>"主页"</replace>
+<find>"Scripts"</find>
+<replace>"脚本"</replace>
+<find>"Custom"</find>
+<replace>"自定义"</replace>
+<find>"section-general"</find>
+<replace>"section-主页"</replace>
+<find>"section-appearance"</find>
+<replace>"section-外观"</replace>
+<find>"section-system-proxy"</find>
+<replace>"section-系统代理"</replace>
+<find>"section-profile-mixin"</find>
+<replace>"section-配置文件-mixin"</replace>
+<find>"section-proxies"</find>
+<replace>"section-代理"</replace>
+<find>"section-connections"</find>
+<replace>"section-连接"</replace>
+<find>"section-outbound"</find>
+<replace>"section-选择流量出接口"</replace>
+<find>"section-child-processes"</find>
+<replace>"section-子进程"</replace>
+<find>"section-profiles"</find>
+<replace>"section-配置"</replace>
+<find>"section-actions"</find>
+<replace>"section-操作(actions)"</replace>
+<find>"section-shortcuts"</find>
+<replace>"section-快捷键"</replace>
+<find>Hide Tray Icon</find>
+<replace>隐藏托盘图标</replace>
+<find>Custom Editor Command</find>
+<replace>自定义编辑器命令</replace>
