@@ -5,7 +5,7 @@
 
 效果图
 
-![photo](https://github.com/ender-zhao/Clash-for-Windows_Chinese/blob/main/image/Image_Clash_Chinese-0.18.8.png?raw=true)
+![photo](https://github.com/ender-zhao/Clash-for-Windows_Chinese/blob/main/image/Image_Clash_Chinese-0.18.9.png?raw=true)
 
 支持的clash版本: 
 
@@ -21,7 +21,8 @@
 [0.18.5](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.18.5_CN),
 [0.18.6](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.18.6_CN),
 [0.18.7](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.18.7_CN),
-[0.18.8](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.18.8_CN)
+[0.18.8](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.18.8_CN),
+[0.18.9](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.18.9_CN)
 
 ***
 ### 快速导航
