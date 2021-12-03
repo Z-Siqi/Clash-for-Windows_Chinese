@@ -477,7 +477,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>"global","rule","direct","script"</find>
 <replace>"全局","规则","直连","脚本"</replace>
 <find>scroll to selected proxy</find>
-<replace>移动到选定的节点</replace>
+<replace>移动到选定的代理</replace>
 <find>"test latency"</find>
 <replace>"测试延迟"</replace>
 <find>"show or hide proxies"</find>
@@ -652,3 +652,27 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>隐藏托盘图标</replace>
 <find>Custom Editor Command</find>
 <replace>自定义编辑器命令</replace>
+<find>hint:"Update"</find>
+<replace>hint:"更新"</replace>
+<find>"Scroll to selected proxy"</find>
+<replace>"移动到选定的代理"</replace>
+<find>"Test latency"</find>
+<replace>"测试延迟"</replace>
+<find>"Show or hide proxies"</find>
+<replace>"显示或隐藏代理"</replace>
+<find>"TUN Mode"</find>
+<replace>"TUN 模式"</replace>
+<find>To enable this mode, please install Service Mode first</find>
+<replace>要启用此模式，请先安装服务模式</replace>
+<find>"TUN Mode Settings"</find>
+<replace>"TUN 模式设置"</replace>
+<find>Fallback DNS Servers</find>
+<replace>后备 DNS 服务器</replace>
+<find>"Fake IP Filter"</find>
+<replace>"假IP过滤器"</replace>
+<find>"TUN Stack"</find>
+<replace>"TUN 码(TUN Stack)"</replace>
+<find>"Auto Detect Interface"</find>
+<replace>"自动检测接口"</replace>
+<find>"DNS Servers"</find>
+<replace>"DNS 服务器"</replace>
