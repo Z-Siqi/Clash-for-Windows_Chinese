@@ -669,10 +669,20 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>Fallback DNS Servers</find>
 <replace>后备 DNS 服务器</replace>
 <find>"Fake IP Filter"</find>
-<replace>"假IP过滤器"</replace>
+<replace>"Fake IP过滤器"</replace>
 <find>"TUN Stack"</find>
 <replace>"TUN 码(TUN Stack)"</replace>
 <find>"Auto Detect Interface"</find>
 <replace>"自动检测接口"</replace>
 <find>"DNS Servers"</find>
 <replace>"DNS 服务器"</replace>
+<find>v\("Abort"</find>
+<replace>v\("中止"</replace>
+<find>Edit Mixin content</find>
+<replace>编辑 Mixin 内容</replace>
+<find>Fake IP Cache</find>
+<replace>Fake IP 缓存</replace>
+<find>title:"Cache"</find>
+<replace>title:"缓存"</replace>
+<find>return c\(\)\(t\).</find>
+<replace>return c\(\)\(t\).locale\('zh-cn'\).</replace>
