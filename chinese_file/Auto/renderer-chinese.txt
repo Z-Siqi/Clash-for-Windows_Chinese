@@ -492,10 +492,10 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>return l\(\)\(t\).locale\('zh-cn'\).</replace>
 <find>fromNow\(\)</find>
 <replace>locale\('zh-cn'\).fromNow\(\)</replace>
-<find>return this.mode</find>
-<replace>"全局"==e?e="global":"规则"==e?e="rule":"直连"==e?e="direct":"脚本"==e&&(e="script");return this.mode</replace>
-<find>switchMode:function\(e\){var t=this;return o</find>
-<replace>switchMode:function\(e\){"全局"==e?e="global":"规则"==e?e="rule":"直连"==e?e="direct":"脚本"==e&&(e="script");var t=this;return o</replace>
+<find>return this.mode===e.</find>
+<replace>"全局"==e?e="global":"规则"==e?e="rule":"直连"==e?e="direct":"脚本"==e&&(e="script");return this.mode===e.</replace>
+<find>switchMode:function\(e\){var t=this;return s</find>
+<replace>switchMode:function\(e\){"全局"==e?e="global":"规则"==e?e="rule":"直连"==e?e="direct":"脚本"==e&&(e="script");var t=this;return s</replace>
 <find>"Install","Remove","Customize"</find>
 <replace>"安装","卸载","定制"</replace>
 <find>interfaceName\|\|"Select"</find>
