@@ -19,7 +19,8 @@
 [0.18.9](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.18.9_CN),
 [0.18.10](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.18.10_CN),
 [0.19.0](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.19.0_CN),
-[0.19.1](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.19.1_CN)
+[0.19.1](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.19.1_CN),
+[0.19.2](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.19.2_CN)
 
 
 ***
