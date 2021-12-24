@@ -9,12 +9,12 @@
 
 支持的clash版本: 
 
-[0.15.3](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.15.3_CN-V4)
+[0.15.3](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.15.3_CN-V4)
 ~
-[0.18.10](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.18.10_CN)
+[0.18.10](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.18.10_CN)
 
-[0.19.0](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.19.0_CN),
-[0.19.1](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/Clash-V0.19.1_CN),
+[0.19.0](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.0_CN),
+[0.19.1](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.1_CN),
 [0.19.2](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.2_CN),
 [0.19.3](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.3_CN)
 
@@ -23,7 +23,7 @@
 ### 快速导航
 [前往汉化下载界面](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases)
 
-[前往下载机场引流推广版 (去广告和更新检测)](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-custom-made)
+[前往下载机场引流推广版 (去广告和更新检测)](https://github.com/ender-zhao/CFW-custom-made)
 
 [前往原版Clash下载界面](https://github.com/Fndroid/clash_for_windows_pkg/releases)
 
