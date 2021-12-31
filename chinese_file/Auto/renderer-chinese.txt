@@ -113,7 +113,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>Mixin allows you to overwrite the original configuration file</find>
 <replace>Mixin允许您覆盖原始配置文件</replace>
 <find>"Start with Windows"</find>
-<replace>"开机时运行"</replace>
+<replace>"开机自启动"</replace>
 <find>"Drag to sort or add to the list on the right</find>
 <replace>"拖动以排序或添加到右侧列表中</replace>
 <find> Manage</find>
@@ -462,8 +462,8 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>更新失败\(网络错误\)</replace>
 <find>"Could not switch to this profile</find>
 <replace>"无法切换到此配置文件</replace>
-<find>"Download GeoIP database</find>
-<replace>"下载 GeoIP 数据库</replace>
+<find>"Download GeoIP database failed with error</find>
+<replace>"下载 GeoIP 数据库失败并出现错误</replace>
 <find>"Input fields are alternative"</find>
 <replace>"输入字段是替代的"</replace>
 <find>"Update GeoIP database</find>
@@ -494,8 +494,8 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>locale\('zh-cn'\).fromNow\(\)</replace>
 <find>return this.mode===e.</find>
 <replace>"全局"==e?e="global":"规则"==e?e="rule":"直连"==e?e="direct":"脚本"==e&&(e="script");return this.mode===e.</replace>
-<find>switchMode:function\(e\){var t=this;return s</find>
-<replace>switchMode:function\(e\){"全局"==e?e="global":"规则"==e?e="rule":"直连"==e?e="direct":"脚本"==e&&(e="script");var t=this;return s</replace>
+<find>switchMode:function\(e\){var t=this;return o</find>
+<replace>switchMode:function\(e\){"全局"==e?e="global":"规则"==e?e="rule":"直连"==e?e="direct":"脚本"==e&&(e="script");var t=this;return o</replace>
 <find>"Install","Remove","Customize"</find>
 <replace>"安装","卸载","定制"</replace>
 <find>interfaceName\|\|"Select"</find>
@@ -686,3 +686,29 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>title:"缓存"</replace>
 <find>return c\(\)\(t\).</find>
 <replace>return c\(\)\(t\).locale\('zh-cn'\).</replace>
+<find>switchMode:function\(e\){var t=this;return s</find>
+<replace>switchMode:function\(e\){"全局"==e?e="global":"规则"==e?e="rule":"直连"==e?e="direct":"脚本"==e&&(e="script");var t=this;return s</replace>
+<find>"Reset"</find>
+<replace>"重置"</replace>
+<find>DNS Hijacks</find>
+<replace>DNS 劫持</replace>
+<find>"Use CFW Editor"</find>
+<replace>"使用 CFW 编辑器"</replace>
+<find>"Cannot edit in read-only editor"</find>
+<replace>"无法在只读编辑器中编辑(请在右边进行编辑)"</replace>
+<find>items:i}\);case 4</find>
+<replace>items:["静默","错误","警告","信息","调试"],}\);case 4</replace>
+<find>"Start with Linux"</find>
+<replace>"开机自启动"</replace>
+<find>"Start with macOS"</find>
+<replace>"开机自启动"</replace>
+<find>"GeoIP Database"</find>
+<replace>"GeoIP 数据库更新"</replace>
+<find>"Preload"</find>
+<replace>"预载"</replace>
+<find>"lines"</find>
+<replace>"线程"</replace>
+<find>hint:"ESC"</find>
+<replace>hint:"退出(ESC)"</replace>
+<find>"Ctrl\+S"</find>
+<replace>"保存(Ctrl+S)"</replace>
