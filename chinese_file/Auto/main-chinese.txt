@@ -34,3 +34,5 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"重启"</replace>
 <find>"TUN Mode"</find>
 <replace>"TUN 模式"</replace>
+<find>"Move Dashboard To Nearest Monitor"</find>
+<replace>"将仪表板移至最近的显示器"</replace>
