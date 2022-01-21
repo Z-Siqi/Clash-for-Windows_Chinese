@@ -209,7 +209,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>"Local file already exist</find>
 <replace>"本地文件已存在</replace>
 <find>Are you sure to delete </find>
-<replace>您确定要删除吗 </replace>
+<replace>您确定要删除 </replace>
 <find>"Yes","No"</find>
 <replace>"是","否"</replace>
 <find>"Close the editing file to Save</find>
@@ -589,7 +589,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>Update provider</find>
 <replace>更新提供者</replace>
 <find>Update Cron </find>
-<replace>更新 Cron </replace>
+<replace>更新定时程序Cron </replace>
 <find>matching parsers</find>
 <replace>个匹配解析器</replace>
 <find>Found </find>
@@ -597,7 +597,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>"Update",</find>
 <replace>"更新",</replace>
 <find>"Show in folder"</find>
-<replace>"显示文件夹"</replace>
+<replace>"打开文件所在位置"</replace>
 <find>"TAP device"</find>
 <replace>"虚拟网卡安装"</replace>
 <find>"Rules"</find>
@@ -712,3 +712,25 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>hint:"退出(ESC)"</replace>
 <find>"Ctrl\+S"</find>
 <replace>"保存(Ctrl+S)"</replace>
+<find>"Experimental Features"</find>
+<replace>"实验功能"</replace>
+<find>"Select a interface"</find>
+<replace>"选择一个接口"</replace>
+<find>" had been released"</find>
+<replace>" 已经被释放"</replace>
+<find>"Copy Commands Only"</find>
+<replace>"仅复制命令"</replace>
+<find>"Please confirm"</find>
+<replace>"请确认"</replace>
+<find>"config.yaml and country.mmdb will be removed."</find>
+<replace>"config.yaml 和 country.mmdb 将被删除."</replace>
+<find>title:"Router"</find>
+<replace>title:"路由器"</replace>
+<find> diff files</find>
+<replace> diff 文件</replace>
+<find>"OK","Edit in Text Mode"</find>
+<replace>"好的","在文本模式下编辑"</replace>
+<find>"upgrade app failed with error</find>
+<replace>"升级应用程序失败并出现错误</replace>
+<find>"Headers"</find>
+<replace>"标头"</replace>
