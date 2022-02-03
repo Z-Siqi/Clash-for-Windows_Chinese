@@ -1,0 +1,826 @@
+*****************
+*  renderer.js  *
+*****************
+
+************************************
+全局调用的文本
+************************************
+
+[e._v("OK")]
+[e._v("确定")]
+
+[e._v("Text")]
+[e._v("文本")]
+
+title:"Error"
+title:"错误"
+
+"Install","Uninstall"
+"安装","卸载"
+
+"Name"
+"名字"
+
+"Save"
+"保存"
+
+"Cancel"
+"取消"
+
+Cancel\n
+取消\n
+
+[e._v("\n        Add\n      ")]
+[e._v("\n        添加\n      ")]
+
+"Loading..."
+"正在加载..."
+
+[e._v("Quit")]
+[e._v("退出")]
+
+[e._v("Add")]
+[e._v("添加")]
+
+"Error"
+"错误"
+
+"Restarting core..."
+"重新启动核心..."
+
+"No proxy group in this profile"
+"此配置文件中没有代理组"
+
+"Connection Info"
+"连接信息"
+
+return l()(t).
+return l()(t).locale('zh-cn').
+
+fromNow()
+locale('zh-cn').fromNow()
+
+"Clash is running in the background","Enjoy your free time!"
+"Clash 正在后台运行","享受您的自由时间!"
+
+("fail to update profile with url: ".concat(c)),Object(L.c)("Profile update failed",c)
+("无法使用 url 更新配置资料: ".concat(c)),Object(L.c)("配置资料更新失败",c)
+
+"Profile had been downloaded successfully."
+"配置资料已成功下载."
+
+"app exiting, turn off system proxy"
+"应用退出, 关闭系统代理"
+
+http server failed to start with error
+http 服务器因错误而无法启动
+
+http server started at
+http服务器开始于
+
+first luanch, creating
+首次发布, 创建
+
+app start with mode
+应用程序以模式开始
+
+fail to load general config.yaml with error
+无法加载常规 config.yaml 并出现错误
+
+load data from general
+从一般加载数据
+
+************************************
+左边菜单
+************************************
+
+title:"General"
+title:"主页"
+
+"Proxies"
+"代理"
+
+"Profiles"
+"配置"
+
+title:"Logs"
+title:"日志"
+
+"Connections"
+"连接"
+
+"Settings"
+"设置"
+
+title:"Feedback"
+title:"关于"
+
+"Providers"
+"提供"
+
+Stop Sorting\n
+停止排序\n
+
+"Connected"
+"已连接"
+
+"Disconnected"
+"未连接"
+
+************************************
+主页
+************************************
+
+"You are awesome",content:"The current version is up to date."
+"当前版本是最新的",content:"当前汉化版本也是最新的"
+
+"Update installed successfully, do you want to restart the APP?"
+"更新安装成功，要重启APP吗?"
+
+"Package downloaded successfully, do you want to execute it?"
+"原版包下载成功，要执行吗?"
+
+"Update","Download","Copy URL","取消"
+"更新(原版)","下载(原版)","复制URL(原版)","取消"
+
+"Port"
+"端口"
+
+title:"Change Mixed Port"
+title:"更改混合端口"
+
+name:"New Port"
+name:"新端口"
+
+"Allow LAN"
+"允许局域网"
+
+"Log Level"
+"日志级别"
+
+"Clash Core"
+"Clash 核心版本"
+
+"Home Directory"
+"主目录"
+
+"UWP Loopback"
+"UWP 应用联网限制解除工具"
+
+"TAP Device"
+"虚拟网卡安装"
+
+"Service Mode"
+"服务模式"
+
+"Mixin"
+"混淆"
+
+"System Proxy"
+"系统代理"
+
+Mixin allows you to overwrite the original configuration file.\n
+Mixin允许您覆盖原始配置文件\n
+
+"Start with Windows"
+"开机时运行"
+
+"Drag to sort or add to the list on the right."
+"拖动以排序或添加到右侧列表中"
+
+Manage\n
+管理\n
+
+************************************
+主页中的TAP选项
+************************************
+
+"You need to reinstall the TAP device after you change these fields!"
+"更改这些字段后，您需要重新安装虚拟网卡！"
+
+"TAP device management",message:'An adapter named "cfw-tap" will route your data into clash.<br /><br />If the installation box pops up, keep clicking "Next" until the installation is complete.',items:["Install","Remove","Customize"]
+"虚拟网卡设置管理",message:'名为“ cfw-tap”的适配器会将您的数据路由到冲突中<br /><br />如果弹出安装框，请继续单击“下一步”，直到安装完成',items:["安装","卸载","定制"]
+
+"Service management",message:"It might take a while.<br/>The APP will be relaunched automatically.".concat(r,"<br/><br/>Current status: ").concat(e.isLocalMode?"Inactive":"Active")
+"服务管理",message:"这可能需要一段时间<br/>该APP将自动重新启动.".concat(r,"<br/><br/>当前状态: ").concat(e.isLocalMode?"未安装":"已安装")
+
+"IP Address"
+"IP地址"
+
+"Subnet Mask"
+"子网掩码"
+
+"Default Gateway"
+"默认网关"
+
+"Success","cfw-tap device had been installed"
+"成功","cfw-tap 已安装"
+
+"Failed","counld not install cfw-tap device."
+"失败","无法安装 cfw-tap"
+
+"Success","cfw-tap device had been removed"
+"成功","cfw-tap 已被移除"
+
+"Failed","counld not remove cfw-tap device."
+"失败", "无法移除 cfw-tap"
+
+"Commands have been copied to Clipboad!"
+"命令已复制到剪贴板!"
+
+************************************
+代理
+************************************
+
+"Check"
+"测试"
+
+" ms":"Timeout"
+" ms":"超时"
+
+"Timeout"
+"超时"
+
+"scroll to selected porxy"
+"移动到选定的代理上"
+
+"test latency"
+"测试延迟"
+
+"show or hide proxies"
+"显示或隐藏代理"
+
+************************************
+配置
+************************************
+
+"Download from a URL"
+"从URL下载"
+
+"refresh"
+"更新"
+
+"Error!":2===this.btnType?"Success!":"Download"
+"错误!":2===this.btnType?"成功!":"下载"
+
+"Downloading"
+"下载中"
+
+"Update All"
+"更新全部"
+
+Update All\n
+更新全部\n
+
+"Import"
+"导入"
+
+"edit"
+"编辑"
+
+"edit policies"
+"修改规则"
+
+"edit rules"
+"编辑规则"
+
+"duplicate profile"
+"复制配置文件"
+
+Scheme\n
+跳转方案\n
+
+"matching parsers"
+"匹配解析器"
+
+"settings"
+"设置"
+
+"delete"
+"删除"
+
+"Edit profile information"
+"编辑配置信息"
+
+title:"Copy profile"
+title:"复制配置文件"
+
+"Update Interval (hour)"
+"更新间隔(小时)"
+
+"Top 100 matching rules
+"前100个匹配规则
+
+"fiter by keywords"
+"按关键字过滤"
+
+"Local file already exist."
+"本地文件已存在."
+
+message:'Are you sure to delete "'.concat(o,'"?'),buttons:["Yes","No"]
+message:'您确定要删除吗 "'.concat(o,'"?'),buttons:["是","否"]
+
+"Close the editing file to Save."
+"关闭编辑文件以保存"
+
+to import/switch a profile\n
+导入/切换配置文件\n
+
+************************************
+日志
+************************************
+
+"Request Logs"
+"请求日志"
+
+"Stop":"Start"
+"暂停":"开始"
+
+"Empty log list"
+"空日志列表"
+
+"Refresh your browser to make requests."
+"刷新浏览器以发出请求"
+
+"Clear"
+"清除"
+
+************************************
+连接
+************************************
+
+Connections\n
+连接\n
+
+type:"text",placeholder:"search"
+type:"文本",placeholder:"搜索"
+
+"Resume":"Pause"
+"恢复":"暂停"
+
+e._s("Total
+e._s("总共
+
+"Upload Speed","Download Speed","Upload Traffic","Download Traffic","Time"
+"上传速度","下载速度","上传流量","下载流量","时间"
+
+Close All\n
+全部关闭\n
+
+"Start Time"
+"开始时间"
+
+Chains:
+模式:
+
+Rule:"".concat
+规则:"".concat
+
+Destination:
+目的地:
+
+Source:""
+来源:""
+
+Traffic:
+流量:
+
+Network:
+网络:
+
+Host:
+主机:
+
+************************************
+设置
+************************************
+
+"Special Proxies"
+"特殊代理"
+
+"Proxy Groups"
+"代理组"
+
+"Reset All Settings"
+"重置所有设置"
+
+"Warning",content:"Are you sure to reset all settings?"
+"警告",content:"您确定要重设所有设置吗?"
+
+"Appearance"
+"外观"
+
+"Settings Editor"
+"配置编辑器"
+
+"Notifications"
+"向系统通知栏发送相关信息"
+
+"Silent Start"
+"开启Clash时默认缩小到任务栏"
+
+"Random Controller Port"
+"随机占用端口"
+
+"Lightweight Mode"
+"轻量模式"
+
+"Run Time Format"
+"运行时间格式"
+
+"GUI Log Folder"
+"GUI日志文件夹"
+
+"Open"
+"打开"
+
+[e._v("Theme")]
+[e._v("主题")]
+
+"Light","Dark","国庆中秋","Cyberpunk"
+"明亮","深色","国庆中秋","赛博朋克"
+
+"Follow System Theme"
+"遵循系统主题"
+
+"Font Family"
+"字体系列"
+
+Use System Emoji
+使用系统表情符号
+
+"Default Icon Path"
+"自定义状态栏图标"
+
+"System Proxy On Icon Path"
+"状态栏图标上的系统代理"
+
+ICO(.ico) asset path
+ICO(.ico) 路径
+
+"Enhanced Tray"
+"悬浮窗"
+
+"Text to display in tray"
+"要显示在悬浮窗中的文本"
+
+[e._v("Script")]
+[e._v("脚本")]
+
+text:"Select"
+text:"选择"
+
+"Transparent"
+"透明"
+
+"foreground color"
+"前景色"
+
+"Script to run"
+"要运行的脚本"
+
+"Show New Version Icon"
+"有新版本时提醒"
+
+"Type"
+"类型"
+
+"Bypass Domain/IPNet"
+"绕过域/ IPNet"
+
+"Specify Protocol"
+"指定协议"
+
+"Static Host"
+"静态主机"
+
+"Profile Mixin"
+"配置文件Mixin"
+
+text:"Edit"
+text:"编辑"
+
+"Proxy Item Width"
+"代理项目宽度"
+
+"Mini List Width"
+"迷你列表宽度"
+
+"Order By"
+"自定义节点排序"
+
+"Default","Latency","Alphabet"
+"默认","延迟","字母"
+
+"Latency Test URL"
+"延迟测试网址"
+
+"Latency Test Timeout"
+"延迟测试超时"
+
+"Show Filter"
+"显示筛选过滤器"
+
+"Hide Unselectable Group"
+"隐藏无法选择的代理组"
+
+"Break When Proxy Change"
+"代理更改时中断连接"
+
+"None","Chain","All"
+"不中断","链接","所有"
+
+"Break When Profile Change"
+"配置文件更改时中断连接"
+
+"Break When Mode Change"
+"模式更改时中断连接"
+
+"Display Chain Type"
+"显示链接类型"
+
+"Proxy","Group","Both"
+"节点名","分组名","全部"
+
+"Outbound"
+"选择流量出接口"
+
+"Interface Name"
+"接口名称"
+
+"Detected: "+e.detectedInterfaceName,clickable:!1
+"侦测到:"+e.detectedInterfaceName,clickable:!1
+
+"Child Processes"
+"子进程"
+
+"Processes"
+"启动其他应用"
+
+"Parsers"
+"配置文件预处理"
+
+"Console Output"
+"控制台输出"
+
+"Open File"
+"打开文件"
+
+"Folder Path"
+"资料夹路径"
+
+"Request Headers"
+"自定义请求头"
+
+"Select After Updated"
+"更新后选择"
+
+Force Quit\n
+强制退出\n
+
+"[ Reset ]"
+"[ 重启 ]"
+
+text:e.settings.interfaceName||"Select"
+text:e.settings.interfaceName||"选择"
+
+"Profiles folder path"
+"配置文件文件夹路径"
+
+"Open terminal with proxy set up"
+"打开终端并设置代理"
+
+"Health Check All"
+"检查全部连接"
+
+"Proxy Providers"
+"代理提供者"
+
+"Choose outbound interface",message:"only works when TAP mode enabled"
+"选择出接口",message:"仅在启用TAP模式时有效"
+
+"Docs"
+"文件"
+
+"Change Log Level"
+"更改日志级别"
+
+Open Folder\n
+打开文件夹\n
+
+Launch Helper\n
+启动助手\n
+
+************************************
+快捷键选项
+************************************
+
+"Shortcuts"
+"快捷键"
+
+"Global Mode"
+"全局模式"
+
+"Rule Mode"
+"规则模式"
+
+Direct Mode
+直连模式
+
+"Script Mode"
+"脚本模式"
+
+"Show/Hide Dashboard"
+"显示/隐藏仪表板"
+
+"Run Tray Script"
+"运行纸盘脚本"
+
+"recording..."
+"记录中..."
+
+Press Enter to stop\n
+按 Enter 停止\n
+
+"Record"
+"点击以录制热键"
+
+************************************
+关于
+************************************
+
+"Developer"
+"作者"
+
+"Relevance"
+"关于"
+
+"Credits"
+"鸣谢"
+
+"Advertisement"
+"广告"
+
+"Image is on the way"
+"图片正在加载"
+
+"Image not found"
+"找不到图片.但希望你能给汉化clash的我捐赠!"
+
+"https://github.com/Fndroid/clash_for_windows_pkg"
+"https://github.com/ender-zhao/Clash-for-Windows_Chinese-Attached"
+
+[e._v("Document")]
+[e._v("帮助文档")]
+
+************************************
+隐藏选项或不会通过正常方式显示的
+************************************
+
+"Update Interval must be an integer"
+"更新间隔必须是整数"
+
+"Input a new file name"
+"输入一个新的文件名"
+
+"Remove":"Include"
+"删除":"包括"
+
+"Edit Parsers","OK"
+"编辑解析器","确认"
+
+"Download profile("
+"下载资料("
+
+failed with error: HTTP Response Status Code
+失败，错误：HTTP 响应状态代码
+
+"updated":"installed"," Service Mode to control system proxy."),buttons:["".concat(e.serviceNeedUpdate?"Update":"Install"," Now"
+"已更新":"已安装"," 用于控制系统代理的服务模式"),buttons:["".concat(e.serviceNeedUpdate?"更新":"安装"," 现在"
+
+"Select a terminal"
+"选择一个终端"
+
+Go to\n
+前往\n
+
+message:"unknow error"
+message:"未知错误"
+
+update failed(Network Error)!
+更新失败(网络错误)!
+
+"Could not switch to this profile!"
+"无法切换到此配置文件!"
+
+"Download GeoIP database
+"下载 GeoIP 数据库
+
+"Input fields are alternative"
+"输入字段是替代的"
+
+"Update GeoIP database
+"更新 GeoIP 数据库
+
+"Updating GeoIP database is not allowed in CFW, please do it manually."
+"CFW 不允许更新 GeoIP 数据库，请手动进行."
+
+"Copy proxy setting commands"
+"复制代理设置命令"
+
+"Copy Command"
+"复制命令"
+
+*****************
+*    main.js    *
+*****************
+
+"Dashboard"
+"仪表盘"
+
+"Dashboard has crashed!"
+"仪表板崩溃了!"
+
+"Run Tray Script"
+"运行任务栏脚本"
+
+"System Proxy"
+"系统代理"
+
+"Mixin"
+"混合配置"
+
+"Proxy Mode"
+"代理模式"
+
+"Global"
+"全局"
+
+"Rule"
+"规则"
+
+"Direct"
+"直连"
+
+"Script"
+"脚本"
+
+"More"
+"更多"
+
+"Force Quit"
+"强制退出"
+
+"Quit"
+"退出"
+
+"Quit Clash for Windows"
+"退出 Clash for Windows"
+
+"Toggle DevTools"
+"切换Dev工具"
+
+"Restart"
+"重启"
+
+*****************************************************
+*在将renderer.js格式化到人看的懂之后需加入的汉化代码*
+*****************************************************
+
+#替换内容
+
+["global", "rule", "direct", "script"]
+["全局", "规则", "直连", "脚本"]
+
+#添加内容
+
+#var t = ["btn"]; 的下一行添加
+
+"全局" == e ? e = "global" : "规则" == e ? e = "rule" : "直连" == e ? e = "direct" : "脚本" == e && (e = "script");
+
+#}, switchMode: function (e) { 的下一行添加
+
+"全局" == e ? e = "global" : "规则" == e ? e = "rule" : "直连" == e ? e = "direct" : "脚本" == e && (e = "script");
+
+#主页 "日志级别" 中的五个选项
+
+#这个方法借鉴以前版本0.14.1的某个人汉化的clash for windows (由于0.14.1的renderer.js的代码太乱，我也是才看懂那人汉化的思路)
+#替换内容
+
+message: "silent will prevent .log file to generate on next startup",
+message: "静默:&nbsp;&nbsp;&nbsp;下次启动时不再生成.log文件<br/>错误:&nbsp;&nbsp;&nbsp;记录错误和异常信息到.log文件<br/>警告:&nbsp;&nbsp;&nbsp;记录错误，异常和警告信息到.log文件<br/>信息:&nbsp;&nbsp;&nbsp;记录运行时的信息到.log文件<br/>调试:&nbsp;&nbsp;&nbsp;记录一切运行时产生的信息(通常用于开发<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;者调试，诊断问题)",
+
+#将下一行的items: n替换为
+items: ["静默", "错误", "警告", "信息", "调试"],
+
+e._s(e.logLevel)
+("silent" == e._s(e.logLevel) ? "静默" : "error" == e._s(e.logLevel) ? "错误" : "warning" == e._s(e.logLevel) ? "警告" : "info" == e._s(e.logLevel) ? "信息" : "debug" == e._s(e.logLevel) ? "调试" : e._s(e.logLevel))
+
+[e._v("mode: " + e._s(e.mode))]
+[e._v("模式: " + ("global" == e._s(e.mode) ? "全局" : "rule" == e._s(e.mode) ? "规则" : "direct" == e._s(e.mode) ? "直连" : "script" == e._s(e.mode) ? "脚本" : e._s(e.mode)))]
+
+"Select" : r;
+"选择" : r,
+
+title: "Found ".concat(r.length, " matching parsers")
+title: "找到 ".concat(r.length, " 匹配解析器")
