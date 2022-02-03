@@ -488,8 +488,6 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>items:["静默","错误","警告","信息","调试"],}\);case 4</replace>
 <find>e._s\(e.logLevel\)</find>
 <replace>\("silent"==e._s\(e.logLevel\)?"静默":"error"==e._s\(e.logLevel\)?"错误":"warning"== e._s\(e.logLevel\)?"警告":"info"== e._s\(e.logLevel\)?"信息":"debug"==e._s\(e.logLevel\)?"调试":e._s\(e.logLevel\)\)</replace>
-<find>return l\(\)\(t\).</find>
-<replace>return l\(\)\(t\).locale\('zh-cn'\).</replace>
 <find>fromNow\(\)</find>
 <replace>locale\('zh-cn'\).fromNow\(\)</replace>
 <find>return this.mode===e.</find>
@@ -684,8 +682,6 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>Fake IP 缓存</replace>
 <find>title:"Cache"</find>
 <replace>title:"缓存"</replace>
-<find>return c\(\)\(t\).</find>
-<replace>return c\(\)\(t\).locale\('zh-cn'\).</replace>
 <find>switchMode:function\(e\){var t=this;return s</find>
 <replace>switchMode:function\(e\){"全局"==e?e="global":"规则"==e?e="rule":"直连"==e?e="direct":"脚本"==e&&(e="script");var t=this;return s</replace>
 <find>"Reset"</find>
@@ -734,3 +730,5 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"升级应用程序失败并出现错误</replace>
 <find>"Headers"</find>
 <replace>"标头"</replace>
+<find>from\(this.now\)</find>
+<replace>locale\('zh-cn'\).from\(this.now\)</replace>
