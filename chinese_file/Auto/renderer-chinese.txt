@@ -582,8 +582,8 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>你可以对配置文件进行一些更改，然后会在你更新配置文件时为你合并它们</replace>
 <find>Init diff files</find>
 <replace>初始化 diff 文件</replace>
-<find>Delete diff files","Make changes</find>
-<replace>删除 diff 文件","修改文件</replace>
+<find>"Delete diff files"</find>
+<replace>"删除 diff 文件"</replace>
 <find>Update provider</find>
 <replace>更新提供者</replace>
 <find>Update Cron </find>
@@ -732,3 +732,13 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"标头"</replace>
 <find>from\(this.now\)</find>
 <replace>locale\('zh-cn'\).from\(this.now\)</replace>
+<find>Changes contains conflict, "Make changes" to solve issues.</find>
+<replace>更改包含冲突, "修改(diff)文件" 以解决问题</replace>
+<find>"Manage"</find>
+<replace>"管理"</replace>
+<find>  Document</find>
+<replace>  帮助文档</replace>
+<find>"Make changes"</find>
+<replace>"修改文件"</replace>
+<find>Fail to merge profiles, "Make changes" to solve issues.</find>
+<replace>无法合并配置文件, "修改(diff)文件" 以解决问题</replace>
