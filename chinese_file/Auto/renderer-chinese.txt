@@ -503,7 +503,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>this.isRecording?"recording</find>
 <replace>this.isRecording?"记录中</replace>
 <find>message:"silent will prevent .log file to generate on next startup",</find>
-<replace>message: "静默:&nbsp;&nbsp;&nbsp;下次启动时不再生成.log文件<br/>错误:&nbsp;&nbsp;&nbsp;记录错误和异常信息到.log文件<br/>警告:&nbsp;&nbsp;&nbsp;记录错误，异常和警告信息到.log文件<br/>信息:&nbsp;&nbsp;&nbsp;记录运行时的信息到.log文件<br/>调试:&nbsp;&nbsp;&nbsp;记录一切运行时产生的信息(通常用于开发<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;者调试，诊断问题)",</replace>
+<replace>message:"[静默:下次启动时不再生成.log文件] [错误:记录错误和异常信息到.log文件] [警告:记录错误，异常和警告信息到.log文件] [信息:记录运行时的信息到.log文件] [调试:记录一切运行时产生的信息(通常用于开发者调试，诊断问题)]",</replace>
 <find>"https://github.com/Fndroid/clash_for_windows_pkg"</find>
 <replace>"https://github.com/ender-zhao/Clash-for-Windows_Chinese-Attached"</replace>
 <find>e._v\("mode: "\+e._s\(e.mode\)\)</find>
@@ -742,3 +742,9 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"修改文件"</replace>
 <find>Fail to merge profiles, "Make changes" to solve issues.</find>
 <replace>无法合并配置文件, "修改(diff)文件" 以解决问题</replace>
+<find>"Edit externally"</find>
+<replace>"在系统中编辑"</replace>
+<find>"Scroll to group"</find>
+<replace>"移动至组"</replace>
+<find>"Are you sure to quit</find>
+<replace>"你确定要退出吗</replace>
