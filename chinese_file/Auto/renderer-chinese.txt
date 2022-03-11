@@ -397,7 +397,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>"Docs"</find>
 <replace>"文件"</replace>
 <find>"Change Log Level"</find>
-<replace>"更改日志级别"</replace>
+<replace>"更改日志收集级别"</replace>
 <find> Open Folder</find>
 <replace> 打开文件夹</replace>
 <find> Launch Helper</find>
@@ -503,7 +503,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>this.isRecording?"recording</find>
 <replace>this.isRecording?"记录中</replace>
 <find>message:"silent will prevent .log file to generate on next startup",</find>
-<replace>message:"[静默:下次启动时不再生成.log文件] [错误:记录错误和异常信息到.log文件] [警告:记录错误，异常和警告信息到.log文件] [信息:记录运行时的信息到.log文件] [调试:记录一切运行时产生的信息(通常用于开发者调试，诊断问题)]",</replace>
+<replace>message:"静默将阻止 .log 文件在下次启动时生成, 而调试将收集所有运行信息至 .log 文件",</replace>
 <find>"https://github.com/Fndroid/clash_for_windows_pkg"</find>
 <replace>"https://github.com/ender-zhao/Clash-for-Windows_Chinese-Attached"</replace>
 <find>e._v\("mode: "\+e._s\(e.mode\)\)</find>
@@ -556,8 +556,8 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>尝试修复</replace>
 <find>Logs Folder</find>
 <replace>日志文件夹</replace>
-<find>Home Directory</find>
-<replace>主目录</replace>
+<find>"Home Directory"</find>
+<replace>"主目录"</replace>
 <find>"Errors"</find>
 <replace>"错误"</replace>
 <find>Stop Sorting</find>
@@ -748,3 +748,27 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"移动至组"</replace>
 <find>"Are you sure to quit</find>
 <replace>"你确定要退出吗</replace>
+<find>"Don't Save"</find>
+<replace>"不保存"</replace>
+<find>"Do you want to save the changes</find>
+<replace>"是否要保存更改</replace>
+<find>"fail to restore last profile with error</find>
+<replace>"无法恢复最后一个配置文件并出现错误</replace>
+<find>'Fail to merge profiles,</find>
+<replace>'无法合并配置文件,</replace>
+<find> to solve issues</find>
+<replace> 以解决问题</replace>
+<find>"TAP mode enable but no interface-name in this YAML"</find>
+<replace>"TAP 模式启用, 但此 YAML 中没有接口名称"</replace>
+<find>Do you want to set a new uuidv4 secret in</find>
+<replace>是否要在</replace>
+<find>and restart the APP</find>
+<replace>中设置新的uuidv4 secret并重启 APP</replace>
+<find>  Core Secret</find>
+<replace>  核心Secret</replace>
+<find>secret is currently empty, we strongly recommend to generate one</find>
+<replace>secret 当前为空，我们强烈建议生成一个</replace>
+<find>"Security"</find>
+<replace>"安全"</replace>
+<find>"Generate":"Update"</find>
+<replace>"生成":"更新"</replace>
