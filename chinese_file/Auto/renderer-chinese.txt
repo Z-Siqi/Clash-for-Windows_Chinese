@@ -771,4 +771,12 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>"Security"</find>
 <replace>"安全"</replace>
 <find>"Generate":"Update"</find>
-<replace>"生成":"更新"</replace>
+<replace>"生成更新":"更新"</replace>
+<find>"Process Path"</find>
+<replace>"进程路径"</replace>
+<find>"Random Mixed Port"</find>
+<replace>"随机混合端口"</replace>
+<find>hint:"random mixed port"</find>
+<replace>hint:"随机混合端口"</replace>
+<find>"run as admin"</find>
+<replace>"以管理员身份运行"</replace>
