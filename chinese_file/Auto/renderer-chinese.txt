@@ -107,7 +107,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>"Service Mode"</find>
 <replace>"服务模式"</replace>
 <find>"Mixin"</find>
-<replace>"混淆"</replace>
+<replace>"混合配置"</replace>
 <find>"System Proxy"</find>
 <replace>"系统代理"</replace>
 <find>Mixin allows you to overwrite the original configuration file</find>
