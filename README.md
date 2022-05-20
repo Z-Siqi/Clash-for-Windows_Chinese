@@ -5,19 +5,14 @@
 
 效果图
 
-![photo](https://github.com/ender-zhao/Clash-for-Windows_Chinese/blob/main/image/Image_Clash-for-Windows_Chinese-0.19.18.png?raw=true)
+![photo](https://github.com/ender-zhao/Clash-for-Windows_Chinese/blob/main/image/Image_Clash-for-Windows_Chinese-0.19.19.png?raw=true)
 
 支持的clash版本: 
 
 [0.15.3](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.15.3_CN-V4)
 ~
-[0.19.5](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.5_CN)
+[0.19.10](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.10_CN)
 
-[0.19.6](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.6_CN),
-[0.19.7](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.7_CN),
-[0.19.8](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.8_CN),
-[0.19.9](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.9_CN),
-[0.19.10](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.10_CN),
 [0.19.11](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.11_CN),
 [0.19.12](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.12_CN),
 [0.19.13](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.13_CN),
@@ -25,7 +20,8 @@
 [0.19.15](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.15_CN),
 [0.19.16](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.16_CN),
 [0.19.17](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.17_CN),
-[0.19.18](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.18_CN)
+[0.19.18](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.18_CN),
+[0.19.19](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.19_CN)
 
 ***
 ### 快速导航
