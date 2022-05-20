@@ -1,40 +1,800 @@
 ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 
-<find>"Dashboard"</find>
-<replace>"仪表盘"</replace>
-<find>"Dashboard has crashed</find>
-<replace>"仪表板崩溃了</replace>
-<find>"Run Tray Script"</find>
-<replace>"运行任务栏脚本"</replace>
-<find>"System Proxy"</find>
-<replace>"系统代理"</replace>
-<find>"Mixin"</find>
-<replace>"混合配置"</replace>
-<find>"Proxy Mode"</find>
-<replace>"代理模式"</replace>
-<find>"Global"</find>
-<replace>"全局"</replace>
-<find>"Rule"</find>
-<replace>"规则"</replace>
-<find>"Direct"</find>
-<replace>"直连"</replace>
-<find>"Script"</find>
-<replace>"脚本"</replace>
-<find>"More"</find>
-<replace>"更多"</replace>
-<find>"Force Quit"</find>
-<replace>"强制退出"</replace>
+<find>\("OK"\)</find>
+<replace>\("确定"\)</replace>
+<find>"Text"</find>
+<replace>"文本"</replace>
+<find>title:"Error"</find>
+<replace>title:"错误"</replace>
+<find>"Install","Uninstall"</find>
+<replace>"安装","卸载"</replace>
+<find>"Name"</find>
+<replace>"名字"</replace>
+<find>"Save"</find>
+<replace>"保存"</replace>
+<find>"Cancel"</find>
+<replace>"取消"</replace>
+<find> Cancel</find>
+<replace> 取消</replace>
+<find>  Add</find>
+<replace>  添加</replace>
+<find>"Loading</find>
+<replace>"正在加载</replace>
 <find>"Quit"</find>
 <replace>"退出"</replace>
-<find>"Quit Clash for Windows"</find>
-<replace>"退出 Clash for Windows"</replace>
-<find>"Toggle DevTools"</find>
-<replace>"切换Dev工具"</replace>
-<find>"Restart"</find>
-<replace>"重启"</replace>
-<find>"TUN Mode"</find>
-<replace>"TUN 模式"</replace>
-<find>"Move Dashboard To Nearest Monitor"</find>
-<replace>"将仪表板移至最近的显示器"</replace>
+<find>"Add"</find>
+<replace>"添加"</replace>
+<find>"Error"</find>
+<replace>"错误"</replace>
+<find>"Restarting core</find>
+<replace>"重新启动核心</replace>
+<find>"No proxy group in this profile"</find>
+<replace>"此配置文件中没有代理组"</replace>
+<find>"Connection Info"</find>
+<replace>"连接信息"</replace>
+<find>"Clash is running in the background","Enjoy your free time</find>
+<replace>"Clash 正在后台运行","享受您的自由时间</replace>
+<find>"fail to update profile with url</find>
+<replace>"无法使用 url 更新配置资料</replace>
+<find>"Profile update failed"</find>
+<replace>"配置资料更新失败"</replace>
+<find>"Profile had been downloaded successfully</find>
+<replace>"配置资料已成功下载</replace>
+<find>"app exiting, turn off system proxy"</find>
+<replace>"应用退出, 关闭系统代理"</replace>
+<find>http server failed to start with error</find>
+<replace>http 服务器因错误而无法启动</replace>
+<find>http server started at</find>
+<replace>http服务器开始于</replace>
+<find>first luanch, creating</find>
+<replace>首次发布, 创建</replace>
+<find>app start with mode</find>
+<replace>应用程序以模式开始</replace>
+<find>fail to load general config</find>
+<replace>无法加载常规 config</replace>
+<find>yaml with error</find>
+<replace>yaml 并出现错误</replace>
+<find>load data from general</find>
+<replace>从一般加载数据</replace>
+<find>title:"General"</find>
+<replace>title:"主页"</replace>
+<find>"Proxies"</find>
+<replace>"代理"</replace>
+<find>"Profiles"</find>
+<replace>"配置"</replace>
+<find>title:"Logs"</find>
+<replace>title:"日志"</replace>
+<find>"Connections"</find>
+<replace>"连接"</replace>
+<find>"Settings"</find>
+<replace>"设置"</replace>
+<find>title:"Feedback"</find>
+<replace>title:"关于"</replace>
+<find>"Providers"</find>
+<replace>"提供"</replace>
+<find>Stop Sorting\n</find>
+<replace>停止排序\n</replace>
+<find>"Connected"</find>
+<replace>"已连接"</replace>
+<find>"Disconnected"</find>
+<replace>"未连接"</replace>
+<find>"You are awesome"</find>
+<replace>"当前版本是最新的"</replace>
+<find>"The current version is up to date</find>
+<replace>"当前汉化版本也是最新的</replace>
+<find>"Update installed successfully, do you want to restart the APP</find>
+<replace>"更新安装成功，要重启APP吗</replace>
+<find>"Package downloaded successfully, do you want to execute it</find>
+<replace>"原版包下载成功，要执行吗</replace>
+<find>"Port"</find>
+<replace>"端口"</replace>
+<find>title:"Change Mixed Port"</find>
+<replace>title:"更改混合端口"</replace>
+<find>name:"New Port"</find>
+<replace>name:"新端口"</replace>
+<find>"Allow LAN"</find>
+<replace>"允许局域网"</replace>
+<find>"Log Level"</find>
+<replace>"日志级别"</replace>
+<find>"Clash Core"</find>
+<replace>"Clash 核心版本"</replace>
+<find>"Home Directory"</find>
+<replace>"主目录"</replace>
+<find>"UWP Loopback"</find>
+<replace>"UWP 应用联网限制解除工具"</replace>
+<find>"TAP Device"</find>
+<replace>"虚拟网卡安装"</replace>
+<find>"Service Mode"</find>
+<replace>"服务模式"</replace>
+<find>"Mixin"</find>
+<replace>"混合配置"</replace>
+<find>"System Proxy"</find>
+<replace>"系统代理"</replace>
+<find>Mixin allows you to overwrite the original configuration file</find>
+<replace>Mixin允许您覆盖原始配置文件</replace>
+<find>"Start with Windows"</find>
+<replace>"开机自启动"</replace>
+<find>"Drag to sort or add to the list on the right</find>
+<replace>"拖动以排序或添加到右侧列表中</replace>
+<find> Manage</find>
+<replace> 管理</replace>
+<find>"You need to reinstall the TAP device after you change these fields</find>
+<replace>"更改这些字段后，您需要重新安装虚拟网卡</replace>
+<find>"TAP device management"</find>
+<replace>"虚拟网卡设置管理"</replace>
+<find>An adapter named "</find>
+<replace>名为 "</replace>
+<find>will route your data into clash</find>
+<replace>的适配器会将您的数据路由到Clash中</replace>
+<find>If the installation box pops up</find>
+<replace>如果弹出安装框</replace>
+<find>keep clicking "Next"</find>
+<replace>请继续单击"下一步", </replace>
+<find>until the installation is complete</find>
+<replace>直到安装完成</replace>
+<find>"Service management"</find>
+<replace>"服务管理"</replace>
+<find>"It might take a while</find>
+<replace>"这可能需要一段时间</replace>
+<find>The APP will be relaunched automatically</find>
+<replace>该APP将自动重新启动</replace>
+<find>Current status: "</find>
+<replace>当前状态: "</replace>
+<find>"Inactive":"Active"</find>
+<replace>"未安装":"已安装"</replace>
+<find>"IP Address"</find>
+<replace>"IP地址"</replace>
+<find>"Subnet Mask"</find>
+<replace>"子网掩码"</replace>
+<find>"Default Gateway"</find>
+<replace>"默认网关"</replace>
+<find>"Success","cfw-tap device had been installed"</find>
+<replace>"成功","cfw-tap 已安装"</replace>
+<find>"Failed","counld not install cfw-tap device</find>
+<replace>"失败","无法安装 cfw-tap</replace>
+<find>"Success","cfw-tap device had been removed"</find>
+<replace>"成功","cfw-tap 已被移除"</replace>
+<find>"Failed","counld not remove cfw-tap device</find>
+<replace>"失败", "无法移除 cfw-tap</replace>
+<find>"Commands have been copied to Clipboad</find>
+<replace>"命令已复制到剪贴板</replace>
+<find>"Check"</find>
+<replace>"测试"</replace>
+<find>" ms":"Timeout"</find>
+<replace>" ms":"超时"</replace>
+<find>"Timeout"</find>
+<replace>"超时"</replace>
+<find>"Download from a URL"</find>
+<replace>"从URL下载"</replace>
+<find>"refresh"</find>
+<replace>"更新"</replace>
+<find>"Error!"</find>
+<replace>"错误!"</replace>
+<find>"Downloading"</find>
+<replace>"下载中"</replace>
+<find>"Success!":"Download"</find>
+<replace>"成功!":"下载"</replace>
+<find>"Update All"</find>
+<replace>"更新全部"</replace>
+<find> Update All</find>
+<replace> 更新全部</replace>
+<find>"Import"</find>
+<replace>"导入"</replace>
+<find>"edit"</find>
+<replace>"编辑"</replace>
+<find>"edit policies"</find>
+<replace>"修改规则"</replace>
+<find>"edit rules"</find>
+<replace>"编辑规则"</replace>
+<find>"duplicate profile"</find>
+<replace>"复制配置文件"</replace>
+<find> Scheme</find>
+<replace> 跳转方案</replace>
+<find>"matching parsers"</find>
+<replace>"匹配解析器"</replace>
+<find>"settings"</find>
+<replace>"设置"</replace>
+<find>text:"Delete"</find>
+<replace>text:"删除"</replace>
+<find>"Edit profile information"</find>
+<replace>"编辑配置信息"</replace>
+<find>title:"Copy profile"</find>
+<replace>title:"复制配置文件"</replace>
+<find>"Update Interval \(hour\)"</find>
+<replace>"更新间隔\(小时\)"</replace>
+<find>"Top 100 matching rules</find>
+<replace>"前100个匹配规则</replace>
+<find>"fiter by keywords"</find>
+<replace>"按关键字过滤"</replace>
+<find>"Local file already exist</find>
+<replace>"本地文件已存在</replace>
+<find>Are you sure to delete </find>
+<replace>您确定要删除 </replace>
+<find>"Yes","No"</find>
+<replace>"是","否"</replace>
+<find>"Close the editing file to Save</find>
+<replace>"关闭编辑文件以保存</replace>
+<find>to import</find>
+<replace>导入</replace>
+<find>switch a profile</find>
+<replace>切换配置文件</replace>
+<find>"Request Logs"</find>
+<replace>"请求日志"</replace>
+<find>"Stop":"Start"</find>
+<replace>"暂停":"开始"</replace>
+<find>"Empty log list"</find>
+<replace>"空日志列表"</replace>
+<find>"Refresh your browser to make requests</find>
+<replace>"刷新浏览器以发出请求</replace>
+<find>"Clear"</find>
+<replace>"清除"</replace>
+<find> Connections</find>
+<replace> 连接</replace>
+<find>type:"text",placeholder:"search"</find>
+<replace>type:"文本",placeholder:"搜索"</replace>
+<find>"Resume":"Pause"</find>
+<replace>"恢复":"暂停"</replace>
+<find>"Total</find>
+<replace>"总共</replace>
+<find>"Upload Speed","Download Speed"</find>
+<replace>"上传速度","下载速度"</replace>
+<find>"Upload Traffic","Download Traffic","Time"</find>
+<replace>"上传流量","下载流量","时间"</replace>
+<find> Close All</find>
+<replace> 全部关闭</replace>
+<find>"Start Time"</find>
+<replace>"开始时间"</replace>
+<find>Chains:</find>
+<replace>模式:</replace>
+<find>Rule:""</find>
+<replace>规则:""</replace>
+<find>Destination:</find>
+<replace>目的地:</replace>
+<find>Source:""</find>
+<replace>来源:""</replace>
+<find>Traffic:</find>
+<replace>流量:</replace>
+<find>,Network:</find>
+<replace>,网络:</replace>
+<find>Host:</find>
+<replace>主机:</replace>
+<find>"Special Proxies"</find>
+<replace>"特殊代理"</replace>
 <find>"Proxy Groups"</find>
 <replace>"代理组"</replace>
+<find>"Reset All Settings"</find>
+<replace>"重置所有设置"</replace>
+<find>"Warning",content:"Are you sure to reset all settings</find>
+<replace>"警告",content:"您确定要重设所有设置吗</replace>
+<find>"Appearance"</find>
+<replace>"外观"</replace>
+<find>"Settings Editor"</find>
+<replace>"配置编辑器"</replace>
+<find>"Notifications"</find>
+<replace>"向系统通知栏发送相关信息"</replace>
+<find>"Silent Start"</find>
+<replace>"开启Clash时默认缩小到任务栏"</replace>
+<find>"Random Controller Port"</find>
+<replace>"随机占用端口"</replace>
+<find>"Lightweight Mode"</find>
+<replace>"轻量模式"</replace>
+<find>"Run Time Format"</find>
+<replace>"运行时间格式"</replace>
+<find>"GUI Log Folder"</find>
+<replace>"GUI日志文件夹"</replace>
+<find>"Open"</find>
+<replace>"打开"</replace>
+<find>"Theme"</find>
+<replace>"主题"</replace>
+<find>"Light","Dark","国庆中秋","Cyberpunk"</find>
+<replace>"明亮","深色","国庆中秋","赛博朋克"</replace>
+<find>"Follow System Theme"</find>
+<replace>"遵循系统主题"</replace>
+<find>"Font Family"</find>
+<replace>"字体系列"</replace>
+<find>Use System Emoji</find>
+<replace>使用系统表情符号</replace>
+<find>"Default Icon Path"</find>
+<replace>"自定义状态栏图标"</replace>
+<find>"System Proxy On Icon Path"</find>
+<replace>"状态栏图标上的系统代理"</replace>
+<find>ico\) asset path</find>
+<replace>ico\) 路径</replace>
+<find>"Enhanced Tray"</find>
+<replace>"悬浮窗"</replace>
+<find>"Text to display in tray"</find>
+<replace>"要显示在悬浮窗中的文本"</replace>
+<find>"Script"\)</find>
+<replace>"脚本"\)</replace>
+<find>text:"Select"</find>
+<replace>text:"选择"</replace>
+<find>"Transparent"</find>
+<replace>"透明"</replace>
+<find>"foreground color"</find>
+<replace>"前景色"</replace>
+<find>"Script to run"</find>
+<replace>"要运行的脚本"</replace>
+<find>"Show New Version Icon"</find>
+<replace>"有新版本时提醒"</replace>
+<find>"Type"</find>
+<replace>"类型"</replace>
+<find>"Bypass Domain</find>
+<replace>"绕过域</replace>
+<find>"Specify Protocol"</find>
+<replace>"指定协议"</replace>
+<find>"Static Host"</find>
+<replace>"静态主机"</replace>
+<find>"Profile Mixin"</find>
+<replace>"配置文件 Mixin"</replace>
+<find>text:"Edit"</find>
+<replace>text:"编辑"</replace>
+<find>"Proxy Item Width"</find>
+<replace>"代理项目宽度"</replace>
+<find>"Mini List Width"</find>
+<replace>"策略组导航器宽度"</replace>
+<find>"Order By"</find>
+<replace>"自定义节点排序"</replace>
+<find>"Default","Latency","Alphabet"</find>
+<replace>"默认","延迟","字母"</replace>
+<find>"Latency Test URL"</find>
+<replace>"延迟测试网址"</replace>
+<find>"Latency Test Timeout"</find>
+<replace>"延迟测试超时"</replace>
+<find>"Show Filter"</find>
+<replace>"显示筛选过滤器"</replace>
+<find>"Hide Unselectable Group"</find>
+<replace>"隐藏无法选择的代理组"</replace>
+<find>"Break When Proxy Change"</find>
+<replace>"代理更改时中断连接"</replace>
+<find>"None","Chain","All"</find>
+<replace>"不中断","链接","所有"</replace>
+<find>"Break When Profile Change"</find>
+<replace>"配置文件更改时中断连接"</replace>
+<find>"Break When Mode Change"</find>
+<replace>"模式更改时中断连接"</replace>
+<find>"Display Chain Type"</find>
+<replace>"显示链接类型"</replace>
+<find>"Proxy","Group","Both"</find>
+<replace>"节点名","分组名","全部"</replace>
+<find>"Outbound"</find>
+<replace>"选择流量出接口"</replace>
+<find>"Interface Name"</find>
+<replace>"接口名称"</replace>
+<find>"Detected:</find>
+<replace>"侦测到:</replace>
+<find>"Child Processes"</find>
+<replace>"子进程"</replace>
+<find>"Processes"</find>
+<replace>"启动其他应用"</replace>
+<find>"Parsers"</find>
+<replace>"配置文件预处理"</replace>
+<find>"Console Output"</find>
+<replace>"控制台输出"</replace>
+<find>"Open File"</find>
+<replace>"打开文件"</replace>
+<find>"Folder Path"</find>
+<replace>"资料夹路径"</replace>
+<find>"Request Headers"</find>
+<replace>"自定义请求头"</replace>
+<find>"Select After Updated"</find>
+<replace>"更新后选择"</replace>
+<find> Force Quit</find>
+<replace> 强制退出</replace>
+<find> Reset </find>
+<replace> 重启 </replace>
+<find>"Profiles folder path"</find>
+<replace>"配置文件文件夹路径"</replace>
+<find>"Open terminal with proxy set up"</find>
+<replace>"打开终端并设置代理"</replace>
+<find>"Health Check All"</find>
+<replace>"检查全部连接"</replace>
+<find>"Proxy Providers"</find>
+<replace>"代理提供者"</replace>
+<find>"Choose outbound interface"</find>
+<replace>"选择出接口"</replace>
+<find>"only works when TAP mode enabled"</find>
+<replace>"仅在启用TAP模式时有效"</replace>
+<find>"Docs"</find>
+<replace>"文件"</replace>
+<find>"Change Log Level"</find>
+<replace>"更改日志收集级别"</replace>
+<find> Open Folder</find>
+<replace> 打开文件夹</replace>
+<find> Launch Helper</find>
+<replace> 启动助手</replace>
+<find>"Shortcuts"</find>
+<replace>"快捷键"</replace>
+<find>"Global Mode"</find>
+<replace>"全局模式"</replace>
+<find>"Rule Mode"</find>
+<replace>"规则模式"</replace>
+<find>Direct Mode</find>
+<replace>直连模式</replace>
+<find>"Script Mode"</find>
+<replace>"脚本模式"</replace>
+<find>"Show connections"</find>
+<replace>"显示连接"</replace>
+<find>Show/Hide Dashboard"</find>
+<replace>显示/隐藏仪表板"</replace>
+<find>"Run Tray Script"</find>
+<replace>"运行纸盘脚本"</replace>
+<find> Press Enter to stop</find>
+<replace> 按 Enter 停止</replace>
+<find>"Record"</find>
+<replace>"点击以录制热键"</replace>
+<find>"Developer"</find>
+<replace>"作者"</replace>
+<find>"Relevance"</find>
+<replace>"关于"</replace>
+<find>"Credits"</find>
+<replace>"鸣谢"</replace>
+<find>"Advertisement"</find>
+<replace>"广告"</replace>
+<find>"Image is on the way"</find>
+<replace>"图片正在加载"</replace>
+<find>"Document"</find>
+<replace>"帮助文档"</replace>
+<find>"Update Interval must be an integer"</find>
+<replace>"更新间隔必须是整数"</replace>
+<find>"Input a new file name"</find>
+<replace>"输入一个新的文件名"</replace>
+<find>"Remove":"Include"</find>
+<replace>"删除":"包括"</replace>
+<find>"Edit Parsers","OK"</find>
+<replace>"编辑解析器","确认"</replace>
+<find>"Download profile</find>
+<replace>"下载资料</replace>
+<find>failed with error: HTTP Response Status Code</find>
+<replace>失败，错误：HTTP 响应状态代码</replace>
+<find>"updated":"installed"</find>
+<replace>"已更新":"已安装"</replace>
+<find> Service Mode to control system proxy</find>
+<replace> 用于控制系统代理的服务模式</replace>
+<find>"Update":"Install"," Now"</find>
+<replace>"更新":"安装"," 现在"</replace>
+<find>"Select a terminal"</find>
+<replace>"选择一个终端"</replace>
+<find> Go to</find>
+<replace> 前往</replace>
+<find>message:"unknow error"</find>
+<replace>message:"未知错误"</replace>
+<find>update failed\(Network Error\)</find>
+<replace>更新失败\(网络错误\)</replace>
+<find>"Could not switch to this profile</find>
+<replace>"无法切换到此配置文件</replace>
+<find>"Download GeoIP database failed with error</find>
+<replace>"下载 GeoIP 数据库失败并出现错误</replace>
+<find>"Input fields are alternative"</find>
+<replace>"输入字段是替代的"</replace>
+<find>"Update GeoIP database</find>
+<replace>"更新 GeoIP 数据库</replace>
+<find>"Updating GeoIP database is not allowed in CFW, please do it manually</find>
+<replace>"CFW 不允许更新 GeoIP 数据库，请手动进行</replace>
+<find>"Copy proxy setting commands"</find>
+<replace>"复制代理设置命令"</replace>
+<find>"Copy Command"</find>
+<replace>"复制命令"</replace>
+<find>"global","rule","direct","script"</find>
+<replace>"全局","规则","直连","脚本"</replace>
+<find>scroll to selected proxy</find>
+<replace>移动到选定的代理</replace>
+<find>"test latency"</find>
+<replace>"测试延迟"</replace>
+<find>"show or hide proxies"</find>
+<replace>"显示或隐藏代理"</replace>
+<find>"Update","Download","Copy URL","取消"</find>
+<replace>"更新(原版)","下载(原版)","复制URL(原版)","取消"</replace>
+<find>items:n}\);case 4</find>
+<replace>items:["静默","错误","警告","信息","调试"],}\);case 4</replace>
+<find>e._s\(e.logLevel\)</find>
+<replace>\("silent"==e._s\(e.logLevel\)?"静默":"error"==e._s\(e.logLevel\)?"错误":"warning"== e._s\(e.logLevel\)?"警告":"info"== e._s\(e.logLevel\)?"信息":"debug"==e._s\(e.logLevel\)?"调试":e._s\(e.logLevel\)\)</replace>
+<find>fromNow\(\)</find>
+<replace>locale\('zh-cn'\).fromNow\(\)</replace>
+<find>return this.mode===e.</find>
+<replace>"全局"==e?e="global":"规则"==e?e="rule":"直连"==e?e="direct":"脚本"==e&&(e="script");return this.mode===e.</replace>
+<find>switchMode:function\(e\){var t=this;return o</find>
+<replace>switchMode:function\(e\){"全局"==e?e="global":"规则"==e?e="rule":"直连"==e?e="direct":"脚本"==e&&(e="script");var t=this;return o</replace>
+<find>"Install","Remove","Customize"</find>
+<replace>"安装","卸载","定制"</replace>
+<find>interfaceName\|\|"Select"</find>
+<replace>interfaceName\|\|"选择"</replace>
+<find>"Image not found"</find>
+<replace>"找不到图片.但希望你能给汉化clash的我捐赠!"</replace>
+<find>this.isRecording?"recording</find>
+<replace>this.isRecording?"记录中</replace>
+<find>message:"silent will prevent .log file to generate on next startup",</find>
+<replace>message:"静默将阻止 .log 文件在下次启动时生成, 而调试将收集所有运行信息至 .log 文件",</replace>
+<find>"https://github.com/Fndroid/clash_for_windows_pkg"</find>
+<replace>"https://github.com/ender-zhao/Clash-for-Windows_Chinese-Attached"</replace>
+<find>e._v\("mode: "\+e._s\(e.mode\)\)</find>
+<replace>e._v\("模式: "+\("global"==e._s\(e.mode\)?"全局":"rule"==e._s\(e.mode\)?"规则":"direct"==e._s\(e.mode\)?"直连":"script"==e._s\(e.mode\)?"脚本":e._s\(e.mode\)\)\)</replace>
+<find>Restarting core</find>
+<replace>重启内核</replace>
+<find>":"Updating</find>
+<replace>":"更新中</replace>
+<find>UpdateTime="Updating</find>
+<replace>UpdateTime="更新中</replace>
+<find>e._v\("Loading</find>
+<replace>e._v\("加载中</replace>
+<find>return this.isRecording\?"recording</find>
+<replace>return this.isRecording\?"记录中</replace>
+<find>CMD with proxy</find>
+<replace>终端和代理</replace>
+<find>=hide</find>
+<replace>=隐藏</replace>
+<find>could not update provider</find>
+<replace>无法更新提供者</replace>
+<find>DHCP Server</find>
+<replace>DHCP 服务器</replace>
+<find>Local IP Address</find>
+<replace>本地 IP 地址</replace>
+<find>"Configuration"</find>
+<replace>"配置"</replace>
+<find>Do you want to restart the APP</find>
+<replace>是否要重启APP</replace>
+<find>"Restart"</find>
+<replace>"重新启动"</replace>
+<find>clash core startup failed</find>
+<replace>clash核心启动失败</replace>
+<find>restore proxy group </find>
+<replace>恢复代理组 </replace>
+<find>netsh interface show interface</find>
+<replace>netsh 界面 显示界面</replace>
+<find>TUN mode enable but no interface-name in this YAML</find>
+<replace>启用 TUN 模式但此 YAML 中没有接口名称</replace>
+<find>Could not edit proxy gorup type</find>
+<replace>无法编辑代理组类型</replace>
+<find>"Server"</find>
+<replace>"服务器"</replace>
+<find>PAC Content</find>
+<replace>PAC内容</replace>
+<find>Script Interval</find>
+<replace>脚本间隔</replace>
+<find>Automatic Upgrade</find>
+<replace>自动升级</replace>
+<find>Try to repair</find>
+<replace>尝试修复</replace>
+<find>Logs Folder</find>
+<replace>日志文件夹</replace>
+<find>"Home Directory"</find>
+<replace>"主目录"</replace>
+<find>"Errors"</find>
+<replace>"错误"</replace>
+<find>Stop Sorting</find>
+<replace>停止排序</replace>
+<find>Proxy or Policy</find>
+<replace>代理或策略</replace>
+<find>  Content</find>
+<replace>  内容</replace>
+<find>Create a new rule</find>
+<replace>创建新规则</replace>
+<find>Skip Cert Verify</find>
+<replace>跳过证书验证</replace>
+<find>Script Interval</find>
+<replace>脚本间隔</replace>
+<find>"Automatic Upgrade"</find>
+<replace>"自动升级"</replace>
+<find>Automatic Upgrade completed</find>
+<replace>自动升级完成</replace>
+<find>make diff</find>
+<replace>制作diff</replace>
+<find>You can make some changes to a profile then we merge them for you when you refresh the profile</find>
+<replace>你可以对配置文件进行一些更改，然后会在你更新配置文件时为你合并它们</replace>
+<find>Init diff files</find>
+<replace>初始化 diff 文件</replace>
+<find>"Delete diff files"</find>
+<replace>"删除 diff 文件"</replace>
+<find>Update provider</find>
+<replace>更新提供者</replace>
+<find>Update Cron </find>
+<replace>更新定时程序Cron </replace>
+<find>matching parsers</find>
+<replace>个匹配解析器</replace>
+<find>Found </find>
+<replace>找到 </replace>
+<find>"Update",</find>
+<replace>"更新",</replace>
+<find>"Show in folder"</find>
+<replace>"打开文件所在位置"</replace>
+<find>"TAP device"</find>
+<replace>"虚拟网卡安装"</replace>
+<find>"Rules"</find>
+<replace>"规则"</replace>
+<find>"QRCode",</find>
+<replace>"二维码",</replace>
+<find>text:"Copy"</find>
+<replace>text:"复制"</replace>
+<find>text:"Reorder"</find>
+<replace>text:"重新排序"</replace>
+<find>hint:"update"</find>
+<replace>hint:"更新"</replace>
+<find>"Show:"</find>
+<replace>"显示:"</replace>
+<find>"Hide:"</find>
+<replace>"隐藏:"</replace>
+<find>IPNet"</find>
+<replace>网络"</replace>
+<find>Run script</find>
+<replace>运行脚本</replace>
+<find>"Actions"</find>
+<replace>"操作(Actions)"</replace>
+<find>"General"</find>
+<replace>"主页"</replace>
+<find>"Scripts"</find>
+<replace>"脚本"</replace>
+<find>"Custom"</find>
+<replace>"自定义"</replace>
+<find>"section-general"</find>
+<replace>"section-主页"</replace>
+<find>"section-appearance"</find>
+<replace>"section-外观"</replace>
+<find>"section-system-proxy"</find>
+<replace>"section-系统代理"</replace>
+<find>"section-profile-mixin"</find>
+<replace>"section-配置文件-mixin"</replace>
+<find>"section-proxies"</find>
+<replace>"section-代理"</replace>
+<find>"section-connections"</find>
+<replace>"section-连接"</replace>
+<find>"section-outbound"</find>
+<replace>"section-选择流量出接口"</replace>
+<find>"section-child-processes"</find>
+<replace>"section-子进程"</replace>
+<find>"section-profiles"</find>
+<replace>"section-配置"</replace>
+<find>"section-actions"</find>
+<replace>"section-操作(actions)"</replace>
+<find>"section-shortcuts"</find>
+<replace>"section-快捷键"</replace>
+<find>Hide Tray Icon</find>
+<replace>隐藏托盘图标</replace>
+<find>Custom Editor Command</find>
+<replace>自定义编辑器命令</replace>
+<find>hint:"Update"</find>
+<replace>hint:"更新"</replace>
+<find>"Scroll to selected proxy"</find>
+<replace>"移动到选定的代理"</replace>
+<find>"Test latency"</find>
+<replace>"测试延迟"</replace>
+<find>"Show or hide proxies"</find>
+<replace>"显示或隐藏代理"</replace>
+<find>"TUN Mode"</find>
+<replace>"TUN 模式"</replace>
+<find>To enable this mode, please install Service Mode first</find>
+<replace>要启用此模式，请先安装服务模式</replace>
+<find>"TUN Mode Settings"</find>
+<replace>"TUN 模式设置"</replace>
+<find>Fallback DNS Servers</find>
+<replace>后备 DNS 服务器</replace>
+<find>"Fake IP Filter"</find>
+<replace>"Fake IP过滤器"</replace>
+<find>"TUN Stack"</find>
+<replace>"TUN 码(TUN Stack)"</replace>
+<find>"Auto Detect Interface"</find>
+<replace>"自动检测接口"</replace>
+<find>"DNS Servers"</find>
+<replace>"DNS 服务器"</replace>
+<find>v\("Abort"</find>
+<replace>v\("中止"</replace>
+<find>Edit Mixin content</find>
+<replace>编辑 Mixin 内容</replace>
+<find>Fake IP Cache</find>
+<replace>Fake IP 缓存</replace>
+<find>title:"Cache"</find>
+<replace>title:"缓存"</replace>
+<find>switchMode:function\(e\){var t=this;return s</find>
+<replace>switchMode:function\(e\){"全局"==e?e="global":"规则"==e?e="rule":"直连"==e?e="direct":"脚本"==e&&(e="script");var t=this;return s</replace>
+<find>"Reset"</find>
+<replace>"重置"</replace>
+<find>DNS Hijacks</find>
+<replace>DNS 劫持</replace>
+<find>"Use CFW Editor"</find>
+<replace>"使用 CFW 编辑器"</replace>
+<find>"Cannot edit in read-only editor"</find>
+<replace>"无法在只读编辑器中编辑(请在右边进行编辑)"</replace>
+<find>items:i}\);case 4</find>
+<replace>items:["静默","错误","警告","信息","调试"],}\);case 4</replace>
+<find>"Start with Linux"</find>
+<replace>"开机自启动"</replace>
+<find>"Start with macOS"</find>
+<replace>"开机自启动"</replace>
+<find>"GeoIP Database"</find>
+<replace>"GeoIP 数据库更新"</replace>
+<find>"Preload"</find>
+<replace>"预载"</replace>
+<find>"lines"</find>
+<replace>"线程"</replace>
+<find>hint:"ESC"</find>
+<replace>hint:"退出(ESC)"</replace>
+<find>"Ctrl\+S"</find>
+<replace>"保存(Ctrl+S)"</replace>
+<find>"Experimental Features"</find>
+<replace>"实验功能"</replace>
+<find>"Select a interface"</find>
+<replace>"选择一个接口"</replace>
+<find>" had been released"</find>
+<replace>" 已经被释放"</replace>
+<find>"Copy Commands Only"</find>
+<replace>"仅复制命令"</replace>
+<find>"Please confirm"</find>
+<replace>"请确认"</replace>
+<find>"config.yaml and country.mmdb will be removed."</find>
+<replace>"config.yaml 和 country.mmdb 将被删除."</replace>
+<find>title:"Router"</find>
+<replace>title:"路由器"</replace>
+<find> diff files</find>
+<replace> diff 文件</replace>
+<find>"OK","Edit in Text Mode"</find>
+<replace>"好的","在文本模式下编辑"</replace>
+<find>"upgrade app failed with error</find>
+<replace>"升级应用程序失败并出现错误</replace>
+<find>"Headers"</find>
+<replace>"标头"</replace>
+<find>from\(this.now\)</find>
+<replace>locale\('zh-cn'\).from\(this.now\)</replace>
+<find>Changes contains conflict, "Make changes" to solve issues.</find>
+<replace>更改包含冲突, "修改(diff)文件" 以解决问题</replace>
+<find>"Manage"</find>
+<replace>"管理"</replace>
+<find>  Document</find>
+<replace>  帮助文档</replace>
+<find>"Make changes"</find>
+<replace>"修改文件"</replace>
+<find>Fail to merge profiles, "Make changes" to solve issues.</find>
+<replace>无法合并配置文件, "修改(diff)文件" 以解决问题</replace>
+<find>"Edit externally"</find>
+<replace>"在系统中编辑"</replace>
+<find>"Scroll to group"</find>
+<replace>"移动至组"</replace>
+<find>"Are you sure to quit</find>
+<replace>"你确定要退出吗</replace>
+<find>"Don't Save"</find>
+<replace>"不保存"</replace>
+<find>"Do you want to save the changes</find>
+<replace>"是否要保存更改</replace>
+<find>"fail to restore last profile with error</find>
+<replace>"无法恢复最后一个配置文件并出现错误</replace>
+<find>'Fail to merge profiles,</find>
+<replace>'无法合并配置文件,</replace>
+<find> to solve issues</find>
+<replace> 以解决问题</replace>
+<find>"TAP mode enable but no interface-name in this YAML"</find>
+<replace>"TAP 模式启用, 但此 YAML 中没有接口名称"</replace>
+<find>Do you want to set a new uuidv4 secret in</find>
+<replace>是否要在</replace>
+<find>and restart the APP</find>
+<replace>中设置新的uuidv4 secret并重启 APP</replace>
+<find>  Core Secret</find>
+<replace>  核心Secret</replace>
+<find>secret is currently empty, we strongly recommend to generate one</find>
+<replace>secret 当前为空，我们强烈建议生成一个</replace>
+<find>"Security"</find>
+<replace>"安全"</replace>
+<find>"Generate":"Update"</find>
+<replace>"生成更新":"更新"</replace>
+<find>"Process Path"</find>
+<replace>"进程路径"</replace>
+<find>"Random Mixed Port"</find>
+<replace>"随机混合端口"</replace>
+<find>hint:"random mixed port"</find>
+<replace>hint:"随机混合端口"</replace>
+<find>"run as admin"</find>
+<replace>"以管理员身份运行"</replace>
+<find>"Overall foreground color. This color is only used if not overridden by a component</find>
+<replace>"整体前景色。这个颜色只在没有被组件覆盖的情况下使用</replace>
+<find>"Overall foreground color for error messages. This color is only used if not overridden by a component</find>
+<replace>"错误信息的整体前景色。这个颜色只在没有被组件覆盖的情况下使用</replace>
+<find>"Color needs a value"</find>
+<replace>"颜色需要一个值"</replace>
+<find>"Invalid color ctor argument"</find>
+<replace>"无效颜色参数"</replace>
+<find>"Proxy Name"</find>
+<replace>"代理名称"</replace>
+<find>"Could not edit proxy type</find>
+<replace>"无法编辑代理类型</replace>
+<find>"Clash Core Service started by Clash for Windows"</find>
+<replace>"用于 Clash 代理开机自启的服务"</replace>
+<find>"Tray Proxy Groups Style"</find>
+<replace>"托盘代理组样式"</replace>
+<find>"Default","Submenu","Hidden"</find>
+<replace>"默认","折叠","隐蔽"</replace>
