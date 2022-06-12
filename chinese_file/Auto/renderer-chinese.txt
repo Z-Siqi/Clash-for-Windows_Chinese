@@ -254,8 +254,8 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>来源:""</replace>
 <find>Traffic:</find>
 <replace>流量:</replace>
-<find>Network:</find>
-<replace>网络:</replace>
+<find>,Network:</find>
+<replace>,网络:</replace>
 <find>Host:</find>
 <replace>主机:</replace>
 <find>"Special Proxies"</find>
@@ -528,8 +528,8 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>DHCP 服务器</replace>
 <find>Local IP Address</find>
 <replace>本地 IP 地址</replace>
-<find>Configuration</find>
-<replace>配置</replace>
+<find>"Configuration"</find>
+<replace>"配置"</replace>
 <find>Do you want to restart the APP</find>
 <replace>是否要重启APP</replace>
 <find>"Restart"</find>
@@ -780,3 +780,23 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>hint:"随机混合端口"</replace>
 <find>"run as admin"</find>
 <replace>"以管理员身份运行"</replace>
+<find>"Overall foreground color. This color is only used if not overridden by a component</find>
+<replace>"整体前景色。这个颜色只在没有被组件覆盖的情况下使用</replace>
+<find>"Overall foreground color for error messages. This color is only used if not overridden by a component</find>
+<replace>"错误信息的整体前景色。这个颜色只在没有被组件覆盖的情况下使用</replace>
+<find>"Color needs a value"</find>
+<replace>"颜色需要一个值"</replace>
+<find>"Invalid color ctor argument"</find>
+<replace>"无效颜色参数"</replace>
+<find>"Proxy Name"</find>
+<replace>"代理名称"</replace>
+<find>"Could not edit proxy type</find>
+<replace>"无法编辑代理类型</replace>
+<find>"Clash Core Service started by Clash for Windows"</find>
+<replace>"用于 Clash 代理开机自启的服务"</replace>
+<find>"Tray Proxy Groups Style"</find>
+<replace>"托盘代理组样式"</replace>
+<find>"Default","Submenu","Hidden"</find>
+<replace>"默认","折叠","隐蔽"</replace>
+<find>hint:"Edit"</find>
+<replace>hint:"编辑"</replace>
