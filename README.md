@@ -27,7 +27,7 @@
 
 <details><summary>下载前你需要知晓的内容:</summary>
 
-**下载将代表你对一下内容无任何异议**
+  **下载将代表你对以下内容无任何异议**
 
     版权归Clash for Windows原开发者所有
     对Clash for Windows进行的修改:
