@@ -39,5 +39,9 @@
 
 [WinRAR](https://www.rarlab.com/)
 
-***
-### [向我捐赠](https://github.com/ender-zhao/EZ)
+*** 
+
+### 赞助商的广告
+
+**推荐使用OK加速器  优惠码:clash**
+**http://o.okjiasu.com/auth/register?code=6666**
