@@ -66,8 +66,6 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>title:"日志"</replace>
 <find>"Connections"</find>
 <replace>"连接"</replace>
-<find>"Settings"</find>
-<replace>"设置"</replace>
 <find>title:"Feedback"</find>
 <replace>title:"关于"</replace>
 <find>"Providers"</find>
@@ -166,8 +164,6 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"超时"</replace>
 <find>"Download from a URL"</find>
 <replace>"从URL下载"</replace>
-<find>"refresh"</find>
-<replace>"更新"</replace>
 <find>"Error!"</find>
 <replace>"错误!"</replace>
 <find>"Downloading"</find>
@@ -180,8 +176,6 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace> 更新全部</replace>
 <find>"Import"</find>
 <replace>"导入"</replace>
-<find>"edit"</find>
-<replace>"编辑"</replace>
 <find>"edit policies"</find>
 <replace>"修改规则"</replace>
 <find>"edit rules"</find>
@@ -192,8 +186,6 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace> 跳转方案</replace>
 <find>"matching parsers"</find>
 <replace>"匹配解析器"</replace>
-<find>"settings"</find>
-<replace>"设置"</replace>
 <find>text:"Delete"</find>
 <replace>text:"删除"</replace>
 <find>"Edit profile information"</find>
@@ -800,3 +792,15 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"默认","折叠","隐蔽"</replace>
 <find>hint:"Edit"</find>
 <replace>hint:"编辑"</replace>
+<find>text:"Settings"</find>
+<replace>text:"设置"</replace>
+<find>title:"Settings"</find>
+<replace>title:"设置"</replace>
+<find>e._v\("Settings"</find>
+<replace>e._v\("设置"</replace>
+<find>hint:"Settings"</find>
+<replace>hint:"设置"</replace>
+<find>e._v\("Network Interfaces"</find>
+<replace>e._v\("网络端口"</replace>
+<find>hint:"Network interfaces"</find>
+<replace>hint:"网络端口"</replace>
