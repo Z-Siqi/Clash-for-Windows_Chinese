@@ -29,7 +29,6 @@
 
   **下载将代表你对以下内容无任何异议**
 
-    版权归Clash for Windows原开发者所有
     对Clash for Windows进行的修改:
       1, 修改"app.asar"文件中的"renderer.js"
       2, 修改"app.asar"文件中的"main.js"
