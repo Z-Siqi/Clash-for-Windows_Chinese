@@ -339,7 +339,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>"Break When Proxy Change"</find>
 <replace>"代理更改时中断连接"</replace>
 <find>"None","Chain","All"</find>
-<replace>"不中断","链接","所有"</replace>
+<replace>"不中断","旧链接","所有"</replace>
 <find>"Break When Profile Change"</find>
 <replace>"配置文件更改时中断连接"</replace>
 <find>"Break When Mode Change"</find>
