@@ -705,7 +705,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>"Select a interface"</find>
 <replace>"选择一个接口"</replace>
 <find>" had been released"</find>
-<replace>" 已经被释放"</replace>
+<replace>" 已发布"</replace>
 <find>"Copy Commands Only"</find>
 <replace>"仅复制命令"</replace>
 <find>"Please confirm"</find>
