@@ -70,9 +70,9 @@
 
 ### 赞助商的广告
 
-**推荐使用OK加速器  优惠码:clash**
+推荐使用OK加速器  优惠码:clash
 
-**http://o.okjiasu.com/auth/register?code=6666**
+http://o.okjiasu.com/auth/register?code=6666
 
 ***
 ### 快速导航
