@@ -66,6 +66,14 @@
     该库的所有内容仅存在于GitHub
 </details>
 
+*** 
+
+### 赞助商的广告
+
+**推荐使用OK加速器  优惠码:clash**
+
+**http://o.okjiasu.com/auth/register?code=6666**
+
 ***
 ### 快速导航
 [前往汉化下载界面](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases)
@@ -79,11 +87,3 @@
 [7-Zip](https://www.7-zip.org/)
 
 [WinRAR](https://www.rarlab.com/)
-
-*** 
-
-### 赞助商的广告
-
-**推荐使用OK加速器  优惠码:clash**
-
-**http://o.okjiasu.com/auth/register?code=6666**
