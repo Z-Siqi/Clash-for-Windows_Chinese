@@ -491,7 +491,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>interfaceName\|\|"Select"</find>
 <replace>interfaceName\|\|"选择"</replace>
 <find>"Image not found"</find>
-<replace>"找不到图片.但希望你能给汉化clash的我捐赠!"</replace>
+<replace>"找不到图片!"</replace>
 <find>this.isRecording?"recording</find>
 <replace>this.isRecording?"记录中</replace>
 <find>message:"silent will prevent .log file to generate on next startup",</find>
@@ -806,3 +806,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>hint:"网络端口"</replace>
 <find>hint:"terminal"</find>
 <replace>hint:"终端"</replace>
+<find>"Show Process If Present"</find>
+<replace>"显示进程（如果存在）"</replace>
+<find>"Show Tray Proxy Delay Indicator"</find>
+<replace>"在托盘代理中显示节点可用性"</replace>
