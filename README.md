@@ -5,29 +5,27 @@
 
 效果图
 
-![photo](https://github.com/ender-zhao/Clash-for-Windows_Chinese/blob/main/image/Image_Clash-for-Windows_Chinese-0.19.26.png?raw=true)
+![photo](https://github.com/ender-zhao/Clash-for-Windows_Chinese/blob/main/image/Image_Clash-for-Windows_Chinese-0.19.27.png?raw=true)
 
 支持的clash版本: 
 
 [0.15.3](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.15.3_CN-V4)
 ~
-[0.19.15](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.15_CN)
+[0.19.20](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.20_CN)
 
-[0.19.16](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.16_CN),
-[0.19.17](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.17_CN),
-[0.19.18](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.18_CN),
-[0.19.19](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.19_CN),
-[0.19.20](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.20_CN),
 [0.19.21](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.21_CN),
 [0.19.22](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.22_CN),
 [0.19.23](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.23_CN),
 [0.19.24](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.24_CN),
 [0.19.25](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.25_CN),
-[0.19.26](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.26_CN)
+[0.19.26](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.26_CN),
+[0.19.27](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.19.27_CN)
 
 <details><summary>下载前你需要知晓的内容:</summary>
 
   **下载将代表你对以下内容无任何异议**
+
+*这个库提供的Clash for Windows是修改过的*
 
     对Clash for Windows进行的修改:
       1, 修改"app.asar"文件中的"renderer.js"
