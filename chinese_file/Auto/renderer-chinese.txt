@@ -810,3 +810,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"显示进程（如果存在）"</replace>
 <find>"Show Tray Proxy Delay Indicator"</find>
 <replace>"在托盘代理中显示节点可用性"</replace>
+<find>"add firewall rules</find>
+<replace>"添加防火墙规则</replace>
+<find>for Allow LAN and system stack</find>
+<replace>允许 LAN 和系统堆栈</replace>
