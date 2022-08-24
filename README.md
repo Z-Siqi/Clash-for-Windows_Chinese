@@ -73,6 +73,8 @@
 
 http://o.okjiasu.com/auth/register?code=6666
 
+购买小火箭、圈X、Google voice👉[神马杂货铺](https://googlevoice.top/)
+
 ***
 ### 快速导航
 [前往汉化下载界面](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases)
