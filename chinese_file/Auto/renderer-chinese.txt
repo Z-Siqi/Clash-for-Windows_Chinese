@@ -476,8 +476,8 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"显示或隐藏代理"</replace>
 <find>"Update","Download","Copy URL","取消"</find>
 <replace>"更新(原版)","下载(原版)","复制URL(原版)","取消"</replace>
-<find>items:n}\);case 4</find>
-<replace>items:["静默","错误","警告","信息","调试"],}\);case 4</replace>
+<find>items:n}\);case 4:return</find>
+<replace>items:["静默","错误","警告","信息","调试"],}\);case 4:return</replace>
 <find>e._s\(e.logLevel\)</find>
 <replace>\("silent"==e._s\(e.logLevel\)?"静默":"error"==e._s\(e.logLevel\)?"错误":"warning"== e._s\(e.logLevel\)?"警告":"info"== e._s\(e.logLevel\)?"信息":"debug"==e._s\(e.logLevel\)?"调试":e._s\(e.logLevel\)\)</replace>
 <find>fromNow\(\)</find>
@@ -684,8 +684,8 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"使用 CFW 编辑器"</replace>
 <find>"Cannot edit in read-only editor"</find>
 <replace>"无法在只读编辑器中编辑(请在右边进行编辑)"</replace>
-<find>items:i}\);case 4</find>
-<replace>items:["静默","错误","警告","信息","调试"],}\);case 4</replace>
+<find>items:i}\);case 4:return</find>
+<replace>items:["静默","错误","警告","信息","调试"],}\);case 4:return</replace>
 <find>"Start with Linux"</find>
 <replace>"开机自启动"</replace>
 <find>"Start with macOS"</find>
@@ -818,7 +818,13 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>items:\["信息","调试"\]</replace>
 <find>"Update"</find>
 <replace>"更新"</replace>
-<find>"connected":"disconnected"<find>
+<find>"connected":"disconnected"</find>
 <replace>"已连接":"断开连接"</replace>
-<find>Copy Domain:Port<find>
+<find>Copy Domain:Port</find>
 <replace>复制域:端口</replace>
+<find>"Reload APP"</find>
+<replace>"重新加载APP"</replace>
+<find>"Fail to "</find>
+<replace>"未能"</replace>
+<find>\(\)," service"</find>
+<replace>\(\),"服务模式"</replace>
