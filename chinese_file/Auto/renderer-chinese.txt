@@ -220,9 +220,9 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"刷新浏览器以发出请求</replace>
 <find>"Clear"</find>
 <replace>"清除"</replace>
-<find> Connections</find>
+<find>  Connections</find>
 <replace> 连接</replace>
-<find>type:"text",placeholder:"search"</find>
+<find>type:"text",placeholder:"Search"</find>
 <replace>type:"文本",placeholder:"搜索"</replace>
 <find>"Resume":"Pause"</find>
 <replace>"恢复":"暂停"</replace>
@@ -387,7 +387,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>"only works when TAP mode enabled"</find>
 <replace>"仅在启用TAP模式时有效"</replace>
 <find>"Docs"</find>
-<replace>"文件"</replace>
+<replace>"在线文档"</replace>
 <find>"Change Log Level"</find>
 <replace>"更改日志收集级别"</replace>
 <find> Open Folder</find>
@@ -653,7 +653,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>"TUN Mode"</find>
 <replace>"TUN 模式"</replace>
 <find>To enable this mode, please install Service Mode first</find>
-<replace>要启用此模式，请先安装服务模式</replace>
+<replace>类似于虚拟网卡，启用后可代理所有应用。要启用此模式，请先安装服务模式</replace>
 <find>"TUN Mode Settings"</find>
 <replace>"TUN 模式设置"</replace>
 <find>Fallback DNS Servers</find>
@@ -756,8 +756,8 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>是否要在</replace>
 <find>and restart the APP</find>
 <replace>中设置新的uuidv4 secret并重启 APP</replace>
-<find>  Core Secret</find>
-<replace>  核心Secret</replace>
+<find>"Core Secret"</find>
+<replace>"核心Secret"</replace>
 <find>secret is currently empty, we strongly recommend to generate one</find>
 <replace>secret 当前为空，我们强烈建议生成一个</replace>
 <find>"Security"</find>
@@ -828,3 +828,167 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"未能"</replace>
 <find>\(\)," service"</find>
 <replace>\(\),"服务模式"</replace>
+<find>Set the secret parameter in Home Directory</find>
+<replace>将 Home Directory</replace>
+<find>yaml to random</find>
+<replace>yaml 中的secret参数设置为random</replace>
+<find>uuid4 to prevent the Clash API from being called directly by the</find>
+<replace>uuid4，以防止网页直接</replace>
+<find>web page</find>
+<replace>调用 Clash API</replace>
+<find>Set the editor used by the Settings module, if you need custom</find>
+<replace>设置 Settings 模块使用的编辑器，如果需要自定义命令，</replace>
+<find>commands, you need command support breaks</find>
+<replace>则需要命令支持中断</replace>
+<find>Set whether to allow pop-up system-level notifications</find>
+<replace>设置是否允许弹出系统级通知</replace>
+<find>Set whether to display dashboard at startup</find>
+<replace>设置是否在启动时显示仪表板</replace>
+<find>Set whether to update automatically, after turning on the new</find>
+<replace>设置是否自动更新，</replace>
+<find>version will be updated in the background, the next launch will be</find>
+<replace>开启新版本后后台更新，</replace>
+<find>the latest version</find>
+<replace>下次启动为最新版本</replace>
+<find>Set whether to hide the taskbar icon or not</find>
+<replace>设置是否隐藏任务栏图标</replace>
+<find>Set whether the delay indicator is displayed in the proxy of the</find>
+<replace>设置是否在任务栏菜单的代理中</replace>
+<find>taskbar menu"</find>
+<replace>显示延迟指示器"</replace>
+<find>Set whether to enable custom taskbar</find>
+<replace>设置是否启用自定义任务栏</replace>
+<find> hover window</find>
+<replace> 悬停窗口</replace>
+<find>Set whether to specify the system proxy protocol \(recommended</find>
+<replace>设置是否指定系统代理协议\(Python</replace>
+<find>only if you encounter network problems with Python</find>
+<replace>编程遇到网络问题时</replace>
+<find>programming\)"</find>
+<replace>才推荐\)"</replace>
+<find>Set whether to close all connections when switching modes</find>
+<replace>设置切换模式时是否关闭所有连接</replace>
+<find>Set whether the profile is selected after updating</find>
+<replace>设置更新后是否选择profile</replace>
+<find>Terminate dashboard to free memory after closed.</find>
+<replace>关闭后终止仪表板以释放内存</replace>
+<find>Set the taskbar icon in the default state</find>
+<replace>将任务栏图标设置为默认状态</replace>
+<find>Set the taskbar icon when the System Proxy is turned on</find>
+<replace>设置系统代理开启时的任务栏图标</replace>
+<find>Set parsers to process profiles after downloaded</find>
+<replace>下载后将解析器设置为处理配置文件</replace>
+<find>Set the code to be called when the Action is executed</find>
+<replace>设置执行Action时要调用的代码</replace>
+<find>Set child processes to be spawned with dashboard</find>
+<replace>设置要使用仪表板生成的子进程</replace>
+<find>Set whether to use a random port as the Port parameter in General</find>
+<replace>设置是否使用随机端口作为General中的Port参数</replace>
+<find>mixed-port parameter in Home Directory/config.ymal</find>
+<replace>Home Directory/config.ymal中的混合端口参数</replace>
+<find>Set whether to use a random port as the core controller port \(the</find>
+<replace>设置是否使用随机端口作为核心控制器端口 \(</replace>
+<find>port section of external-controller in Home</find>
+<replace>Home Directory/config.yaml中external-controller</replace>
+<find>    Directory/config.ymal</find>
+<replace>    的端口部分</replace>
+<find>Set whether to hide unselectable proxy groups in the Proxies</find>
+<replace>设置是否隐藏代理模块中不可选择的代理组</replace>
+<find>Set weather to show Process Name\(if present\) in Connections</find>
+<replace>设置是否显示连接中的进程名称\(如果存在\) </replace>
+<find>"br"\),e._v\("Set</find>
+<replace>"br"\),e._v\("</replace>
+<find>  the individual profile request header content in the Profiles</find>
+<replace>  在 Profiles 模块中设置单独的配置文件请求头内容</replace>
+<find>  module"\)</find>
+<replace>  "\)</replace>
+<find>    profiles</find>
+<replace>    </replace>
+<find>Set whether to close all connections when switching</find>
+<replace>设置切换profile时是否关闭所有连接</replace>
+<find>e._v\("Drag"</find>
+<replace>e._v\(""</replace>
+<find>  to control.</find>
+<replace> </replace>
+<find>icons between "show" and "hide"</find>
+<replace>在“显示”和“隐藏”之间拖动图标来控制"</replace>
+<find>Set the proxy group style in the taskbar menu</find>
+<replace>在任务栏菜单中设置代理组样式</replace>
+<find>e._v\("Default"</find>
+<replace>e._v\("默认"</replace>
+<find>Flat all proxy groups</find>
+<replace>扁平化所有代理组</replace>
+<find>e._v\("Submenu"</find>
+<replace>e._v\("折叠"</replace>
+<find>Show proxy groups in submenu</find>
+<replace>在折叠中显示代理组</replace>
+<find>e._v\("Hidden"</find>
+<replace>e._v\("隐藏"</replace>
+<find>Hide proxy groups</find>
+<replace>隐藏代理组</replace>
+<find>Set the type of System Proxy</find>
+<replace>设置系统代理的类型</replace>
+<find>Set the type of chain displayed in the Connections module</find>
+<replace>设置连接模块中显示的链类型</replace>
+<find>in Connections</find>
+<replace> </replace>
+<find>Set the system proxy Host part to static content, if not set, the</find>
+<replace>将系统代理主机部分设置为静态内容, 如果没有设置,</replace>
+<find>host defaults to</find>
+<replace>主机默认为</replace>
+<find>Set the display width of each proxy in the Proxies module</find>
+<replace>在 Proxies 模块中设置每个代理的显示宽度</replace>
+<find>Set the width of the minilist in the Proxies module</find>
+<replace>在 Proxies 模块中设置 minilist 的宽度</replace>
+<find>Set the URL used when clicking the Delay Test button in the</find>
+<replace>设置在代理模块中单击延迟测试按钮时使用的 URL</replace>
+<find>  Proxies module</find>
+<replace> </replace>
+<find>Set the Proxies module to display the keyword filter icon or</find>
+<replace>设置代理模块是否显示关键字过滤器图标</replace>
+<find>  not</find>
+<replace> </replace>
+<find>Set the strategy for closing connections when switching proxies</find>
+<replace>在 Proxies 模块中设置切换代理时关闭连接的策略</replace>
+<find>  in the Proxies module</find>
+<replace> </replace>
+<find>e._v\("None"</find>
+<replace>e._v\("不中断"</replace>
+<find>Do not close</find>
+<replace>不关闭任何链接</replace>
+<find>e._v\("Chain"</find>
+<replace>e._v\("旧链接"</replace>
+<find>Close connections with proxy name in chain</find>
+<replace>关闭与链中代理名称的连接</replace>
+<find>e._v\("All"</find>
+<replace>e._v\("全部"</replace>
+<find>Close all connections</find>
+<replace>关闭所有连接</replace>
+<find>Set bypass list of System Proxy</find>
+<replace>设置系统代理的绕过列表</replace>
+<find>Set interface name to overwrite like Mixin, will be removed in</find>
+<replace>像 Mixin 一样设置接口名覆盖，以后会移除</replace>
+<find>  the future</find>
+<replace> </replace>
+<find>  Docs</find>
+<replace>  在线文档</replace>
+<find>Set the path to the profiles folder, default</find>
+<replace>设置配置文件文件夹的路径，默认</replace>
+<find>e._v\("Proxy"</find>
+<replace>e._v\("代理"</replace>
+<find> Proxy name"</find>
+<replace> 节点名"</replace>
+<find>e._v\("Group"</find>
+<replace>e._v\("组"</replace>
+<find> Group name"</find>
+<replace> 分组名"</replace>
+<find>e._v\("Both"</find>
+<replace>e._v\("全部"</replace>
+<find>Proxy name and group name"</find>
+<replace>节点名和分组名"</replace>
+<find>Set the request header content when updating a profile</find>
+<replace>更新配置文件时设置请求标头内容</replace>
+<find>Set the number of log lines to be preloaded in the Logs module,</find>
+<replace>在 Logs 模块中设置要预加载的日志行数,</replace>
+<find>  set to 0 to not preload"</find>
+<replace>  设置为 0 不预加载"</replace>
