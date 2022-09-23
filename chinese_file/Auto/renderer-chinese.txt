@@ -869,7 +869,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>Set whether to close all connections when switching modes</find>
 <replace>设置切换模式时是否关闭所有连接</replace>
 <find>Set whether the profile is selected after updating</find>
-<replace>设置更新后是否选择profile</replace>
+<replace>设置是否在更新后选择已更新的配置文件</replace>
 <find>Terminate dashboard to free memory after closed.</find>
 <replace>关闭后终止仪表板以释放内存</replace>
 <find>Set the taskbar icon in the default state</find>
@@ -894,8 +894,8 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>    的端口部分</replace>
 <find>Set whether to hide unselectable proxy groups in the Proxies</find>
 <replace>设置是否隐藏代理模块中不可选择的代理组</replace>
-<find>Set weather to show Process Name\(if present\) in Connections</find>
-<replace>设置是否显示连接中的进程名称\(如果存在\) </replace>
+<find>Set whether to show Process Name\(if present\) in Connections</find>
+<replace>设置是否显示连接中的进程名称（如果存在） </replace>
 <find>"br"\),e._v\("Set</find>
 <replace>"br"\),e._v\("</replace>
 <find>  the individual profile request header content in the Profiles</find>
@@ -905,7 +905,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>    profiles</find>
 <replace>    </replace>
 <find>Set whether to close all connections when switching</find>
-<replace>设置切换profile时是否关闭所有连接</replace>
+<replace>设置配置文件改变时是否关闭所有连接</replace>
 <find>e._v\("Drag"</find>
 <replace>e._v\(""</replace>
 <find>  to control.</find>
@@ -937,9 +937,9 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>host defaults to</find>
 <replace>主机默认为</replace>
 <find>Set the display width of each proxy in the Proxies module</find>
-<replace>在 Proxies 模块中设置每个代理的显示宽度</replace>
+<replace>在代理界面中设置每个节点的显示宽度</replace>
 <find>Set the width of the minilist in the Proxies module</find>
-<replace>在 Proxies 模块中设置 minilist 的宽度</replace>
+<replace>设置代理界面导航栏宽度</replace>
 <find>Set the URL used when clicking the Delay Test button in the</find>
 <replace>设置在代理模块中单击延迟测试按钮时使用的 URL</replace>
 <find>  Proxies module</find>
@@ -975,13 +975,13 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>Set the path to the profiles folder, default</find>
 <replace>设置配置文件文件夹的路径，默认</replace>
 <find>e._v\("Proxy"</find>
-<replace>e._v\("代理"</replace>
-<find> Proxy name"</find>
-<replace> 节点名"</replace>
+<replace>e._v\("节点名"</replace>
+<find>" - Proxy name"</find>
+<replace>""</replace>
 <find>e._v\("Group"</find>
-<replace>e._v\("组"</replace>
-<find> Group name"</find>
-<replace> 分组名"</replace>
+<replace>e._v\("分组名"</replace>
+<find>" - Group name"</find>
+<replace>""</replace>
 <find>e._v\("Both"</find>
 <replace>e._v\("全部"</replace>
 <find>Proxy name and group name"</find>
@@ -992,3 +992,17 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>在 Logs 模块中设置要预加载的日志行数,</replace>
 <find>  set to 0 to not preload"</find>
 <replace>  设置为 0 不预加载"</replace>
+<find>  colors:</find>
+<replace>  颜色:</replace>
+<find>  - available</find>
+<replace>  - 可用的</replace>
+<find>  - timeout</find>
+<replace>  - 超时</replace>
+<find>  - unknown</find>
+<replace>  - 未知</replace>
+<find>e._v\("Alive"</find>
+<replace>e._v\("活动"</replace>
+<find>e._v\("Closed"</find>
+<replace>e._v\("关闭"</replace>
+<find>,"DNS Mode"</find>
+<replace>,"DNS 模式"</replace>
