@@ -828,18 +828,24 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"未能"</replace>
 <find>\(\)," service"</find>
 <replace>\(\),"服务模式"</replace>
-<find>Set the secret parameter in Home Directory</find>
-<replace>将 Home Directory</replace>
-<find>yaml to random</find>
-<replace>yaml 中的secret参数设置为random</replace>
-<find>uuid4 to prevent the Clash API from being called directly by the</find>
-<replace>uuid4，以防止网页直接</replace>
-<find>web page</find>
-<replace>调用 Clash API</replace>
-<find>Set the editor used by the Settings module, if you need custom</find>
-<replace>设置 Settings 模块使用的编辑器，如果需要自定义命令，</replace>
-<find>commands, you need command support breaks</find>
-<replace>则需要命令支持中断</replace>
+<find>  Set Clash Core's</find>
+<replace>  将 Clash Core 的</replace>
+<find>" to a random RFC</find>
+<replace>" 设置为随机的 RFC</replace>
+<find>  4122 version 4 UUID, so that Clash REST API cannot be accessed</find>
+<replace>  4122 版本 4 UUID，这样 Clash REST API 就不能被任意访问。</replace>
+<find>  arbitrarily. </find>
+<replace>   </replace>
+<find>"The value is stored in the</find>
+<replace>"该值存储在于</replace>
+<find>"Text editor used by Settings."</find>
+<replace>"设置使用的文本编辑器"</replace>
+<find>e._v\("For\\n  </find>
+<replace>e._v\("对于\\n  </replace>
+<find>", the command should only return control</find>
+<replace>", 该命令只应在编辑文件关闭后返回控制权。</replace>
+<find>  after the edited file is closed. For example:</find>
+<replace>  例如:</replace>
 <find>Set whether to allow pop-up system-level notifications</find>
 <replace>设置是否允许弹出系统级通知</replace>
 <find>Set whether to display dashboard at startup</find>
@@ -860,32 +866,52 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>设置是否启用自定义任务栏</replace>
 <find> hover window</find>
 <replace> 悬停窗口</replace>
-<find>Set whether to specify the system proxy protocol \(recommended</find>
-<replace>设置是否指定系统代理协议\(Python</replace>
-<find>only if you encounter network problems with Python</find>
-<replace>编程遇到网络问题时</replace>
-<find>programming\)"</find>
-<replace>才推荐\)"</replace>
+<find>"Turn on to forcibly add scheme to the system proxy settings."</find>
+<replace>"打开以强制将方案添加到系统代理设置"</replace>
+<find>  This is not for general-purpose use, and indeed violates the</find>
+<replace>  这不是通用用途,</replace>
+<find>  current spec of Windows. Consider it only when an old Python</find>
+<replace>  并且确实违反了当前的 Windows 规范.</replace>
+<find>  program has trouble."</find>
+<replace>  仅在使用旧的 Python 时才考虑它."</replace>
+<find>For details, see</find>
+<replace>有关详细信息，请参阅</replace>
 <find>Set whether to close all connections when switching modes</find>
 <replace>设置切换模式时是否关闭所有连接</replace>
 <find>Set whether the profile is selected after updating</find>
 <replace>设置是否在更新后选择已更新的配置文件</replace>
-<find>Terminate dashboard to free memory after closed.</find>
-<replace>关闭后终止仪表板以释放内存</replace>
+<find>"Turn on to terminate app processes after closing the dashboard,</find>
+<replace>"关闭仪表板后打开以终止应用程序进程,</replace>
+<find>  but keep Clash Core running in the background. Most of the</find>
+<replace>  但保持 Clash Core 在后台运行。</replace>
+<find>  features provided by CFW will be unavailable then.</find>
+<replace>  届时，CFW 提供的大部分功能将不可用</replace>
+<find>"Relies on the "</find>
+<replace>"依赖"</replace>
+<find>e._v\("docs"</find>
+<replace>e._v\("帮助文档"</replace>
 <find>Set the taskbar icon in the default state</find>
 <replace>将任务栏图标设置为默认状态</replace>
 <find>Set the taskbar icon when the System Proxy is turned on</find>
 <replace>设置系统代理开启时的任务栏图标</replace>
-<find>Set parsers to process profiles after downloaded</find>
-<replace>下载后将解析器设置为处理配置文件</replace>
+<find>"Modify and customize your profiles after download but before</find>
+<replace>"在下载后修改和自定义你的配置，在</replace>
+<find>"Diff"\)]\),e._v\(".</find>
+<replace>"Diff"\)]\),e._v\("开始之前</replace>
 <find>Set the code to be called when the Action is executed</find>
 <replace>设置执行Action时要调用的代码</replace>
 <find>Set child processes to be spawned with dashboard</find>
 <replace>设置要使用仪表板生成的子进程</replace>
-<find>Set whether to use a random port as the Port parameter in General</find>
-<replace>设置是否使用随机端口作为General中的Port参数</replace>
-<find>mixed-port parameter in Home Directory/config.ymal</find>
-<replace>Home Directory/config.ymal中的混合端口参数</replace>
+<find>"Turn on to generate a new proxy server port number when the app</find>
+<replace>"打开应用程序启动时生成新的代理服务器端口号。</replace>
+<find>  starts."</find>
+<replace>  "</replace>
+<find>"The value is shown as Port in General, and is</find>
+<replace>"该值在 General 中显示为 Port，</replace>
+<find>  stored as</find>
+<replace>  并存储为</replace>
+<find>   in the</find>
+<replace>   在</replace>
 <find>Set whether to use a random port as the core controller port \(the</find>
 <replace>设置是否使用随机端口作为核心控制器端口 \(</replace>
 <find>port section of external-controller in Home</find>
@@ -926,8 +952,12 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>e._v\("隐藏"</replace>
 <find>Hide proxy groups</find>
 <replace>隐藏代理组</replace>
-<find>Set the type of System Proxy</find>
-<replace>设置系统代理的类型</replace>
+<find>"Windows accepts an HTTP endpoint or PAC \(proxy</find>
+<replace>"Windows 接受 HTTP 端点或 PAC</replace>
+<find>  auto-configuration\) script. The HTTP mode is generally</find>
+<replace>  （代理自动配置）脚本。</replace>
+<find>  sufficient."</find>
+<replace>  HTTP 模式通常就足够了。"</replace>
 <find>Set the type of chain displayed in the Connections module</find>
 <replace>设置连接模块中显示的链类型</replace>
 <find>in Connections</find>
@@ -949,7 +979,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>  not</find>
 <replace> </replace>
 <find>Set the strategy for closing connections when switching proxies</find>
-<replace>在 Proxies 模块中设置切换代理时关闭连接的策略</replace>
+<replace>在代理模块中设置切换代理时关闭连接的策略</replace>
 <find>  in the Proxies module</find>
 <replace> </replace>
 <find>e._v\("None"</find>
@@ -964,8 +994,14 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>e._v\("全部"</replace>
 <find>Close all connections</find>
 <replace>关闭所有连接</replace>
-<find>Set bypass list of System Proxy</find>
-<replace>设置系统代理的绕过列表</replace>
+<find>"Bypass \(don't use\) the proxy server when visiting certain\\n            addresses.</find>
+<replace>"访问某些地址时绕过（不使用）代理服务器。</replace>
+<find>The interpretation of this list is OS-dependent and app-dependent.\\n            In other words, your operating systems and applications may\\n            evaluate the rules differently.</find>
+<replace>此列表的解释取决于操作系统和应用程序. 换句话说，您的操作系统和应用程序可能会以不同的方式评估规则</replace>
+<find>"Use a proxy server in Windows</find>
+<replace>"在 Windows 中使用代理服务器</replace>
+<find>"Enter proxy server settings on Mac"</find>
+<replace>"在 Mac 上输入代理服务器设置"</replace>
 <find>Set interface name to overwrite like Mixin, will be removed in</find>
 <replace>像 Mixin 一样设置接口名覆盖，以后会移除</replace>
 <find>  the future</find>
@@ -1006,3 +1042,17 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>e._v\("关闭"</replace>
 <find>,"DNS Mode"</find>
 <replace>,"DNS 模式"</replace>
+<find>  Set the URLs that do not verify the certificate when requesting</find>
+<replace>  设置请求时不验证证书的URL</replace>
+<find>  Do "</find>
+<replace>   "</replace>
+<find>e._v\("not"</find>
+<replace>e._v\("不要更改它"</replace>
+<find>" change it if you do not know what it is</find>
+<replace>" , 除非你知道它是什么</replace>
+<find>"Allow unsafe URLs"</find>
+<replace>"允许不安全的 URL"</replace>
+<find>,e._v\("."\)]</find>
+<replace>,e._v\("内"\)]</replace>
+<find> Clash documentation</find>
+<replace>Clash文档</replace>
