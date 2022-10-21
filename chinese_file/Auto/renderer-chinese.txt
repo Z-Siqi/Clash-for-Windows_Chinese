@@ -722,8 +722,8 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"升级应用程序失败并出现错误</replace>
 <find>"Headers"</find>
 <replace>"标头"</replace>
-<find>from\(this.now\)</find>
-<replace>locale\('zh-cn'\).from\(this.now\)</replace>
+<find>from\(this.now,!0</find>
+<replace>locale\('zh-cn'\).from\(this.now</replace>
 <find>Changes contains conflict, "Make changes" to solve issues.</find>
 <replace>更改包含冲突, "修改(diff)文件" 以解决问题</replace>
 <find>"Manage"</find>
@@ -910,8 +910,8 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"该值在 General 中显示为 Port，</replace>
 <find>  stored as</find>
 <replace>  并存储为</replace>
-<find>   in the</find>
-<replace>   在</replace>
+<find>   in the\\n</find>
+<replace>   在\\n</replace>
 <find>Set whether to use a random port as the core controller port \(the</find>
 <replace>设置是否使用随机端口作为核心控制器端口 \(</replace>
 <find>port section of external-controller in Home</find>
@@ -978,10 +978,8 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>设置代理模块是否显示关键字过滤器图标</replace>
 <find>  not</find>
 <replace> </replace>
-<find>Set the strategy for closing connections when switching proxies</find>
+<find>Set the strategy for closing connections when switching proxies\\n              in the Proxies module</find>
 <replace>在代理模块中设置切换代理时关闭连接的策略</replace>
-<find>  in the Proxies module</find>
-<replace> </replace>
 <find>e._v\("None"</find>
 <replace>e._v\("不中断"</replace>
 <find>Do not close</find>
@@ -1056,3 +1054,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>,e._v\("内"\)]</replace>
 <find> Clash documentation</find>
 <replace>Clash文档</replace>
+<find>"Preview the final configuration file that was submitted to Clash Core"</find>
+<replace>"预览提交给 Clash Core 的最终配置文件"</replace>
+<find>hint:"Esc"</find>
+<replace>hint:"退出"</replace>
