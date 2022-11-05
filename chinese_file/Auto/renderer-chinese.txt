@@ -1058,3 +1058,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"预览提交给 Clash Core 的最终配置文件"</replace>
 <find>hint:"Esc"</find>
 <replace>hint:"退出"</replace>
+<find>"Use Mode Icons"</find>
+<replace>"使用连接模式图标"</replace>
+<find>"Use first letter of current mode as tray icon"</find>
+<replace>"使用当前选择的模式作为托盘图标"</replace>
