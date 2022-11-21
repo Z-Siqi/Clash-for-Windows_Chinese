@@ -101,7 +101,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>"UWP Loopback"</find>
 <replace>"UWP 应用联网限制解除工具"</replace>
 <find>"TAP Device"</find>
-<replace>"虚拟网卡安装"</replace>
+<replace>"虚拟网卡安装（TAP 模式）"</replace>
 <find>"Service Mode"</find>
 <replace>"服务模式"</replace>
 <find>"Mixin"</find>
@@ -589,7 +589,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>"Show in folder"</find>
 <replace>"打开文件所在位置"</replace>
 <find>"TAP device"</find>
-<replace>"虚拟网卡安装"</replace>
+<replace>"虚拟网卡安装（TAP 模式）"</replace>
 <find>"Rules"</find>
 <replace>"规则"</replace>
 <find>"QRCode",</find>
@@ -1062,3 +1062,9 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"使用连接模式图标"</replace>
 <find>"Use first letter of current mode as tray icon"</find>
 <replace>"使用当前选择的模式作为托盘图标"</replace>
+<find>"Visible On All Workspaces"</find>
+<replace>"在所有工作区中可见"</replace>
+<find>"Install method:"</find>
+<replace>"安装方法:"</replace>
+<find>"schtasks\(recommanded\)"</find>
+<replace>"schtasks\(推荐\)"</replace>
