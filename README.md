@@ -5,7 +5,7 @@
 
 效果图
 
-[![photo](https://github.com/ender-zhao/Clash-for-Windows_Chinese/blob/main/image/Image_Clash-for-Windows_Chinese-0.20.9.png?raw=true)](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/)
+[![photo](https://github.com/ender-zhao/Clash-for-Windows_Chinese/blob/main/image/Image_Clash-for-Windows_Chinese-0.20.10.png?raw=true)](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/)
 
 支持的clash版本: 
 
@@ -20,7 +20,8 @@
 [0.20.6](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.6_CN),
 [0.20.7](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.7_CN),
 [0.20.8](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.8_CN),
-[0.20.9](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.9_CN)
+[0.20.9](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.9_CN),
+[0.20.10](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.10_CN)
 
 <details><summary>下载前你需要知晓的内容:</summary>
 
@@ -52,11 +53,17 @@
           app.asar\node_modules\moment\locale\zh-cn.js
     封包方式
       安装程序的封包程序:
-        简易封包工具_3.2.0.1.exe
+        简易封包工具_3.2.0.1.exe (已被淘汰)
+        Inno Setup Compiler
+          下载链接:
+            https://jrsoftware.org/isdl.php
       .7z扩展名的封包程序:
-        7-zip
+        7-zip (已弃用)
         下载链接:
           https://7-zip.org/
+        NanaZip
+        下载链接:
+          In the Microsoft Store
     --------------------------
     important!
     -------------------------
@@ -85,6 +92,8 @@ http://o.okjiasu.com/auth/register?code=6666
 [前往原版Clash下载界面](https://github.com/Fndroid/clash_for_windows_pkg/releases)
 
 #### 能够解压7z格式的软件
+
+[NanaZip](https://github.com/M2Team/NanaZip) *(兼容Windows11)*
 
 [7-Zip](https://www.7-zip.org/)
 
