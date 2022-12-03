@@ -11,12 +11,8 @@
 
 [0.15.3](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.15.3_CN-V4)
 ~
-[0.20.0](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.0_CN)
+[0.20.5](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.5_CN)
 
-[0.20.2](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.2_CN),
-[0.20.3](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.3_CN),
-[0.20.4](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.4_CN),
-[0.20.5](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.5_CN),
 [0.20.6](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.6_CN),
 [0.20.7](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.7_CN),
 [0.20.8](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.8_CN),
