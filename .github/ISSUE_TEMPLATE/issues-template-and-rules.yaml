@@ -1,7 +1,5 @@
 name: Issues Release Rule
 description: 通过这个模板发布你的问题
-assignees:
-  - octocat
 body:
   - type: markdown
     attributes:
