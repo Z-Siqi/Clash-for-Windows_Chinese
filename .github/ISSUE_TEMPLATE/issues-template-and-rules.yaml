@@ -1,0 +1,28 @@
+name: Bug Report
+description: File a bug report
+title: ""
+assignees:
+  - octocat
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请遵循模板发布问题
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 你的问题/建议/想说的内容是什么?
+      description: 你可以写任何内容，但严禁包含任何敏感内容，广告
+    validations:
+      required: true
+  - type: dropdown
+    id: version
+    attributes:
+      label: Version
+      description: 这个问题/建议发生在哪个版本? 如果问题不关于Clash for Windwos请选择其它
+      options:
+        - 最新的
+        - 不是最新的
+        - 其它
+    validations:
+      required: true
