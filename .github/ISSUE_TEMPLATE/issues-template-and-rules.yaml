@@ -12,6 +12,7 @@ body:
     attributes:
       label: 你的问题/建议/想说的内容是什么?
       description: 你可以写任何内容，但严禁包含任何敏感内容，广告
+      value: "发布问题前，先看看主页中的 `下载前你需要知晓的内容:`"
     validations:
       required: true
   - type: textarea
