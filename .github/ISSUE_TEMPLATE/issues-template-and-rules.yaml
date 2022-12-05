@@ -1,5 +1,5 @@
-name: Bug Report
-description: File a bug report
+name: Issues Release Rule
+description: 通过这个模板发布你的问题
 assignees:
   - octocat
 body:
@@ -14,14 +14,11 @@ body:
       description: 你可以写任何内容，但严禁包含任何敏感内容，广告
     validations:
       required: true
-  - type: dropdown
+  - type: textarea
     id: version
     attributes:
-      label: Version
-      description: 这个问题/建议发生在哪个版本? 如果问题不关于Clash for Windwos请选择其它
-      options:
-        - 最新的
-        - 不是最新的
-        - 其它
+      label: 版本
+      description: 这个问题/建议发生在哪个版本?
+      value: "no-version"
     validations:
       required: true
