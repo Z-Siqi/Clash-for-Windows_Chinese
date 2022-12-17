@@ -1048,7 +1048,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>e._v\("不要更改它"</replace>
 <find>" change it if you do not know what it is</find>
 <replace>" , 除非你知道它是什么</replace>
-<find>"Allow unsafe URLs"</find>
+<find>"Allow Unsafe URLs"</find>
 <replace>"允许不安全的 URL"</replace>
 <find>,e._v\("."\)]</find>
 <replace>,e._v\("内"\)]</replace>
