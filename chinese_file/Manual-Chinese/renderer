@@ -1,734 +1,1606 @@
+# renderer.js
+
 ("OK")
 ("确定")
+
 "Text"
 "文本"
+
 title:"Error"
 title:"错误"
+
 "Install","Uninstall"
 "安装","卸载"
+
 "Name"
 "名字"
+
 "Save"
 "保存"
+
 "Cancel"
 "取消"
+
  Cancel
  取消
+
   Add
   添加
+
 "Loading
 "正在加载
+
 "Quit"
 "退出"
+
 "Add"
 "添加"
+
 "Error"
 "错误"
+
 "Restarting core
 "重新启动核心
+
 "No proxy group in this profile"
 "此配置文件中没有代理组"
+
 "Connection Info"
 "连接信息"
+
 "Clash is running in the background","Enjoy your free time
 "Clash 正在后台运行","享受您的自由时间
+
 "fail to update profile with url
 "无法使用 url 更新配置资料
+
 "Profile update failed"
 "配置资料更新失败"
+
 "Profile had been downloaded successfully
 "配置资料已成功下载
+
 "app exiting, turn off system proxy"
 "应用退出, 关闭系统代理"
+
 http server failed to start with error
 http 服务器因错误而无法启动
+
 http server started at
 http服务器开始于
+
 first luanch, creating
 首次发布, 创建
+
 app start with mode
 应用程序以模式开始
+
 fail to load general config
 无法加载常规 config
+
 yaml with error
 yaml 并出现错误
+
 load data from general
 从一般加载数据
+
 title:"General"
 title:"主页"
+
 "Proxies"
 "代理"
+
 "Profiles"
 "配置"
+
 title:"Logs"
 title:"日志"
+
 "Connections"
 "连接"
-"Settings"
-"设置"
+
 title:"Feedback"
 title:"关于"
+
 "Providers"
 "提供"
-Stop Sortingn
-停止排序n
+
+Stop Sorting\n
+停止排序\n
+
 "Connected"
 "已连接"
+
 "Disconnected"
 "未连接"
+
 "You are awesome"
 "当前版本是最新的"
+
 "The current version is up to date
 "当前汉化版本也是最新的
+
 "Update installed successfully, do you want to restart the APP
 "更新安装成功，要重启APP吗
+
 "Package downloaded successfully, do you want to execute it
 "原版包下载成功，要执行吗
+
 "Port"
 "端口"
+
 title:"Change Mixed Port"
 title:"更改混合端口"
+
 name:"New Port"
 name:"新端口"
+
 "Allow LAN"
 "允许局域网"
+
 "Log Level"
 "日志级别"
+
 "Clash Core"
 "Clash 核心版本"
+
 "Home Directory"
 "主目录"
+
 "UWP Loopback"
 "UWP 应用联网限制解除工具"
+
 "TAP Device"
-"虚拟网卡安装"
+"虚拟网卡安装（TAP 模式）"
+
 "Service Mode"
 "服务模式"
+
 "Mixin"
-"混淆"
+"混合配置"
+
 "System Proxy"
 "系统代理"
+
 Mixin allows you to overwrite the original configuration file
 Mixin允许您覆盖原始配置文件
+
 "Start with Windows"
 "开机自启动"
+
 "Drag to sort or add to the list on the right
 "拖动以排序或添加到右侧列表中
+
  Manage
  管理
+
 "You need to reinstall the TAP device after you change these fields
 "更改这些字段后，您需要重新安装虚拟网卡
+
 "TAP device management"
 "虚拟网卡设置管理"
+
 An adapter named "
 名为 "
+
 will route your data into clash
 的适配器会将您的数据路由到Clash中
+
 If the installation box pops up
 如果弹出安装框
+
 keep clicking "Next"
 请继续单击"下一步", 
+
 until the installation is complete
 直到安装完成
+
 "Service management"
 "服务管理"
+
 "It might take a while
 "这可能需要一段时间
+
 The APP will be relaunched automatically
 该APP将自动重新启动
+
 Current status: "
 当前状态: "
+
 "Inactive":"Active"
 "未安装":"已安装"
+
 "IP Address"
 "IP地址"
+
 "Subnet Mask"
 "子网掩码"
+
 "Default Gateway"
 "默认网关"
+
 "Success","cfw-tap device had been installed"
 "成功","cfw-tap 已安装"
+
 "Failed","counld not install cfw-tap device
 "失败","无法安装 cfw-tap
+
 "Success","cfw-tap device had been removed"
 "成功","cfw-tap 已被移除"
+
 "Failed","counld not remove cfw-tap device
 "失败", "无法移除 cfw-tap
+
 "Commands have been copied to Clipboad
 "命令已复制到剪贴板
+
 "Check"
 "测试"
+
 " ms":"Timeout"
 " ms":"超时"
+
 "Timeout"
 "超时"
+
 "Download from a URL"
 "从URL下载"
-"refresh"
-"更新"
+
 "Error!"
 "错误!"
+
 "Downloading"
 "下载中"
+
 "Success!":"Download"
 "成功!":"下载"
+
 "Update All"
 "更新全部"
+
  Update All
  更新全部
+
 "Import"
 "导入"
-"edit"
-"编辑"
+
 "edit policies"
 "修改规则"
+
 "edit rules"
 "编辑规则"
+
 "duplicate profile"
 "复制配置文件"
+
  Scheme
  跳转方案
+
 "matching parsers"
 "匹配解析器"
-"settings"
-"设置"
+
 text:"Delete"
 text:"删除"
+
 "Edit profile information"
 "编辑配置信息"
+
 title:"Copy profile"
 title:"复制配置文件"
+
 "Update Interval (hour)"
 "更新间隔(小时)"
+
 "Top 100 matching rules
 "前100个匹配规则
+
 "fiter by keywords"
 "按关键字过滤"
+
 "Local file already exist
 "本地文件已存在
+
 Are you sure to delete 
 您确定要删除 
+
 "Yes","No"
 "是","否"
+
 "Close the editing file to Save
 "关闭编辑文件以保存
+
 to import
 导入
+
 switch a profile
 切换配置文件
+
 "Request Logs"
 "请求日志"
+
 "Stop":"Start"
 "暂停":"开始"
+
 "Empty log list"
 "空日志列表"
+
 "Refresh your browser to make requests
 "刷新浏览器以发出请求
+
 "Clear"
 "清除"
- Connections
+
+  Connections
  连接
-type:"text",placeholder:"search"
+
+type:"text",placeholder:"Search"
 type:"文本",placeholder:"搜索"
+
 "Resume":"Pause"
 "恢复":"暂停"
+
 "Total
 "总共
+
 "Upload Speed","Download Speed"
 "上传速度","下载速度"
+
 "Upload Traffic","Download Traffic","Time"
 "上传流量","下载流量","时间"
+
  Close All
  全部关闭
+
 "Start Time"
 "开始时间"
+
 Chains:
 模式:
+
 Rule:""
 规则:""
+
 Destination:
 目的地:
+
 Source:""
 来源:""
+
 Traffic:
 流量:
-Network:
-网络:
+
+,Network:
+,网络:
+
 Host:
 主机:
+
 "Special Proxies"
 "特殊代理"
+
 "Proxy Groups"
 "代理组"
+
 "Reset All Settings"
 "重置所有设置"
+
 "Warning",content:"Are you sure to reset all settings
 "警告",content:"您确定要重设所有设置吗
+
 "Appearance"
 "外观"
+
 "Settings Editor"
 "配置编辑器"
+
 "Notifications"
 "向系统通知栏发送相关信息"
+
 "Silent Start"
 "开启Clash时默认缩小到任务栏"
+
 "Random Controller Port"
 "随机占用端口"
+
 "Lightweight Mode"
 "轻量模式"
+
 "Run Time Format"
 "运行时间格式"
+
 "GUI Log Folder"
 "GUI日志文件夹"
+
 "Open"
 "打开"
+
 "Theme"
 "主题"
+
 "Light","Dark","国庆中秋","Cyberpunk"
 "明亮","深色","国庆中秋","赛博朋克"
+
 "Follow System Theme"
 "遵循系统主题"
+
 "Font Family"
 "字体系列"
+
 Use System Emoji
 使用系统表情符号
+
 "Default Icon Path"
 "自定义状态栏图标"
+
 "System Proxy On Icon Path"
 "状态栏图标上的系统代理"
+
 ico) asset path
 ico) 路径
+
 "Enhanced Tray"
 "悬浮窗"
+
 "Text to display in tray"
 "要显示在悬浮窗中的文本"
+
 "Script")
 "脚本")
+
 text:"Select"
 text:"选择"
+
 "Transparent"
 "透明"
+
 "foreground color"
 "前景色"
+
 "Script to run"
 "要运行的脚本"
+
 "Show New Version Icon"
 "有新版本时提醒"
+
 "Type"
 "类型"
+
 "Bypass Domain
 "绕过域
+
 "Specify Protocol"
 "指定协议"
+
 "Static Host"
 "静态主机"
+
 "Profile Mixin"
 "配置文件 Mixin"
+
 text:"Edit"
 text:"编辑"
+
 "Proxy Item Width"
 "代理项目宽度"
+
 "Mini List Width"
 "策略组导航器宽度"
+
 "Order By"
 "自定义节点排序"
+
 "Default","Latency","Alphabet"
 "默认","延迟","字母"
+
 "Latency Test URL"
 "延迟测试网址"
+
 "Latency Test Timeout"
 "延迟测试超时"
+
 "Show Filter"
 "显示筛选过滤器"
+
 "Hide Unselectable Group"
 "隐藏无法选择的代理组"
+
 "Break When Proxy Change"
 "代理更改时中断连接"
+
 "None","Chain","All"
-"不中断","链接","所有"
+"不中断","旧链接","所有"
+
 "Break When Profile Change"
 "配置文件更改时中断连接"
+
 "Break When Mode Change"
 "模式更改时中断连接"
+
 "Display Chain Type"
 "显示链接类型"
+
 "Proxy","Group","Both"
 "节点名","分组名","全部"
+
 "Outbound"
 "选择流量出接口"
+
 "Interface Name"
 "接口名称"
+
 "Detected:
 "侦测到:
+
 "Child Processes"
 "子进程"
+
 "Processes"
 "启动其他应用"
+
 "Parsers"
 "配置文件预处理"
+
 "Console Output"
 "控制台输出"
+
 "Open File"
 "打开文件"
+
 "Folder Path"
 "资料夹路径"
+
 "Request Headers"
 "自定义请求头"
+
 "Select After Updated"
 "更新后选择"
+
  Force Quit
  强制退出
+
  Reset 
  重启 
+
 "Profiles folder path"
 "配置文件文件夹路径"
+
 "Open terminal with proxy set up"
 "打开终端并设置代理"
+
 "Health Check All"
 "检查全部连接"
+
 "Proxy Providers"
 "代理提供者"
+
 "Choose outbound interface"
 "选择出接口"
+
 "only works when TAP mode enabled"
 "仅在启用TAP模式时有效"
+
 "Docs"
-"文件"
+"在线文档"
+
 "Change Log Level"
-"更改日志级别"
+"更改日志收集级别"
+
  Open Folder
  打开文件夹
+
  Launch Helper
  启动助手
+
 "Shortcuts"
 "快捷键"
+
 "Global Mode"
 "全局模式"
+
 "Rule Mode"
 "规则模式"
+
 Direct Mode
 直连模式
+
 "Script Mode"
 "脚本模式"
+
 "Show connections"
 "显示连接"
+
 Show/Hide Dashboard"
 显示/隐藏仪表板"
+
 "Run Tray Script"
 "运行纸盘脚本"
+
  Press Enter to stop
  按 Enter 停止
+
 "Record"
 "点击以录制热键"
+
 "Developer"
 "作者"
+
 "Relevance"
 "关于"
+
 "Credits"
 "鸣谢"
+
 "Advertisement"
 "广告"
+
 "Image is on the way"
 "图片正在加载"
+
 "Document"
 "帮助文档"
+
 "Update Interval must be an integer"
 "更新间隔必须是整数"
+
 "Input a new file name"
 "输入一个新的文件名"
+
 "Remove":"Include"
 "删除":"包括"
+
 "Edit Parsers","OK"
 "编辑解析器","确认"
+
 "Download profile
 "下载资料
+
 failed with error: HTTP Response Status Code
 失败，错误：HTTP 响应状态代码
+
 "updated":"installed"
 "已更新":"已安装"
+
  Service Mode to control system proxy
  用于控制系统代理的服务模式
+
 "Update":"Install"," Now"
 "更新":"安装"," 现在"
+
 "Select a terminal"
 "选择一个终端"
+
  Go to
  前往
+
 message:"unknow error"
 message:"未知错误"
+
 update failed(Network Error)
 更新失败(网络错误)
+
 "Could not switch to this profile
 "无法切换到此配置文件
+
 "Download GeoIP database failed with error
 "下载 GeoIP 数据库失败并出现错误
+
 "Input fields are alternative"
 "输入字段是替代的"
+
 "Update GeoIP database
 "更新 GeoIP 数据库
+
 "Updating GeoIP database is not allowed in CFW, please do it manually
 "CFW 不允许更新 GeoIP 数据库，请手动进行
+
 "Copy proxy setting commands"
 "复制代理设置命令"
+
 "Copy Command"
 "复制命令"
+
 "global","rule","direct","script"
 "全局","规则","直连","脚本"
+
 scroll to selected proxy
 移动到选定的代理
+
 "test latency"
 "测试延迟"
+
 "show or hide proxies"
 "显示或隐藏代理"
+
 "Update","Download","Copy URL","取消"
 "更新(原版)","下载(原版)","复制URL(原版)","取消"
-items:n});case 4
-items:["静默","错误","警告","信息","调试"],});case 4
+
+items:n});case 4:return
+items:["静默","错误","警告","信息","调试"],});case 4:return
+
 e._s(e.logLevel)
 ("silent"==e._s(e.logLevel)?"静默":"error"==e._s(e.logLevel)?"错误":"warning"== e._s(e.logLevel)?"警告":"info"== e._s(e.logLevel)?"信息":"debug"==e._s(e.logLevel)?"调试":e._s(e.logLevel))
-return l()(t).
-return l()(t).locale('zh-cn').
+
 fromNow()
 locale('zh-cn').fromNow()
+
 return this.mode===e.
 "全局"==e?e="global":"规则"==e?e="rule":"直连"==e?e="direct":"脚本"==e&&(e="script");return this.mode===e.
+
 switchMode:function(e){var t=this;return o
 switchMode:function(e){"全局"==e?e="global":"规则"==e?e="rule":"直连"==e?e="direct":"脚本"==e&&(e="script");var t=this;return o
+
 "Install","Remove","Customize"
 "安装","卸载","定制"
+
 interfaceName||"Select"
 interfaceName||"选择"
+
 "Image not found"
-"找不到图片.但希望你能给汉化clash的我捐赠!"
+"找不到图片!"
+
 this.isRecording?"recording
 this.isRecording?"记录中
+
 message:"silent will prevent .log file to generate on next startup",
-message: "静默:&nbsp;&nbsp;&nbsp;下次启动时不再生成.log文件<br/>错误:&nbsp;&nbsp;&nbsp;记录错误和异常信息到.log文件<br/>警告:&nbsp;&nbsp;&nbsp;记录错误，异常和警告信息到.log文件<br/>信息:&nbsp;&nbsp;&nbsp;记录运行时的信息到.log文件<br/>调试:&nbsp;&nbsp;&nbsp;记录一切运行时产生的信息(通常用于开发<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;者调试，诊断问题)",
+message:"静默将阻止 .log 文件在下次启动时生成, 而调试将收集所有运行信息至 .log 文件",
+
 "https://github.com/Fndroid/clash_for_windows_pkg"
 "https://github.com/ender-zhao/Clash-for-Windows_Chinese-Attached"
+
 e._v("mode: "+e._s(e.mode))
 e._v("模式: "+("global"==e._s(e.mode)?"全局":"rule"==e._s(e.mode)?"规则":"direct"==e._s(e.mode)?"直连":"script"==e._s(e.mode)?"脚本":e._s(e.mode)))
+
 Restarting core
 重启内核
+
 ":"Updating
 ":"更新中
+
 UpdateTime="Updating
 UpdateTime="更新中
+
 e._v("Loading
 e._v("加载中
+
 return this.isRecording?"recording
 return this.isRecording?"记录中
+
 CMD with proxy
 终端和代理
+
 =hide
 =隐藏
+
 could not update provider
 无法更新提供者
+
 DHCP Server
 DHCP 服务器
+
 Local IP Address
 本地 IP 地址
-Configuration
-配置
+
+"Configuration"
+"配置"
+
 Do you want to restart the APP
 是否要重启APP
+
 "Restart"
 "重新启动"
+
 clash core startup failed
 clash核心启动失败
+
 restore proxy group 
 恢复代理组 
+
 netsh interface show interface
 netsh 界面 显示界面
+
 TUN mode enable but no interface-name in this YAML
 启用 TUN 模式但此 YAML 中没有接口名称
+
 Could not edit proxy gorup type
 无法编辑代理组类型
+
 "Server"
 "服务器"
+
 PAC Content
 PAC内容
+
 Script Interval
 脚本间隔
+
 Automatic Upgrade
 自动升级
+
 Try to repair
 尝试修复
+
 Logs Folder
 日志文件夹
-Home Directory
-主目录
+
+"Home Directory"
+"主目录"
+
 "Errors"
 "错误"
+
 Stop Sorting
 停止排序
+
 Proxy or Policy
 代理或策略
+
   Content
   内容
+
 Create a new rule
 创建新规则
+
 Skip Cert Verify
 跳过证书验证
+
 Script Interval
 脚本间隔
+
 "Automatic Upgrade"
 "自动升级"
+
 Automatic Upgrade completed
 自动升级完成
+
 make diff
 制作diff
+
 You can make some changes to a profile then we merge them for you when you refresh the profile
 你可以对配置文件进行一些更改，然后会在你更新配置文件时为你合并它们
+
 Init diff files
 初始化 diff 文件
-Delete diff files","Make changes
-删除 diff 文件","修改文件
+
+"Delete diff files"
+"删除 diff 文件"
+
 Update provider
 更新提供者
+
 Update Cron 
 更新定时程序Cron 
+
 matching parsers
 个匹配解析器
+
 Found 
 找到 
+
 "Update",
 "更新",
+
 "Show in folder"
 "打开文件所在位置"
+
 "TAP device"
-"虚拟网卡安装"
+"虚拟网卡安装（TAP 模式）"
+
 "Rules"
 "规则"
+
 "QRCode",
 "二维码",
+
 text:"Copy"
 text:"复制"
+
 text:"Reorder"
 text:"重新排序"
+
 hint:"update"
 hint:"更新"
+
 "Show:"
 "显示:"
+
 "Hide:"
 "隐藏:"
+
 IPNet"
 网络"
+
 Run script
 运行脚本
+
 "Actions"
 "操作(Actions)"
+
 "General"
 "主页"
+
 "Scripts"
 "脚本"
+
 "Custom"
 "自定义"
+
 "section-general"
 "section-主页"
+
 "section-appearance"
 "section-外观"
+
 "section-system-proxy"
 "section-系统代理"
+
 "section-profile-mixin"
 "section-配置文件-mixin"
+
 "section-proxies"
 "section-代理"
+
 "section-connections"
 "section-连接"
+
 "section-outbound"
 "section-选择流量出接口"
+
 "section-child-processes"
 "section-子进程"
+
 "section-profiles"
 "section-配置"
+
 "section-actions"
 "section-操作(actions)"
+
 "section-shortcuts"
 "section-快捷键"
+
 Hide Tray Icon
 隐藏托盘图标
+
 Custom Editor Command
 自定义编辑器命令
+
 hint:"Update"
 hint:"更新"
+
 "Scroll to selected proxy"
 "移动到选定的代理"
+
 "Test latency"
 "测试延迟"
+
 "Show or hide proxies"
 "显示或隐藏代理"
+
 "TUN Mode"
 "TUN 模式"
+
 To enable this mode, please install Service Mode first
-要启用此模式，请先安装服务模式
+类似于虚拟网卡，启用后可代理所有应用。要启用此模式，请先安装服务模式
+
 "TUN Mode Settings"
 "TUN 模式设置"
+
 Fallback DNS Servers
 后备 DNS 服务器
+
 "Fake IP Filter"
 "Fake IP过滤器"
+
 "TUN Stack"
 "TUN 码(TUN Stack)"
+
 "Auto Detect Interface"
 "自动检测接口"
+
 "DNS Servers"
 "DNS 服务器"
+
 v("Abort"
 v("中止"
+
 Edit Mixin content
 编辑 Mixin 内容
+
 Fake IP Cache
 Fake IP 缓存
+
 title:"Cache"
 title:"缓存"
-return c()(t).
-return c()(t).locale('zh-cn').
+
 switchMode:function(e){var t=this;return s
 switchMode:function(e){"全局"==e?e="global":"规则"==e?e="rule":"直连"==e?e="direct":"脚本"==e&&(e="script");var t=this;return s
+
 "Reset"
 "重置"
+
 DNS Hijacks
 DNS 劫持
+
 "Use CFW Editor"
 "使用 CFW 编辑器"
+
 "Cannot edit in read-only editor"
 "无法在只读编辑器中编辑(请在右边进行编辑)"
-items:i});case 4
-items:["静默","错误","警告","信息","调试"],});case 4
+
+items:i});case 4:return
+items:["静默","错误","警告","信息","调试"],});case 4:return
+
 "Start with Linux"
 "开机自启动"
+
 "Start with macOS"
 "开机自启动"
+
 "GeoIP Database"
 "GeoIP 数据库更新"
+
 "Preload"
 "预载"
+
 "lines"
 "线程"
+
 hint:"ESC"
 hint:"退出(ESC)"
+
 "Ctrl+S"
 "保存(Ctrl+S)"
+
 "Experimental Features"
 "实验功能"
+
 "Select a interface"
 "选择一个接口"
+
 " had been released"
-" 已经被释放"
+" 已发布"
+
 "Copy Commands Only"
 "仅复制命令"
+
 "Please confirm"
 "请确认"
+
 "config.yaml and country.mmdb will be removed."
 "config.yaml 和 country.mmdb 将被删除."
+
 title:"Router"
 title:"路由器"
+
  diff files
  diff 文件
+
 "OK","Edit in Text Mode"
 "好的","在文本模式下编辑"
+
 "upgrade app failed with error
 "升级应用程序失败并出现错误
+
 "Headers"
 "标头"
+
+from(this.now,!0
+locale('zh-cn').from(this.now
+
+Changes contains conflict, "Make changes" to solve issues.
+更改包含冲突, "修改(diff)文件" 以解决问题
+
+"Manage"
+"管理"
+
+  Document
+  帮助文档
+
+"Make changes"
+"修改文件"
+
+Fail to merge profiles, "Make changes" to solve issues.
+无法合并配置文件, "修改(diff)文件" 以解决问题
+
+"Edit externally"
+"在系统中编辑"
+
+"Scroll to group"
+"移动至组"
+
+"Are you sure to quit
+"你确定要退出吗
+
+"Don't Save"
+"不保存"
+
+"Do you want to save the changes
+"是否要保存更改
+
+"fail to restore last profile with error
+"无法恢复最后一个配置文件并出现错误
+
+'Fail to merge profiles,
+'无法合并配置文件,
+
+ to solve issues
+ 以解决问题
+
+"TAP mode enable but no interface-name in this YAML"
+"TAP 模式启用, 但此 YAML 中没有接口名称"
+
+Do you want to set a new uuidv4 secret in
+是否要在
+
+and restart the APP
+中设置新的uuidv4 secret并重启 APP
+
+"Core Secret"
+"核心Secret"
+
+secret is currently empty, we strongly recommend to generate one
+secret 当前为空，我们强烈建议生成一个
+
+"Security"
+"安全"
+
+"Generate":"Update"
+"生成更新":"更新"
+
+"Process Path"
+"进程路径"
+
+"Random Mixed Port"
+"随机混合端口"
+
+hint:"random mixed port"
+hint:"随机混合端口"
+
+"run as admin"
+"以管理员身份运行"
+
+"Overall foreground color. This color is only used if not overridden by a component
+"整体前景色。这个颜色只在没有被组件覆盖的情况下使用
+
+"Overall foreground color for error messages. This color is only used if not overridden by a component
+"错误信息的整体前景色。这个颜色只在没有被组件覆盖的情况下使用
+
+"Color needs a value"
+"颜色需要一个值"
+
+"Invalid color ctor argument"
+"无效颜色参数"
+
+"Proxy Name"
+"代理名称"
+
+"Could not edit proxy type
+"无法编辑代理类型
+
+"Clash Core Service started by Clash for Windows"
+"用于 Clash 代理开机自启的服务"
+
+"Tray Proxy Groups Style"
+"托盘代理组样式"
+
+"Default","Submenu","Hidden"
+"默认","折叠","隐蔽"
+
+hint:"Edit"
+hint:"编辑"
+
+text:"Settings"
+text:"设置"
+
+title:"Settings"
+title:"设置"
+
+e._v("Settings"
+e._v("设置"
+
+hint:"Settings"
+hint:"设置"
+
+e._v("Network Interfaces"
+e._v("网络端口"
+
+hint:"Network interfaces"
+hint:"网络端口"
+
+hint:"terminal"
+hint:"终端"
+
+"Show Process If Present"
+"显示进程（如果存在）"
+
+"Show Tray Proxy Delay Indicator"
+"在托盘代理中显示节点可用性"
+
+"add firewall rules
+"添加防火墙规则
+
+for Allow LAN and system stack
+允许 LAN 和系统堆栈
+
+items:["info","debug"]
+items:["信息","调试"]
+
+"Update"
+"更新"
+
+"connected":"disconnected"
+"已连接":"断开连接"
+
+Copy Domain:Port
+复制域:端口
+
+"Reload APP"
+"重新加载APP"
+
+"Fail to "
+"未能"
+
+()," service"
+(),"服务模式"
+
+  Set Clash Core's
+  将 Clash Core 的
+
+" to a random RFC
+" 设置为随机的 RFC
+
+  4122 version 4 UUID, so that Clash REST API cannot be accessed
+  4122 版本 4 UUID，这样 Clash REST API 就不能被任意访问。
+
+  arbitrarily. 
+   
+
+"The value is stored in the
+"该值存储在于
+
+"Text editor used by Settings."
+"设置使用的文本编辑器"
+
+e._v("For\\n  
+e._v("对于\\n  
+
+", the command should only return control
+", 该命令只应在编辑文件关闭后返回控制权。
+
+  after the edited file is closed. For example:
+  例如:
+
+Set whether to allow pop-up system-level notifications
+设置是否允许弹出系统级通知
+
+Set whether to display dashboard at startup
+设置是否在启动时显示仪表板
+
+Set whether to update automatically, after turning on the new
+设置是否自动更新，
+
+version will be updated in the background, the next launch will be
+开启新版本后后台更新，
+
+the latest version
+下次启动为最新版本
+
+Set whether to hide the taskbar icon or not
+设置是否隐藏任务栏图标
+
+Set whether the delay indicator is displayed in the proxy of the
+设置是否在任务栏菜单的代理中
+
+taskbar menu"
+显示延迟指示器"
+
+Set whether to enable custom taskbar
+设置是否启用自定义任务栏
+
+ hover window
+ 悬停窗口
+
+"Turn on to forcibly add scheme to the system proxy settings."
+"打开以强制将方案添加到系统代理设置"
+
+  This is not for general-purpose use, and indeed violates the
+  这不是通用用途,
+
+  current spec of Windows. Consider it only when an old Python
+  并且确实违反了当前的 Windows 规范.
+
+  program has trouble."
+  仅在使用旧的 Python 时才考虑它."
+
+For details, see
+有关详细信息，请参阅
+
+Set whether to close all connections when switching modes
+设置切换模式时是否关闭所有连接
+
+Set whether the profile is selected after updating
+设置是否在更新后选择已更新的配置文件
+
+"Turn on to terminate app processes after closing the dashboard,
+"关闭仪表板后打开以终止应用程序进程,
+
+  but keep Clash Core running in the background. Most of the
+  但保持 Clash Core 在后台运行。
+
+  features provided by CFW will be unavailable then.
+  届时，CFW 提供的大部分功能将不可用
+
+"Relies on the "
+"依赖"
+
+e._v("docs"
+e._v("帮助文档"
+
+Set the taskbar icon in the default state
+将任务栏图标设置为默认状态
+
+Set the taskbar icon when the System Proxy is turned on
+设置系统代理开启时的任务栏图标
+
+"Modify and customize your profiles after download but before
+"在下载后修改和自定义你的配置，在
+
+"Diff")]),e._v(".
+"Diff")]),e._v("开始之前
+
+Set the code to be called when the Action is executed
+设置执行Action时要调用的代码
+
+Set child processes to be spawned with dashboard
+设置要使用仪表板生成的子进程
+
+"Turn on to generate a new proxy server port number when the app
+"打开应用程序启动时生成新的代理服务器端口号。
+
+  starts."
+  "
+
+"The value is shown as Port in General, and is
+"该值在 General 中显示为 Port，
+
+  stored as
+  并存储为
+
+   in the\\n
+   在\\n
+
+Set whether to use a random port as the core controller port (the
+设置是否使用随机端口作为核心控制器端口 (
+
+port section of external-controller in Home
+Home Directory/config.yaml中external-controller
+
+    Directory/config.ymal
+    的端口部分
+
+Set whether to hide unselectable proxy groups in the Proxies
+设置是否隐藏代理模块中不可选择的代理组
+
+Set whether to show Process Name(if present) in Connections
+设置是否显示连接中的进程名称（如果存在） 
+
+"br"),e._v("Set
+"br"),e._v("
+
+  the individual profile request header content in the Profiles
+  在 Profiles 模块中设置单独的配置文件请求头内容
+
+  module")
+  ")
+
+    profiles
+    
+
+Set whether to close all connections when switching
+设置配置文件改变时是否关闭所有连接
+
+e._v("Drag"
+e._v(""
+
+  to control.
+ 
+
+icons between "show" and "hide"
+在“显示”和“隐藏”之间拖动图标来控制"
+
+Set the proxy group style in the taskbar menu
+在任务栏菜单中设置代理组样式
+
+e._v("Default"
+e._v("默认"
+
+Flat all proxy groups
+扁平化所有代理组
+
+e._v("Submenu"
+e._v("折叠"
+
+Show proxy groups in submenu
+在折叠中显示代理组
+
+e._v("Hidden"
+e._v("隐藏"
+
+Hide proxy groups
+隐藏代理组
+
+"Windows accepts an HTTP endpoint or PAC (proxy
+"Windows 接受 HTTP 端点或 PAC
+
+  auto-configuration) script. The HTTP mode is generally
+  （代理自动配置）脚本。
+
+  sufficient."
+  HTTP 模式通常就足够了。"
+
+Set the type of chain displayed in the Connections module
+设置连接模块中显示的链类型
+
+in Connections
+ 
+
+Set the system proxy Host part to static content, if not set, the
+将系统代理主机部分设置为静态内容, 如果没有设置,
+
+host defaults to
+主机默认为
+
+Set the display width of each proxy in the Proxies module
+在代理界面中设置每个节点的显示宽度
+
+Set the width of the minilist in the Proxies module
+设置代理界面导航栏宽度
+
+Set the URL used when clicking the Delay Test button in the
+设置在代理模块中单击延迟测试按钮时使用的 URL
+
+  Proxies module
+ 
+
+Set the Proxies module to display the keyword filter icon or
+设置代理模块是否显示关键字过滤器图标
+
+  not
+ 
+
+Set the strategy for closing connections when switching proxies\\n              in the Proxies module
+在代理模块中设置切换代理时关闭连接的策略
+
+e._v("None"
+e._v("不中断"
+
+Do not close
+不关闭任何链接
+
+e._v("Chain"
+e._v("旧链接"
+
+Close connections with proxy name in chain
+关闭与链中代理名称的连接
+
+e._v("All"
+e._v("全部"
+
+Close all connections
+关闭所有连接
+
+"Bypass (don't use) the proxy server when visiting certain\\n            addresses.
+"访问某些地址时绕过（不使用）代理服务器。
+
+The interpretation of this list is OS-dependent and app-dependent.\\n            In other words, your operating systems and applications may\\n            evaluate the rules differently.
+此列表的解释取决于操作系统和应用程序. 换句话说，您的操作系统和应用程序可能会以不同的方式评估规则
+
+"Use a proxy server in Windows
+"在 Windows 中使用代理服务器
+
+"Enter proxy server settings on Mac"
+"在 Mac 上输入代理服务器设置"
+
+Set interface name to overwrite like Mixin, will be removed in
+像 Mixin 一样设置接口名覆盖，以后会移除
+
+  the future
+ 
+
+  Docs
+  在线文档
+
+Set the path to the profiles folder, default
+设置配置文件文件夹的路径，默认
+
+e._v("Proxy"
+e._v("节点名"
+
+" - Proxy name"
+""
+
+e._v("Group"
+e._v("分组名"
+
+" - Group name"
+""
+
+e._v("Both"
+e._v("全部"
+
+Proxy name and group name"
+节点名和分组名"
+
+Set the request header content when updating a profile
+更新配置文件时设置请求标头内容
+
+Set the number of log lines to be preloaded in the Logs module,
+在 Logs 模块中设置要预加载的日志行数,
+
+  set to 0 to not preload"
+  设置为 0 不预加载"
+
+  colors:
+  颜色:
+
+  - available
+  - 可用的
+
+  - timeout
+  - 超时
+
+  - unknown
+  - 未知
+
+e._v("Alive"
+e._v("活动"
+
+e._v("Closed"
+e._v("关闭"
+
+,"DNS Mode"
+,"DNS 模式"
+
+  Set the URLs that do not verify the certificate when requesting
+  设置请求时不验证证书的URL
+
+  Do "
+   "
+
+e._v("not"
+e._v("不要更改它"
+
+" change it if you do not know what it is
+" , 除非你知道它是什么
+
+"Allow Unsafe URLs"
+"允许不安全的 URL"
+
+,e._v(".")]
+,e._v("内")]
+
+ Clash documentation
+Clash文档
+
+"Preview the final configuration file that was submitted to Clash Core"
+"预览提交给 Clash Core 的最终配置文件"
+
+hint:"Esc"
+hint:"退出"
+
+"Use Mode Icons"
+"使用连接模式图标"
+
+"Use first letter of current mode as tray icon"
+"使用当前选择的模式作为托盘图标"
+
+"Visible On All Workspaces"
+"在所有工作区中可见"
+
+"Install method:"
+"安装方法:"
+
+"schtasks(recommanded)"
+"schtasks(推荐)"
+
+"scroll to view more"
+"scroll to view more"
