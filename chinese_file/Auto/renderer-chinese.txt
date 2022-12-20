@@ -1069,4 +1069,4 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>"schtasks\(recommanded\)"</find>
 <replace>"schtasks\(推荐\)"</replace>
 <find>"scroll to view more"</find>
-<replace>"scroll to view more"</replace>
+<replace>"滑动鼠标以查看更多"</replace>
