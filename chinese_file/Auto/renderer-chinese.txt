@@ -1066,7 +1066,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"在所有工作区中可见"</replace>
 <find>"Install method:"</find>
 <replace>"安装方法:"</replace>
-<find>"schtasks\(recommanded\)"</find>
+<find>"schtasks\(recommended\)"</find>
 <replace>"schtasks\(推荐\)"</replace>
 <find>"scroll to view more"</find>
 <replace>"滑动鼠标以查看更多"</replace>
