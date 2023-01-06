@@ -7,7 +7,7 @@
 #define MyAppVersion "0.20.10"
 
 #define MyAppPublisher "Clash for Windows"
-#define MyAppURL "https://github.com/[users]-zhao/Clash-for-Windows_Chinese"
+#define MyAppURL "https://github.com/ender-zhao/Clash-for-Windows_Chinese"
 #define MyAppExeName "Clash for Windows.exe"
 
 ; Need change
