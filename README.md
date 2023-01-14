@@ -77,7 +77,7 @@
 
 推荐使用OK加速器  优惠码:clash
 
-http://o.okjiasu.com/auth/register?code=6666
+https://zhuri.cc/auth/register?code=6666
 
 购买小火箭、圈X、Google voice👉[神马杂货铺](https://googlevoice.top/)
 
