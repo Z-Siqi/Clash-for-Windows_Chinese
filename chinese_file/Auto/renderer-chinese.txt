@@ -1070,3 +1070,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"schtasks\(推荐\)"</replace>
 <find>"scroll to view more"</find>
 <replace>"滑动鼠标以查看更多"</replace>
+<find>Make changes to a profile then we merge them for you when you refresh it</find>
+<replace>对配置文件进行更改，然后在更新时合并它们</replace>
+<find>l"\>Docs</find>
+<replace>l"\>文档</replace>
