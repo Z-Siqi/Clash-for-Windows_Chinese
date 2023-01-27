@@ -1074,3 +1074,5 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>对配置文件进行更改，然后在更新时合并它们</replace>
 <find>l"\>Docs</find>
 <replace>l"\>文档</replace>
+<find>"Show actual file"</find>
+<replace>"显示实际文件"</replace>
