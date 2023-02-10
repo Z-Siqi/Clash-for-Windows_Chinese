@@ -5,7 +5,7 @@
 
 效果图
 
-[![photo](https://user-images.githubusercontent.com/77391690/215091347-b871ed6c-4cb0-4a81-aec4-1ba4a48aeb04.png?raw=true)](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/)
+[![photo](https://user-images.githubusercontent.com/77391690/218066962-12a10ca6-1c54-4aa5-9d11-6e7241fdad0c.png?raw=true)](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/)
 
 支持的clash版本: 
 
@@ -17,7 +17,8 @@
 [0.20.12](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.12_CN),
 [0.20.13](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.13_CN),
 [0.20.14](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.14_CN),
-[0.20.15](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.15_CN)
+[0.20.15](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.15_CN),
+[0.20.16](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.16_CN)
 
 <details><summary>下载前你需要知晓的内容:</summary>
 
@@ -31,6 +32,8 @@
       3, 修改"app.asar"文件中的"zh-cn.js"
     对Clash for Windows植入的第三方链接:
       1, https://github.com/ender-zhao/Clash-for-Windows_Chinese-Attached
+    对app.asar替换的文件:
+      1, app.asar\dist\electron\static\*
     汉化的方式
       通过Notepad++进行替换 (已被淘汰)
         手动替换用表位置:
