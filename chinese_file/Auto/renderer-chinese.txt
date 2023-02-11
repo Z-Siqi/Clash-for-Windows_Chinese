@@ -987,7 +987,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>e._v\("Chain"</find>
 <replace>e._v\("旧链接"</replace>
 <find>Close connections with proxy name in chain</find>
-<replace>关闭与链中代理名称的连接</replace>
+<replace>中断通过该代理组的连接</replace>
 <find>e._v\("All"</find>
 <replace>e._v\("全部"</replace>
 <find>Close all connections</find>
