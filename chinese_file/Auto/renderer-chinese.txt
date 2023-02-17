@@ -1096,3 +1096,5 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>hint:"目的地"</replace>
 <find>title:"CFW Editor"</find>
 <replace>title:"配置编辑器"</replace>
+<find>"Open web page"</find>
+<replace>"打开配置网站"</replace>
