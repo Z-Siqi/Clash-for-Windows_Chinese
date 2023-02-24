@@ -1098,3 +1098,13 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>title:"配置编辑器"</replace>
 <find>"Open web page"</find>
 <replace>"打开配置网站"</replace>
+<find>"DNS Query"</find>
+<replace>"DNS查询"</replace>
+<find>placeholder:"Host"</find>
+<replace>placeholder:"主机（Host）"</replace>
+<find>"Please input domain"</find>
+<replace>"请输入域名"</replace>
+<find>   Lookup</find>
+<replace>   检索</replace>
+<find>"Resolve a host using Clash core"</find>
+<replace>"使用 Clash 核心解析主机"</replace>
