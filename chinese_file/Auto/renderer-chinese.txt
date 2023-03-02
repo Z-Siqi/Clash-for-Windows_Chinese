@@ -248,8 +248,8 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>流量:</replace>
 <find>,Network:</find>
 <replace>,网络:</replace>
-<find>Host:</find>
-<replace>主机:</replace>
+<find>Host:t.host</find>
+<replace>主机:t.host</replace>
 <find>"Special Proxies"</find>
 <replace>"特殊代理"</replace>
 <find>"Proxy Groups"</find>
@@ -802,7 +802,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>hint:"设置"</replace>
 <find>e._v\("Network Interfaces"</find>
 <replace>e._v\("网络端口"</replace>
-<find>hint:"Network interfaces"</find>
+<find>hint:"network interfaces"</find>
 <replace>hint:"网络端口"</replace>
 <find>hint:"terminal"</find>
 <replace>hint:"终端"</replace>
@@ -1107,4 +1107,18 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>   Lookup</find>
 <replace>   检索</replace>
 <find>"Resolve a host using Clash core"</find>
-<replace>"使用 Clash 核心解析主机"</replace>
+<replace>"使用 Clash core 解析 Host"</replace>
+<find>copyLabel","Copy"</find>
+<replace>copyLabel","复制"</replace>
+<find>cutLabel","Cut"</find>
+<replace>cutLabel","剪切"</replace>
+<find>pasteLabel","Paste"</find>
+<replace>pasteLabel","粘贴"</replace>
+<find>e._v\("Status"</find>
+<replace>e._v\("状态"</replace>
+<find>e._v\("Flags"</find>
+<replace>e._v\("标签"</replace>
+<find>   Copy</find>
+<replace>   复制</replace>
+<find>"Could not connect to Clash core, logs are not available."</find>
+<replace>"无法连接到 Clash core 核心，日志不可用"</replace>
