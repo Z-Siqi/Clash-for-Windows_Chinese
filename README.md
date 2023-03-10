@@ -19,7 +19,8 @@
 [0.20.14](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.14_CN),
 [0.20.15](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.15_CN),
 [0.20.16](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.16_CN),
-[0.20.17](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.17_CN)
+[0.20.17](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.17_CN),
+[0.20.18](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.18_CN)
 
 <details><summary>下载前你需要知晓的内容:</summary>
 
