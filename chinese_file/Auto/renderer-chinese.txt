@@ -854,8 +854,8 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>设置是否自动更新，</replace>
 <find>version will be updated in the background, the next launch will be</find>
 <replace>开启新版本后后台更新，</replace>
-<find>the latest version</find>
-<replace>下次启动为最新版本</replace>
+<find>   the latest version</find>
+<replace>   下次启动为最新版本</replace>
 <find>Set whether to hide the taskbar icon or not</find>
 <replace>设置是否隐藏任务栏图标</replace>
 <find>Set whether the delay indicator is displayed in the proxy of the</find>
@@ -1122,3 +1122,45 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>   复制</replace>
 <find>"Could not connect to Clash core, logs are not available."</find>
 <replace>"无法连接到 Clash core 核心，日志不可用"</replace>
+<find>"Test script using by Script mode"</find>
+<replace>"使用脚本模式测试脚本"</replace>
+<find>"Script Test"</find>
+<replace>"脚本测试"</replace>
+<find>e._v\("Network"</find>
+<replace>e._v\("网络"</replace>
+<find>e._v\("DNS Mode"</find>
+<replace>e._v\("DNS模式"</replace>
+<find>e._v\("Host"</find>
+<replace>e._v\("主机"</replace>
+<find>e._v\("Source IP"</find>
+<replace>e._v\("源IP"</replace>
+<find>e._v\("Source Port"</find>
+<replace>e._v\("源端口"</replace>
+<find>e._v\("Destination IP"</find>
+<replace>e._v\("目的地IP"</replace>
+<find>e._v\("Destination Port"</find>
+<replace>e._v\("目的地端口"</replace>
+<find>   Disclaimer Statement</find>
+<replace>   免责声明</replace>
+<find>This software is only intended for the purpose of learning and researching network technology. Users must comply with the laws and regulations in their respective regions and must not use it for illegal purposes. The software will not be held responsible for any actions of the user.</find>
+<replace>本软件仅供学习和研究网络技术之用，用户必须遵守所在地区的法律法规，不得用于非法用途，本软件不对任何人的行为负责。 </replace>
+<find>Users must strictly abide by the laws, regulations, and policies of their own countries/regions when using this software. Any consequences or liabilities resulting from violations of relevant laws, regulations, and policies shall be borne by the user.</find>
+<replace>用户在使用本软件时必须严格遵守所在国家/地区的法律、法规和政策。 因违反有关法律、法规和政策而导致的任何后果或责任由用户自行承担。</replace>
+<find>The software is not responsible for the transmission of content. Therefore, if any problems or consequences arise from the use of this software, the user shall bear all responsibility.</find>
+<replace>本软件不负责传输内容。 因此，如因使用本软件而产生任何问题或后果，由用户自行承担全部责任。</replace>
+<find>If the software violates any laws and regulations of the user's country/region, the user must immediately stop using it and bear the corresponding legal responsibility.</find>
+<replace>如本软件违反用户所在国家/地区的任何法律法规，用户必须立即停止使用并承担相应的法律责任。</replace>
+<find>While using this software, the user acknowledges and agrees that the software cannot guarantee network stability, accuracy, timeliness, and security. The software will not be held responsible for any connection problems or inability to connect caused by network congestion, firewall restrictions, DNS pollution, operator interference, and other reasons.</find>
+<replace>用户在使用本软件时，即承认并同意本软件不能保证网络的稳定性、准确性、及时性和安全性。 因网络拥塞、防火墙限制、DNS污染、运营商干扰等原因造成的连接问题或无法连接，本软件不承担任何责任。</replace>
+<find>The software does not provide technical support and is not responsible for any direct or indirect losses caused by the user's use of this software, including but not limited to property damage, data loss, and other forms of loss.</find>
+<replace>本软件不提供技术支持，对因用户使用本软件而造成的任何直接或间接损失，包括但不限于财产损失、数据丢失及其他形式的损失不承担任何责任。</replace>
+<find>The software has made every effort to ensure the stability and safety of the software, but will not be held responsible for any direct or indirect losses suffered by the user due to the use of this software.</find>
+<replace>本软件已尽力确保软件的稳定性和安全性，但对用户因使用本软件而遭受的任何直接或间接损失不承担任何责任。</replace>
+<find>The software reserves the right to change the terms and conditions at any time. Once the terms and conditions change, an announcement will be posted on the software page. Users need to pay attention and abide by the latest version of the terms and conditions.</find>
+<replace>软件保留随时更改条款和条件的权利。 一旦条款和条件发生变化，将在软件页面上发布公告。 用户需关注并遵守最新版本的条款和条件。</replace>
+<find>" success, path: "</find>
+<replace>" 成功, 路径: "</replace>
+<find>"Success, result: "</find>
+<replace>"成功, 结果: "</replace>
+<find>"Fail, error: "</find>
+<replace>"失败, 错误: "</replace>
