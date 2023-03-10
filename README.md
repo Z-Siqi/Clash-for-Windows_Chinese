@@ -5,7 +5,7 @@
 
 效果图
 
-[![photo](https://user-images.githubusercontent.com/77391690/221165352-6c8535d5-49a7-4cc2-8e75-6c0b19368492.png?raw=true)](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/)
+[![photo](https://user-images.githubusercontent.com/77391690/224289768-297b93da-9946-443f-96d9-12e609c00d2f.png?raw=true)](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/)
 
 支持的clash版本: 
 
