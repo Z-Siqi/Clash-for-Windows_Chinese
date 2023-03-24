@@ -1164,3 +1164,17 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"成功, 结果: "</replace>
 <find>"Fail, error: "</find>
 <replace>"失败, 错误: "</replace>
+<find>" - Delay of a latency test"</find>
+<replace>" - 延迟测试的延迟"</replace>
+<find>e._v\("Mean Delay"</find>
+<replace>e._v\("平均延迟"</replace>
+<find>" - Average delay of two latency tests"</find>
+<replace>" - 两次延迟测试的平均延迟"</replace>
+<find>"Default","Mean Delay"</find>
+<replace>"默认","平均延迟"</replace>
+<find>"Delay Type"</find>
+<replace>"延迟类型"</replace>
+<find>"Reset DNS Settings"</find>
+<replace>"重置 DNS 设置"</replace>
+<find>e._v\("Custom Servers"</find>
+<replace>e._v\("自定义服务器"</replace>
