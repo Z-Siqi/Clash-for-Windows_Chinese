@@ -5,24 +5,20 @@
 
 效果图
 
-[![photo](https://user-images.githubusercontent.com/77391690/230595558-badc3ebc-883c-4ec5-b756-cb9c11fad727.png?raw=true)](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/)
+[![photo](https://user-images.githubusercontent.com/77391690/231955341-9f68defb-57df-4129-af70-a57bf76a1624.png?raw=true)](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/)
 
 支持的clash版本: 
 
 [0.15.3](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.15.3_CN-V4)
 ~
-[0.20.10](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.10_CN)
+[0.20.15](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.15_CN)
 
-[0.20.11](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.11_CN),
-[0.20.12](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.12_CN),
-[0.20.13](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.13_CN),
-[0.20.14](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.14_CN),
-[0.20.15](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.15_CN),
 [0.20.16](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.16_CN),
 [0.20.17](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.17_CN),
 [0.20.18](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.18_CN),
 [0.20.19](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.19_CN),
-[0.20.20](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.20_CN)
+[0.20.20](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.20_CN),
+[0.20.21](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.21_CN)
 
 <details><summary>下载前你需要知晓的内容:</summary>
 
@@ -104,7 +100,7 @@ https://zhuri.cc/auth/register?code=6666
 
 [前往下载机场引流推广版 (去广告和更新检测)](https://github.com/ender-zhao/CFW-custom-made)
 
-[前往原版Clash下载界面](https://github.com/Fndroid/clash_for_windows_pkg/releases)
+[前往原版Clash for Windows下载界面](https://github.com/Fndroid/clash_for_windows_pkg/releases)
 
 #### 能够解压7z格式的软件
 
