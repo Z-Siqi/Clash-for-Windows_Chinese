@@ -1,25 +1,25 @@
-# Clash for Windows Chinese<img src="https://github.com/ender-zhao/Clash-for-Windows_Chinese/blob/main/image/image_clash.png?raw=true" width="30" height="30">
+# Clash for Windows Chinese<img src="https://github.com/Z-Siqi/Clash-for-Windows_Chinese/blob/main/image/image_clash.png?raw=true" width="30" height="30">
 ### Clash 汉化版
 
 **提供clash for windows的汉化版, 汉化补丁以及汉化版Clash安装程序**
 
 效果图
 
-[![photo](https://user-images.githubusercontent.com/77391690/235102037-0bb1204e-3693-4dcd-a3b6-d8c61a3a9b7d.png?raw=true)](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/)
+[![photo](https://user-images.githubusercontent.com/77391690/235102037-0bb1204e-3693-4dcd-a3b6-d8c61a3a9b7d.png?raw=true)](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/)
 
 支持的clash版本: 
 
-[0.15.3](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.15.3_CN-V4)
+[0.15.3](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.15.3_CN-V4)
 ~
-[0.20.15](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.15_CN)
+[0.20.15](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.15_CN)
 
-[0.20.16](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.16_CN),
-[0.20.17](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.17_CN),
-[0.20.18](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.18_CN),
-[0.20.19](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.19_CN),
-[0.20.20](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.20_CN),
-[0.20.21](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.21_CN),
-[0.20.22](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.22_CN)
+[0.20.16](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.16_CN),
+[0.20.17](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.17_CN),
+[0.20.18](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.18_CN),
+[0.20.19](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.19_CN),
+[0.20.20](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.20_CN),
+[0.20.21](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.21_CN),
+[0.20.22](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.22_CN)
 
 <details><summary>下载前你需要知晓的内容:</summary>
 
@@ -32,7 +32,7 @@
       2, 修改"app.asar"文件中的"main.js"
       3, 修改"app.asar"文件中的"zh-cn.js"
     对Clash for Windows植入的第三方链接:
-      1, https://github.com/ender-zhao/Clash-for-Windows_Chinese-Attached
+      1, https://github.com/Z-Siqi/Clash-for-Windows_Chinese-Attached
     对app.asar替换的文件:
       1, app.asar\dist\electron\static\*
     汉化的方式
@@ -97,9 +97,9 @@ https://zhuri.cc/auth/register?code=6666
 
 ***
 ### 快速导航
-[前往汉化下载界面](https://github.com/ender-zhao/Clash-for-Windows_Chinese/releases)
+[前往汉化下载界面](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases)
 
-[前往下载机场引流推广版 (去广告和更新检测)](https://github.com/ender-zhao/CFW-custom-made)
+[前往下载机场引流推广版 (去广告和更新检测)](https://github.com/Z-Siqi/CFW-custom-made)
 
 [前往原版Clash for Windows下载界面](https://github.com/Fndroid/clash_for_windows_pkg/releases)
 
