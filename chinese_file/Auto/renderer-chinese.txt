@@ -1007,7 +1007,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>  Docs</find>
 <replace>  在线文档</replace>
 <find>Set the path to the profiles folder, default</find>
-<replace>设置配置文件文件夹的路径，默认</replace>
+<replace>设置配置文件文件夹的路径，如果在CFW软件根目录下创建名为 data 的文件夹则会开启便携模式，默认路径</replace>
 <find>e._v\("Proxy"</find>
 <replace>e._v\("节点名"</replace>
 <find>" - Proxy name"</find>
@@ -1178,3 +1178,21 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"重置 DNS 设置"</replace>
 <find>e._v\("Custom Servers"</find>
 <replace>e._v\("自定义服务器"</replace>
+<find>"Show/Hide timed-out proxies"</find>
+<replace>"显示/隐藏超时节点"</replace>
+<find>"GUI Data Folder"</find>
+<replace>"GUI 数据文件夹"</replace>
+<find>"Controls whether the diff editor shows the diff side by side or inline."</find>
+<replace>"控制 diff 编辑器是并排还是内联显示 diff"</replace>
+<find>"Side by side mode"</find>
+<replace>"并排模式"</replace>
+<find>"Timeout in milliseconds after which diff computation is cancelled. Use 0 for no timeout.</find>
+<replace>"以毫秒为单位的超时，之后差异计算被取消。 使用 0 表示没有超时</replace>
+<find>"Maximum file size in MB for which to compute diffs. Use 0 for no limit."</find>
+<replace>"计算差异的最大文件大小（以 MB 为单位）。 使用 0 表示没有限制"</replace>
+<find>"SSID Strategy"</find>
+<replace>"SSID策略"</replace>
+<find>  Set the strategy for SSID matching, the first matched strategy</find>
+<replace>  设置SSID匹配策略，先匹配策略</replace>
+<find>"Experimental Features"</find>
+<replace>"实验功能"</replace>
