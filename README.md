@@ -6,21 +6,18 @@
 效果图
 
 [![photo](https://user-images.githubusercontent.com/77391690/235102037-0bb1204e-3693-4dcd-a3b6-d8c61a3a9b7d.png?raw=true)](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/)
+> 效果图的版本可能不是当前最新的
 
 支持的clash版本: 
 
 [0.15.3](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.15.3_CN-V4)
 ~
-[0.20.15](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.15_CN)
+[0.20.20](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.20_CN)
 
-[0.20.16](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.16_CN),
-[0.20.17](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.17_CN),
-[0.20.18](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.18_CN),
-[0.20.19](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.19_CN),
-[0.20.20](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.20_CN),
 [0.20.21](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.21_CN),
 [0.20.22](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.22_CN),
-[0.20.23](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.23_CN)
+[0.20.23](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.23_CN),
+[0.20.24](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.24_CN)
 
 <details><summary>下载前你需要知晓的内容:</summary>
 
