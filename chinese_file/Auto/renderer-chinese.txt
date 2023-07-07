@@ -95,7 +95,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>"Log Level"</find>
 <replace>"日志级别"</replace>
 <find>"Clash Core"</find>
-<replace>"Clash 核心版本"</replace>
+<replace>"Clash 内核"</replace>
 <find>"Home Directory"</find>
 <replace>"主目录"</replace>
 <find>"UWP Loopback"</find>
@@ -479,7 +479,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>items:n}\);case 4:return</find>
 <replace>items:["静默","错误","警告","信息","调试"],}\);case 4:return</replace>
 <find>e._s\(e.logLevel\)</find>
-<replace>\("silent"==e._s\(e.logLevel\)?"静默":"error"==e._s\(e.logLevel\)?"错误":"warning"== e._s\(e.logLevel\)?"警告":"info"== e._s\(e.logLevel\)?"信息":"debug"==e._s\(e.logLevel\)?"调试":e._s\(e.logLevel\)\)</replace>
+<replace>\("silent"==e._s\(e.logLevel\)?"静默":"error"==e._s\(e.logLevel\)?"错误":"warn"== e._s\(e.logLevel\)?"警告":"warning"== e._s\(e.logLevel\)?"警告":"info"== e._s\(e.logLevel\)?"信息":"debug"==e._s\(e.logLevel\)?"调试":e._s\(e.logLevel\)\)</replace>
 <find>fromNow\(\)</find>
 <replace>locale\('zh-cn'\).fromNow\(\)</replace>
 <find>return this.mode===e.</find>
@@ -497,7 +497,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>message:"silent will prevent .log file to generate on next startup",</find>
 <replace>message:"静默将阻止 .log 文件在下次启动时生成, 而调试将收集所有运行信息至 .log 文件",</replace>
 <find>"https://github.com/Fndroid/clash_for_windows_pkg"</find>
-<replace>"https://github.com/ender-zhao/Clash-for-Windows_Chinese-Attached"</replace>
+<replace>"https://github.com/Z-Siqi/Clash-for-Windows_Chinese-Attached"</replace>
 <find>e._v\("mode: "\+e._s\(e.mode\)\)</find>
 <replace>e._v\("模式: "+\("global"==e._s\(e.mode\)?"全局":"rule"==e._s\(e.mode\)?"规则":"direct"==e._s\(e.mode\)?"直连":"script"==e._s\(e.mode\)?"脚本":e._s\(e.mode\)\)\)</replace>
 <find>Restarting core</find>
@@ -1192,7 +1192,43 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"计算差异的最大文件大小（以 MB 为单位）。 使用 0 表示没有限制"</replace>
 <find>"SSID Strategy"</find>
 <replace>"SSID策略"</replace>
-<find>  Set the strategy for SSID matching, the first matched strategy</find>
-<replace>  设置SSID匹配策略，先匹配策略</replace>
+<find>  Set the strategy for SSID matching, the first matched strategy\\n              will be used</find>
+<replace>  设置SSID匹配策略，第一个匹配的策略\\n              将被使用</replace>
 <find>"Experimental Features"</find>
 <replace>"实验功能"</replace>
+<find>"Toggle Replace"</find>
+<replace>"切换到替换模式"</replace>
+<find>"label.find","Find"</find>
+<replace>"label.find","查找"</replace>
+<find>"placeholder.find","Find"</find>
+<replace>"placeholder.find","查找"</replace>
+<find>"Previous Match"</find>
+<replace>"上一个匹配"</replace>
+<find>"Next Match"</find>
+<replace>"下一个匹配"</replace>
+<find>"Find in Selection"</find>
+<replace>"在选择中查找"</replace>
+<find>"label.closeButton","Close"</find>
+<replace>"label.closeButton","关闭"</replace>
+<find>.replace","Replace"</find>
+<replace>.replace","替换"</replace>
+<find>"label.replaceButton","Replace"</find>
+<replace>"label.replaceButton","替换"</replace>
+<find>"label.replaceAllButton","Replace All"</find>
+<replace>"label.replaceAllButton","替换全部"</replace>
+<find>"Only the first {0} results are highlighted, but all find operations work on the entire text."</find>
+<replace>"仅突出显示前 {0} 个结果，但所有查找操作都适用于整个文本"</replace>
+<find>"Text will be prefixed with ⇅ plus a single space, then used as a hint where input field keeps history"</find>
+<replace>"文本将以 ⇅ 加上一个空格作为前缀，然后用作输入字段保留历史记录的提示"</replace>
+<find>,"for history"</find>
+<replace>,"查看历史记录"</replace>
+<find>"No results"</find>
+<replace>"无结果"</replace>
+<find>"Match Case"</find>
+<replace>"匹配大小写"</replace>
+<find>"Match Whole Word"</find>
+<replace>"匹配全词"</replace>
+<find>"Use Regular Expression"</find>
+<replace>"使用正则表达式"</replace>
+<find>"Preserve Case"</find>
+<replace>"保留大写"</replace>
