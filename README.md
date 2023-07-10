@@ -23,11 +23,15 @@
 [0.20.27](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.27_CN),
 [0.20.28](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.28_CN)
 
-<details><summary>下载前你需要知晓的内容:</summary>
+**<details><summary>下载前你需要知晓的内容:</summary>**
 
   **下载将代表你对以下内容无任何异议**
 
-*这个库提供的Clash for Windows是修改过的*
+**非官方版本，Unofficial！** 
+
+*简单来说，这个库提供的Clash for Windows是修改过的，请在向原版Clash for Windows反馈漏洞前先更换回原版*
+
+**修改的方式/内容大致说明列表**
 
     对Clash for Windows进行的修改:
       1, 修改"app.asar"文件中的"renderer.js"
@@ -66,13 +70,21 @@
         NanaZip
         下载链接:
           In the Microsoft Store
-    ------------------------------------------------
-    * important!
+
+**重要内容**
+
+    ----------------------------------------------------
+    * Important, You MUST agree!
+    * 此项目不为中国大陆地区提供任何帮助与支持
     * 赞助商的一切内容与该库无关
     * 该库不承担由使用者造成的任何行为
     * 该库的所有内容仅存在于GitHub
     * 此汉化版适用于Clash for Windows免责声明的 1 ~ 6 条
-    ------------------------------------------------
+    ----------------------------------------------------
+
+
+**免责声明**
+
     免责声明如下:
       1. 本软件仅供学习和研究网络技术之用，用户必须遵守所在地区的法律法规，不得用于非法用途，本软件不对任何人的行为负责。 
 
