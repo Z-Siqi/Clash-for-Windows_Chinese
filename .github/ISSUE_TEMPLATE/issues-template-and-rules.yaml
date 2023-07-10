@@ -17,7 +17,7 @@ body:
     id: version
     attributes:
       label: 版本
-      description: 这个问题发生在哪个版本? <br/> 如果是建议，汉化或故障请填写当前最新的版本
+      description: 这个问题发生在哪个版本? <br/> 如果是建议，汉化或故障请填写当前最新的版本号
       placeholder: "no-version"
     validations:
       required: true
