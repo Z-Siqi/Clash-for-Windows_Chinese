@@ -21,7 +21,8 @@
 [0.20.25](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.25_CN),
 [0.20.26](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.26_CN),
 [0.20.27](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.27_CN),
-[0.20.28](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.28_CN)
+[0.20.28](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.28_CN),
+[0.20.29](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.29_CN)
 
 **<details><summary>下载前你需要知晓的内容:</summary>**
 
