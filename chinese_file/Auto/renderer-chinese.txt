@@ -492,6 +492,8 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>interfaceName\|\|"选择"</replace>
 <find>"Image not found"</find>
 <replace>"找不到图片!"</replace>
+<find>"The image failed to load, click to redirect to the website."</find>
+<replace>图片加载失败，点击重定向至网站</replace>
 <find>this.isRecording?"recording</find>
 <replace>this.isRecording?"记录中</replace>
 <find>message:"silent will prevent .log file to generate on next startup",</find>
@@ -1232,3 +1234,21 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>"使用正则表达式"</replace>
 <find>"Preserve Case"</find>
 <replace>"保留大写"</replace>
+<find> failed with error: "</find>
+<replace> 失败，错误: "</replace>
+<find>"Simple","Detailed"</find>
+<replace>"简略","详细"</replace>
+<find>title:"Source IP"</find>
+<replace>title:"源IP"</replace>
+<find>title:"Destination IP"</find>
+<replace>title:"目的地IP"</replace>
+<find>title:"Host"</find>
+<replace>title:"域名"</replace>
+<find>title:"Network"</find>
+<replace>title:"网络"</replace>
+<find>title:"Source Port"</find>
+<replace>title:"源端口"</replace>
+<find>title:"Destination Port"</find>
+<replace>title:"目的地端口"</replace>
+<find>title:"DNS Mode"</find>
+<replace>title:"DNS模式"</replace>
