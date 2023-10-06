@@ -1,11 +1,11 @@
 {
-  "html_url": "https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.36_CN",
-  "tag_name": "0.20.36",
-  "name": "v 0.20.36",
+  "html_url": "https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.38_CN",
+  "tag_name": "0.20.38",
+  "name": "v 0.20.38",
   "assets": [
     {
-      "name": "Clash.for.Windows.Setup.0.20.36.exe",
-      "browser_download_url": "https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/download/CFW-V0.20.36_CN/Clash.for.Windows.Setup.0.20.36.exe"
+      "name": "Clash.for.Windows.Setup.0.20.38.exe",
+      "browser_download_url": "https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/download/CFW-V0.20.36_CN/Clash.for.Windows.Setup.0.20.38.exe"
     }
   ],
   "body": "- **汉化已兼容新版本**",
