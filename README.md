@@ -5,26 +5,21 @@
 
 效果图
 
-[![photo](https://user-images.githubusercontent.com/77391690/235102037-0bb1204e-3693-4dcd-a3b6-d8c61a3a9b7d.png?raw=true)](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/)
-> 效果图的版本可能不是当前最新的
+[![photo](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/assets/77391690/cbc8698c-7e3c-4ff2-b2ed-4bccae1e6251?raw=true)](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/)
+> 效果图的版本可能不是当前最新兼容的
 
-支持的clash版本: 
+**支持的clash版本:**
 
 [0.15.3](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.15.3_CN-V4)
 ~
-[0.20.25](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.25_CN)
+[当前的最新兼容](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/latest)
 
-[0.20.26](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.26_CN),
-[0.20.27](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.27_CN),
-[0.20.28](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.28_CN),
-[0.20.29](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.29_CN),
-[0.20.30](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.30_CN),
-[0.20.31](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.31_CN),
-[0.20.32](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.32_CN),
-[0.20.33](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.33_CN),
-[0.20.34](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.34_CN),
-[0.20.35](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.35_CN),
-[0.20.36](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.36_CN)
+**基本特征&介绍:**
+
+* 使用安装程序(Clash.for.Windows.Setup. ** . ** . ** .exe)安装的汉化版CFW将劫持更新，之后可直接通过应用内置的更新方式进行汉化版/软件更新
+* 使用安装包(Clash.for.Windows- ** . ** . ** -win.7z)请不要在解压时选择解压到当前文件夹，否则软件相关的所有文件将放到当前所在文件夹
+* app.asar需要替换掉对应版本的原版app.asar以完成汉化
+* 使用7z格式压缩包(app.7z)需要先进行解压，然后提取里面的app.asar并替换掉原有文件以完成汉化，即在节省流量
 
 **<details><summary>下载前你需要知晓的内容:</summary>**
 
