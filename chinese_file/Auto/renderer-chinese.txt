@@ -1296,3 +1296,17 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <replace>  多个 SSID 的连接方式为"</replace>
 <find>"Get Current SSID"</find>
 <replace>"获取当前的 SSID"</replace>
+<find>"Current SSID"</find>
+<replace>"当前的 SSID"</replace>
+<find>"Copy the SSID to the clipboard"</find>
+<replace>"将 SSID 复制到剪贴板"</replace>
+<find>"Fetch"</find>
+<replace>"获取"</replace>
+<find>title:"SSID"</find>
+<replace>title:"服务集标识（SSID）"</replace>
+<find>e._v\("mode: "\+e._s\(e.mode\)\)</find>
+<replace>e._v\("模式: "+\("global"==e._s\(e.mode\)?"全局":"rule"==e._s\(e.mode\)?"规则":"direct"==e._s\(e.mode\)?"直连":"script"==e._s\(e.mode\)?"脚本":e._s\(e.mode\)\)\)</replace>
+<find>"Check For Updates"</find>
+<replace>"检查更新"</replace>
+<find>" Set whether to check for updates every 6 hours"</find>
+<replace>" 设置是否每6小时检查一次更新"</replace>
