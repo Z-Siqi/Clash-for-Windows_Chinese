@@ -2,6 +2,8 @@
 
 
 ***
+### CFW线上文档副本：[Wiki](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/wiki)
+***
 
 # Clash for Windows Chinese<img src="https://github.com/Z-Siqi/Clash-for-Windows_Chinese/blob/main/image/image_clash.png?raw=true" width="30" height="30">
 ### Clash 汉化版
@@ -10,8 +12,7 @@
 
 效果图
 
-[![photo](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/assets/77391690/cbc8698c-7e3c-4ff2-b2ed-4bccae1e6251?raw=true)](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/)
-> 效果图的版本可能不是当前最新兼容的
+[![photo](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/assets/77391690/78f7a8fd-925f-47bd-861f-deaba0a0a4ee)](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/)
 
 **支持的clash版本:**
 
