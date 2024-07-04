@@ -104,6 +104,10 @@
 </details>
 
 *** 
+### 讨论/Discussions
+
+**[参与或发起讨论](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/discussions)**
+***
 
 #### 赞助商的广告
 
