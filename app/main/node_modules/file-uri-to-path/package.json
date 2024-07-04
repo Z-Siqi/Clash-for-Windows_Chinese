@@ -1,0 +1,20 @@
+{
+  "name": "file-uri-to-path",
+  "version": "1.0.0",
+  "description": "Convert a file: URI to a file path",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "directories": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/TooTallNate/file-uri-to-path.git"
+  },
+  "author": "Nathan Rajlich <nathan@tootallnate.net> (http://n8.io/)",
+  "license": "MIT",
+  "homepage": "https://github.com/TooTallNate/file-uri-to-path",
+  "devDependencies": {
+    "mocha": "3"
+  }
+}

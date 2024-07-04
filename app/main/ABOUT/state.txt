@@ -1,0 +1,17 @@
+Disclaimer Statement
+1. This software is only intended for the purpose of learning and researching network technology. Users must comply with the laws and regulations in their respective regions and must not use it for illegal purposes. The software will not be held responsible for any actions of the user.
+
+2. Users must strictly abide by the laws, regulations, and policies of their own countries/regions when using this software. Any consequences or liabilities resulting from violations of relevant laws, regulations, and policies shall be borne by the user.
+
+3. The software is not responsible for the transmission of content. Therefore, if any problems or consequences arise from the use of this software, the user shall bear all responsibility.
+
+4. If the software violates any laws and regulations of the user's country/region, the user must immediately stop using it and bear the corresponding legal responsibility.
+
+5. While using this software, the user acknowledges and agrees that the software cannot guarantee network stability, accuracy, timeliness, and security. The software will not be held responsible for any connection problems or inability to connect caused by network congestion, firewall restrictions, DNS pollution, operator interference, and other reasons.
+
+6. The software does not provide technical support and is not responsible for any direct or indirect losses caused by the user's use of this software, including but not limited to property damage, data loss, and other forms of loss.
+
+
+Links
+Official Link: https://github.com/Fndroid/clash_for_windows_pkg
+CFW Chinese version link: https://github.com/Z-Siqi/Clash-for-Windows_Chinese

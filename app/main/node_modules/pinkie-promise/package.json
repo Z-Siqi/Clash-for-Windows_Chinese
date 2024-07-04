@@ -1,0 +1,24 @@
+{
+  "name": "pinkie-promise",
+  "version": "2.0.1",
+  "description": "ES2015 Promise ponyfill",
+  "license": "MIT",
+  "repository": "floatdrop/pinkie-promise",
+  "author": {
+    "name": "Vsevolod Strukchinsky",
+    "email": "floatdrop@gmail.com",
+    "url": "github.com/floatdrop"
+  },
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "files": [
+    "index.js"
+  ],
+  "dependencies": {
+    "pinkie": "^2.0.0"
+  },
+  "devDependencies": {
+    "mocha": "*"
+  }
+}

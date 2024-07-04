@@ -1,0 +1,18 @@
+{
+  "name": "setprototypeof",
+  "version": "1.1.1",
+  "description": "A small polyfill for Object.setprototypeof",
+  "main": "index.js",
+  "typings": "index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wesleytodd/setprototypeof.git"
+  },
+  "author": "Wes Todd",
+  "license": "ISC",
+  "homepage": "https://github.com/wesleytodd/setprototypeof",
+  "devDependencies": {
+    "mocha": "^5.2.0",
+    "standard": "^12.0.1"
+  }
+}

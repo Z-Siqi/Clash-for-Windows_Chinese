@@ -1,0 +1,21 @@
+{
+  "name": "color-convert",
+  "description": "Plain color conversion functions",
+  "version": "1.9.3",
+  "author": "Heather Arthur <fayearthur@gmail.com>",
+  "license": "MIT",
+  "repository": "Qix-/color-convert",
+  "files": [
+    "index.js",
+    "conversions.js",
+    "css-keywords.js",
+    "route.js"
+  ],
+  "devDependencies": {
+    "chalk": "1.1.1",
+    "xo": "0.11.2"
+  },
+  "dependencies": {
+    "color-name": "1.1.3"
+  }
+}

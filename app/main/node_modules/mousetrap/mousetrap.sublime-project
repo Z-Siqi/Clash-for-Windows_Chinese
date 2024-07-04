@@ -1,0 +1,20 @@
+{
+    "settings":
+    {
+        "detect_indentation": true,
+        "ensure_newline_at_eof_on_save": true,
+        "tab_size": 4,
+        "translate_tabs_to_spaces": true,
+        "trim_automatic_white_space": false,
+        "trim_trailing_white_space_on_save": true,
+    },
+    "folders":
+    [
+        {
+            "path": "./",
+            "folder_exclude_patterns": ["bin", "coverage", "node_modules"],
+            "file_exclude_patterns": ["*.sublime-workspace"]
+        }
+    ]
+}
+

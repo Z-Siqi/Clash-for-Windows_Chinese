@@ -1,0 +1,16 @@
+{
+  "name": "inherits",
+  "description": "Browser-friendly inheritance fully compatible with standard node.js inherits()",
+  "version": "2.0.4",
+  "main": "./inherits.js",
+  "browser": "./inherits_browser.js",
+  "repository": "git://github.com/isaacs/inherits",
+  "license": "ISC",
+  "devDependencies": {
+    "tap": "^14.2.4"
+  },
+  "files": [
+    "inherits.js",
+    "inherits_browser.js"
+  ]
+}

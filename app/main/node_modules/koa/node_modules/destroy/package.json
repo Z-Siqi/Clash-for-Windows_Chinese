@@ -1,0 +1,21 @@
+{
+  "name": "destroy",
+  "description": "destroy a stream if possible",
+  "version": "1.0.4",
+  "author": {
+    "name": "Jonathan Ong",
+    "email": "me@jongleberry.com",
+    "url": "http://jongleberry.com",
+    "twitter": "https://twitter.com/jongleberry"
+  },
+  "license": "MIT",
+  "repository": "stream-utils/destroy",
+  "devDependencies": {
+    "istanbul": "0.4.2",
+    "mocha": "2.3.4"
+  },
+  "files": [
+    "index.js",
+    "LICENSE"
+  ]
+}

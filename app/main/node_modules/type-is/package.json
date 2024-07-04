@@ -1,0 +1,30 @@
+{
+  "name": "type-is",
+  "description": "Infer the content-type of a request.",
+  "version": "1.6.18",
+  "license": "MIT",
+  "repository": "jshttp/type-is",
+  "dependencies": {
+    "media-typer": "0.3.0",
+    "mime-types": "~2.1.24"
+  },
+  "devDependencies": {
+    "eslint": "5.16.0",
+    "eslint-config-standard": "12.0.0",
+    "eslint-plugin-import": "2.17.2",
+    "eslint-plugin-markdown": "1.0.0",
+    "eslint-plugin-node": "8.0.1",
+    "eslint-plugin-promise": "4.1.1",
+    "eslint-plugin-standard": "4.0.0",
+    "mocha": "6.1.4",
+    "nyc": "14.0.0"
+  },
+  "engines": {
+    "node": ">= 0.6"
+  },
+  "files": [
+    "LICENSE",
+    "HISTORY.md",
+    "index.js"
+  ]
+}

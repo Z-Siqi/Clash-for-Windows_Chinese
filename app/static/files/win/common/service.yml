@@ -1,0 +1,6 @@
+id: Clash Core Service
+name: Clash Core Service
+description: Clash Core Service started by Clash for Windows
+executable: clash-core-service
+log:
+  mode: none

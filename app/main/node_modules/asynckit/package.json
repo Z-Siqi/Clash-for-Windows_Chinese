@@ -1,0 +1,37 @@
+{
+  "name": "asynckit",
+  "version": "0.4.0",
+  "description": "Minimal async jobs utility library, with streams support",
+  "main": "index.js",
+  "pre-commit": [
+    "clean",
+    "lint",
+    "test",
+    "browser",
+    "report",
+    "size"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alexindigo/asynckit.git"
+  },
+  "author": "Alex Indigo <iam@alexindigo.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/alexindigo/asynckit#readme",
+  "devDependencies": {
+    "browserify": "^13.0.0",
+    "browserify-istanbul": "^2.0.0",
+    "coveralls": "^2.11.9",
+    "eslint": "^2.9.0",
+    "istanbul": "^0.4.3",
+    "obake": "^0.1.2",
+    "phantomjs-prebuilt": "^2.1.7",
+    "pre-commit": "^1.1.3",
+    "reamde": "^1.1.0",
+    "rimraf": "^2.5.2",
+    "size-table": "^0.2.0",
+    "tap-spec": "^4.1.1",
+    "tape": "^4.5.1"
+  },
+  "dependencies": {}
+}

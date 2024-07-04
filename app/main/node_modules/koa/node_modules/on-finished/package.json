@@ -1,0 +1,22 @@
+{
+  "name": "on-finished",
+  "description": "Execute a callback when a request closes, finishes, or errors",
+  "version": "2.3.0",
+  "license": "MIT",
+  "repository": "jshttp/on-finished",
+  "dependencies": {
+    "ee-first": "1.1.1"
+  },
+  "devDependencies": {
+    "istanbul": "0.3.9",
+    "mocha": "2.2.5"
+  },
+  "engines": {
+    "node": ">= 0.8"
+  },
+  "files": [
+    "HISTORY.md",
+    "LICENSE",
+    "index.js"
+  ]
+}

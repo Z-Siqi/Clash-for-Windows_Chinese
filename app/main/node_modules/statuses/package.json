@@ -1,0 +1,30 @@
+{
+  "name": "statuses",
+  "description": "HTTP status utility",
+  "version": "1.5.0",
+  "repository": "jshttp/statuses",
+  "license": "MIT",
+  "files": [
+    "HISTORY.md",
+    "index.js",
+    "codes.json",
+    "LICENSE"
+  ],
+  "devDependencies": {
+    "csv-parse": "1.2.4",
+    "eslint": "4.19.1",
+    "eslint-config-standard": "11.0.0",
+    "eslint-plugin-import": "2.9.0",
+    "eslint-plugin-markdown": "1.0.0-beta.6",
+    "eslint-plugin-node": "6.0.1",
+    "eslint-plugin-promise": "3.7.0",
+    "eslint-plugin-standard": "3.0.1",
+    "istanbul": "0.4.5",
+    "mocha": "1.21.5",
+    "raw-body": "2.3.2",
+    "stream-to-array": "2.3.0"
+  },
+  "engines": {
+    "node": ">= 0.6"
+  }
+}

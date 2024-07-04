@@ -1,0 +1,23 @@
+{
+  "name": "negotiator",
+  "description": "HTTP content negotiation",
+  "version": "0.6.2",
+  "license": "MIT",
+  "repository": "jshttp/negotiator",
+  "devDependencies": {
+    "eslint": "5.16.0",
+    "eslint-plugin-markdown": "1.0.0",
+    "mocha": "6.1.4",
+    "nyc": "14.0.0"
+  },
+  "files": [
+    "lib/",
+    "HISTORY.md",
+    "LICENSE",
+    "index.js",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">= 0.6"
+  }
+}

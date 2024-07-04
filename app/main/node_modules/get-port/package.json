@@ -1,0 +1,26 @@
+{
+  "name": "get-port",
+  "version": "5.1.1",
+  "description": "Get an available port",
+  "license": "MIT",
+  "repository": "sindresorhus/get-port",
+  "funding": "https://github.com/sponsors/sindresorhus",
+  "author": {
+    "name": "Sindre Sorhus",
+    "email": "sindresorhus@gmail.com",
+    "url": "sindresorhus.com"
+  },
+  "engines": {
+    "node": ">=8"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts"
+  ],
+  "devDependencies": {
+    "@types/node": "^12.12.21",
+    "ava": "^2.4.0",
+    "tsd": "^0.11.0",
+    "xo": "^0.25.3"
+  }
+}
