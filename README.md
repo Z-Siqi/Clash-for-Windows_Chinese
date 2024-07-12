@@ -1,4 +1,4 @@
-**The repository was archived (Nov 3, 2023) due to: [README.md](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/blob/main/CFW/README.md)**
+~**The repository was archived (Nov 3, 2023) due to: [README.md](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/blob/main/CFW/README.md)**~
 
 
 ***
@@ -24,8 +24,8 @@
 
 * 使用安装程序(Clash.for.Windows.Setup. ** . ** . ** .exe)安装的汉化版CFW将劫持更新，之后可直接通过应用内置的更新方式进行汉化版/软件更新
 * 使用安装包(Clash.for.Windows- ** . ** . ** -win.7z)请不要在解压时选择解压到当前文件夹，否则软件相关的所有文件将放到当前所在文件夹
-* app.asar需要替换掉对应版本的原版app.asar以完成汉化
-* 使用7z格式压缩包(app.7z)需要先进行解压，然后提取里面的app.asar并替换掉原有文件以完成汉化，即在节省流量
+* ~app.asar需要替换掉对应版本的原版app.asar以完成汉化~
+* ~使用7z格式压缩包(app.7z)需要先进行解压，然后提取里面的app.asar并替换掉原有文件以完成汉化，即在节省流量~
 
 **<details><summary>下载前你需要知晓的内容:</summary>**
 
@@ -121,7 +121,7 @@
 
 [前往下载机场引流推广版 (去广告和更新检测)](https://github.com/Z-Siqi/CFW-custom-made)
 
-[前往原版Clash for Windows下载界面](https://github.com/Fndroid/clash_for_windows_pkg/releases)
+~[前往原版Clash for Windows下载界面](https://github.com/Fndroid/clash_for_windows_pkg/releases)~
 
 #### 能够解压7z格式的软件
 

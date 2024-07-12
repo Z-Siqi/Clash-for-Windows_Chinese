@@ -1036,18 +1036,18 @@
                             case 16:
                                 return queuelen = [
                                     [{
-                                        label: "\u4ee3\u7406\u7ec4",
+                                        label: "\u4ee3\u7406\u7ec4", //代理组
                                         enabled: false
                                     }].concat(t()(samePartsLength)), [{
-                                        label: "\u4ee3\u7406\u7ec4",
+                                        label: "\u4ee3\u7406\u7ec4", //代理组
                                         submenu: samePartsLength
                                     }],
                                     []
                                 ][a.menuStyle || 0], self.abrupt("return", [{
-                                    label: "\u4eea\u8868\u76d8",
+                                    label: "\u4eea\u8868\u76d8", //仪表盘
                                     click: Launch
                                 }, {
-                                    label: "\u8fd0\u884c\u4efb\u52a1\u680f\u811a\u672c",
+                                    label: "\u8fd0\u884c\u4efb\u52a1\u680f\u811a\u672c", //运行任务栏脚本
                                     visible: "linux" !== process.platform,
                                     /**
                                      * @return {?}
@@ -1401,7 +1401,13 @@
                     })), D()
                 }
             })), host.ipcMain.handle("tray-proxies-style", (function(e, t) {
-                a.menuStyle = t
+                if (t === 0) {
+                    a.menuStyle = 1;
+                } else if (t === 1) {
+                    a.menuStyle = 0;
+                } else {
+                    a.menuStyle = 2
+                }
             })), host.ipcMain.handle("tray-proxies-icon", (function(e, t) {
                 a.isShowDelayIcon = t
             })), host.ipcMain.on("mode-changed", (function(e, t) {
