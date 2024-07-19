@@ -1,10 +1,3 @@
-~**The repository was archived (Nov 3, 2023) due to: [README.md](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/blob/main/CFW/README.md)**~
-
-
-***
-### CFW线上文档副本：[Wiki](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/wiki)
-***
-
 # Clash for Windows Chinese<img src="https://github.com/Z-Siqi/Clash-for-Windows_Chinese/blob/main/image/image_clash.png?raw=true" width="30" height="30">
 ### Clash 汉化版
 
@@ -12,7 +5,7 @@
 
 效果图
 
-[![photo](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/assets/77391690/78f7a8fd-925f-47bd-861f-deaba0a0a4ee)](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/)
+[![photo](https://github.com/user-attachments/assets/9df18f14-e7e9-45cf-afad-b75229cd9ee1)](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/)
 
 **支持的clash版本:**
 
@@ -29,13 +22,15 @@
 
 **<details><summary>下载前你需要知晓的内容:</summary>**
 
+~**The repository was archived (Nov 3, 2023) due to: [README.md](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/blob/main/CFW/README.md)**~
+
   **下载将代表你对以下内容无任何异议**
 
 **非官方版本，Unofficial！** 
 
 *简单来说，这个库提供的Clash for Windows是修改过的，请在向原版Clash for Windows反馈漏洞前先更换回原版*
 
-**修改的方式/内容大致说明列表**
+**修改的方式/内容大致说明列表 (可能不适用于 Optimize 版本)**
 
     对Clash for Windows进行的修改:
       1, 修改"app.asar"文件中的"renderer.js"
@@ -74,6 +69,10 @@
         NanaZip
         下载链接:
           In the Microsoft Store
+
+**Optimize (优化) 版本**
+
+源代码：https://github.com/Z-Siqi/Clash-for-Windows_Chinese/tree/main/app
 
 **重要内容**
 
@@ -119,7 +118,7 @@
 ### 快速导航
 [前往汉化下载界面](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases)
 
-[前往下载机场引流推广版 (去广告和更新检测)](https://github.com/Z-Siqi/CFW-custom-made)
+[Clash for Windows 线上文档副本](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/wiki)
 
 ~[前往原版Clash for Windows下载界面](https://github.com/Fndroid/clash_for_windows_pkg/releases)~
 
