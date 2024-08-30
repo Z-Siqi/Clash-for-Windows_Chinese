@@ -110,9 +110,7 @@
 
 #### 赞助商的广告
 
-[推荐使用OK加速器  优惠码:clash](https://zhuri.link/auth/register?code=6666)
-
-购买小火箭、圈X、Google voice👉[神马杂货铺](https://googlevoice.top/)
+> Nothing here :/
 
 ***
 ### 快速导航
