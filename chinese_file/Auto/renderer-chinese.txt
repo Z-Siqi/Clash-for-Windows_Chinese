@@ -1173,7 +1173,7 @@ ignore_case=0,reg_exp=1,cross_line=1,binary_file=0,extract_flag=0,whole_word=0
 <find>"Show/Hide timed-out proxies"</find>
 <replace>"显示/隐藏超时节点"</replace>
 <find>"GUI Data Folder"</find>
-<replace>"GUI 数据文件夹"</replace>
+<replace>"GUI数据文件夹"</replace>
 <find>"Controls whether the diff editor shows the diff side by side or inline."</find>
 <replace>"控制 diff 编辑器是并排还是内联显示 diff"</replace>
 <find>"Side by side mode"</find>
