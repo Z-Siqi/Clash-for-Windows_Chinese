@@ -13,3 +13,5 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           days-before-stale: 14
           days-before-close: 14
+          exempt-issue-labels: 'bug, Put on Hold'
+          close-issue-reason: 'not_planned'
