@@ -35,7 +35,7 @@
     对Clash for Windows进行的修改:
       1, 修改"app.asar"文件中的"renderer.js"
       2, 修改"app.asar"文件中的"main.js"
-      3, 修改"app.asar"文件中的"zh-cn.js"
+      3, 修改"app.asar"文件中的其它内容(具体参见 https://github.com/Z-Siqi/Clash-for-Windows_Chinese/tree/main/app 目录下的所有 .md 文件)
     对Clash for Windows植入的第三方链接:
       1, https://github.com/Z-Siqi/Clash-for-Windows_Chinese-Attached
     对app.asar替换的文件:
@@ -106,11 +106,19 @@
 ### 讨论/Discussions
 
 **[参与或发起讨论](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/discussions)**
+
+### 参与该项目的开发/工作
+*通过提出 Pull Request 将你的维护添加到下一个版本的更新里并成为这个库的共同维护者*
+
+**[这些issues非常需要您的帮助/贡献](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/issues?q=label%3A%22Need+Help%22+)**
+
 ***
 
 #### 赞助商的广告
 
 > Nothing here :/
+> 
+> (广告位出租中, 提issue详谈)
 
 ***
 ### 快速导航
