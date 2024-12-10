@@ -119,7 +119,7 @@
 [![ads](https://github.com/user-attachments/assets/9fd317b9-33c4-493c-b869-67e1cb6a853c)](https://live.cute-cloud.de/register?code=uIyXpA5O)
 
 [[CUTECLOUD](https://live.cute-cloud.de/register?code=uIyXpA5O)] 多年老牌机场，有试用，线路优秀，解锁全面，并提供丰富的共享账户。速度与稳定性很好，Youtube全天8K无压。
-点击此处或图片直达
+[点击此处或图片直达](https://live.cute-cloud.de/register?code=uIyXpA5O)
 
 ***
 ### 快速导航
