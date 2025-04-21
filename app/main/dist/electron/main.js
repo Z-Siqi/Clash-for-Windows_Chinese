@@ -1,3 +1,7 @@
+function language(v, en, cn) {
+    return v === 0 ? cn : v === 1 ? en : en;
+}
+
 (() => {
     var e = {
             228: e => {
@@ -636,8 +640,8 @@
                                 return par = {
                                     type: "error",
                                     title: "Clash for Windows",
-                                    message: "\u4eea\u8868\u677f\u5d29\u6e83\u4e86!",
-                                    buttons: ["Reload", "Exit"]
+                                    message: language(state.language, "Dashboard has crashed!", "\u4eea\u8868\u677f\u5d29\u6e83\u4e86!"),
+                                    buttons: language(state.language, ["Reload", "Exit"], ["重新加载", "退出"])
                                 }, self.next = 7, host.dialog.showMessageBox(g, par);
                             case 7:
                                 if (0 === self.sent.response) {
@@ -912,14 +916,15 @@
                 }))
             }));
             var o;
-            var a = {
+            var state = {
                 systemProxyChecked: false,
                 tunModeChecked: false,
                 mixinChecked: false,
                 isReady: false,
                 menuMode: "",
                 menuStyle: 0,
-                isShowDelayIcon: false
+                isShowDelayIcon: false,
+                language: 0,
             };
             /**
              * @param {string} event
@@ -951,7 +956,7 @@
                     for (;;) {
                         switch (self.prev = self.next) {
                             case 0:
-                                if (samePartsLength = [], self.prev = 1, j() && 2 !== !a.menuStyle) {
+                                if (samePartsLength = [], self.prev = 1, j() && 2 !== !state.menuStyle) {
                                     /** @type {number} */
                                     self.next = 12;
                                     break;
@@ -1004,7 +1009,7 @@
                                                     label: name,
                                                     type: "radio",
                                                     checked: name === id,
-                                                    icon: a.isShowDelayIcon ? me.alive ? u : d : null,
+                                                    icon: state.isShowDelayIcon ? me.alive ? u : d : null,
                                                     /**
                                                      * @return {undefined}
                                                      */
@@ -1036,18 +1041,18 @@
                             case 16:
                                 return queuelen = [
                                     [{
-                                        label: "\u4ee3\u7406\u7ec4", //代理组
+                                        label: language(state.language, "Proxy Groups", "\u4ee3\u7406\u7ec4"), //代理组
                                         enabled: false
                                     }].concat(t()(samePartsLength)), [{
-                                        label: "\u4ee3\u7406\u7ec4", //代理组
+                                        label: language(state.language, "Proxy Groups", "\u4ee3\u7406\u7ec4"), //代理组
                                         submenu: samePartsLength
                                     }],
                                     []
-                                ][a.menuStyle || 0], self.abrupt("return", [{
-                                    label: "\u4eea\u8868\u76d8", //仪表盘
+                                ][state.menuStyle || 0], self.abrupt("return", [{
+                                    label: language(state.language, "Dashboard", "\u4eea\u8868\u76d8"), //仪表盘
                                     click: Launch
                                 }, {
-                                    label: "\u8fd0\u884c\u4efb\u52a1\u680f\u811a\u672c", //运行任务栏脚本
+                                    label: language(state.language, "Run Tray Script", "\u8fd0\u884c\u4efb\u52a1\u680f\u811a\u672c"), //运行任务栏脚本
                                     visible: "linux" !== process.platform,
                                     /**
                                      * @return {?}
@@ -1058,11 +1063,11 @@
                                 }, {
                                     type: "separator"
                                 }, {
-                                    label: "&\u7cfb\u7edf\u4ee3\u7406",
+                                    label: language(state.language, "System Proxy", "&\u7cfb\u7edf\u4ee3\u7406"), //系统代理
                                     type: "checkbox",
                                     id: "system-proxy",
-                                    checked: a.systemProxyChecked,
-                                    enabled: a.isReady,
+                                    checked: state.systemProxyChecked,
+                                    enabled: state.isReady,
                                     visible: "linux" !== process.platform,
                                     /**
                                      * @param {Element} e
@@ -1073,11 +1078,11 @@
                                         g.webContents.send("system-proxy-changed", status);
                                     }
                                 }, {
-                                    label: "TUN \u6a21\u5f0f",
+                                    label: language(state.language, "TUN Mode", "TUN \u6a21\u5f0f"),
                                     type: "checkbox",
                                     id: "tun",
-                                    enabled: a.isReady,
-                                    checked: a.tunModeChecked,
+                                    enabled: state.isReady,
+                                    checked: state.tunModeChecked,
                                     /**
                                      * @param {Element} e
                                      * @return {undefined}
@@ -1087,11 +1092,11 @@
                                         g.webContents.send("tun-changed", status);
                                     }
                                 }, {
-                                    label: "\u6df7\u5408\u914d\u7f6e",
+                                    label: language(state.language, "Mixin", "\u6df7\u5408\u914d\u7f6e"), //混合配置
                                     type: "checkbox",
                                     id: "mixin",
-                                    enabled: a.isReady,
-                                    checked: a.mixinChecked,
+                                    enabled: state.isReady,
+                                    checked: state.mixinChecked,
                                     /**
                                      * @param {Element} e
                                      * @return {undefined}
@@ -1103,15 +1108,15 @@
                                 }, {
                                     type: "separator"
                                 }, {
-                                    label: "\u4ee3\u7406\u6a21\u5f0f",
+                                    label: language(state.language, "Proxy Mode", "\u4ee3\u7406\u6a21\u5f0f"), //代理模式
                                     id: "mode",
                                     enabled: false
                                 }, {
-                                    label: "\u5168\u5c40",
+                                    label: language(state.language, "Global", "\u5168\u5c40"), //Global
                                     type: "radio",
                                     id: "mode-global",
-                                    enabled: a.isReady,
-                                    checked: "global" === a.menuMode,
+                                    enabled: state.isReady,
+                                    checked: "global" === state.menuMode,
                                     /**
                                      * @return {?}
                                      */
@@ -1119,11 +1124,11 @@
                                         return g.webContents.send("mode-changed", "global");
                                     }
                                 }, {
-                                    label: "\u89c4\u5219",
+                                    label: language(state.language, "Rule", "\u89c4\u5219"), //Rule
                                     type: "radio",
                                     id: "mode-rule",
-                                    enabled: a.isReady,
-                                    checked: "rule" === a.menuMode,
+                                    enabled: state.isReady,
+                                    checked: "rule" === state.menuMode,
                                     /**
                                      * @return {?}
                                      */
@@ -1131,11 +1136,11 @@
                                         return g.webContents.send("mode-changed", "rule");
                                     }
                                 }, {
-                                    label: "\u76f4\u8fde",
+                                    label: language(state.language, "Direct", "\u76f4\u8fde"), // Direct
                                     type: "radio",
                                     id: "mode-direct",
-                                    enabled: a.isReady,
-                                    checked: "direct" === a.menuMode,
+                                    enabled: state.isReady,
+                                    checked: "direct" === state.menuMode,
                                     /**
                                      * @return {?}
                                      */
@@ -1143,11 +1148,11 @@
                                         return g.webContents.send("mode-changed", "direct");
                                     }
                                 }, {
-                                    label: "\u811a\u672c",
+                                    label: language(state.language, "Script", "\u811a\u672c"), //Script
                                     type: "radio",
                                     id: "mode-script",
-                                    enabled: a.isReady,
-                                    checked: "script" === a.menuMode,
+                                    enabled: state.isReady,
+                                    checked: "script" === state.menuMode,
                                     /**
                                      * @return {?}
                                      */
@@ -1159,13 +1164,13 @@
                                 }].concat(t()(queuelen), [{
                                     type: "separator"
                                 }, {
-                                    label: "\u8fde\u63a5",
+                                    label: language(state.language, "Connections", "\u8fde\u63a5"), //Connections
                                     id: "connection",
                                     enabled: false
                                 }, {
-                                    label: "\u5173\u95ed\u5168\u90e8",
+                                    label: language(state.language, "Close All", "\u5173\u95ed\u5168\u90e8"), //Close All
                                     type: "normal",
-                                    enabled: a.isReady,
+                                    enabled: state.isReady,
                                     /**
                                      * @return {undefined}
                                      */
@@ -1175,9 +1180,9 @@
                                 }, {
                                     type: "separator"
                                 }, {
-                                    label: "\u66f4\u591a",
+                                    label: language(state.language, "More", "\u66f4\u591a"), //More
                                     submenu: [{
-                                        label: "\u5207\u6362Dev\u5de5\u5177",
+                                        label: language(state.language, "Toggle DevTools", "\u5207\u6362Dev\u5de5\u5177"), //Toggle DevTools
                                         /**
                                          * @return {undefined}
                                          */
@@ -1185,7 +1190,7 @@
                                             g.webContents.toggleDevTools();
                                         }
                                     }, {
-                                        label: "\u5c06\u4eea\u8868\u677f\u79fb\u81f3\u6700\u8fd1\u7684\u663e\u793a\u5668",
+                                        label: language(state.language, "Move Dashboard To Nearest Monitor", "\u5c06\u4eea\u8868\u677f\u79fb\u81f3\u6700\u8fd1\u7684\u663e\u793a\u5668"), //Move Dashboard To Nearest Monitor
                                         /**
                                          * @return {undefined}
                                          */
@@ -1194,7 +1199,7 @@
                                             Launch();
                                         }
                                     }, {
-                                        label: "\u91cd\u542f",
+                                        label: language(state.language, "Restart", "\u91cd\u542f"), //Restart
                                         /**
                                          * @return {undefined}
                                          */
@@ -1206,7 +1211,7 @@
                                             host.app.exit(0);
                                         }
                                     }, {
-                                        label: "\u5f3a\u5236\u9000\u51fa",
+                                        label: language(state.language, "Force Quit", "\u5f3a\u5236\u9000\u51fa"), //Force Quit
                                         /**
                                          * @return {undefined}
                                          */
@@ -1219,7 +1224,7 @@
                                 }, {
                                     type: "separator"
                                 }, {
-                                    label: "\u9000\u51fa",
+                                    label: language(state.language, "Quit", "\u9000\u51fa"), //Quit
                                     /**
                                      * @return {?}
                                      */
@@ -1284,12 +1289,12 @@
                 }
             });
             var O = host.Menu.buildFromTemplate([{
-                label: "仪表盘",
+                label: language(state.language, "Dashboard", "仪表盘"),
                 click: Launch
             }, {
                 type: "separator"
             }, {
-                label: "TUN 模式",
+                label: language(state.language, "TUN Mode", "TUN 模式"),
                 type: "checkbox",
                 id: "tun",
                 enabled: !1,
@@ -1298,7 +1303,7 @@
                     g.webContents.send("tun-changed", t)
                 }
             }, {
-                label: "混合配置",
+                label: language(state.language, "Mixin", "混合配置"),
                 type: "checkbox",
                 id: "mixin",
                 enabled: !1,
@@ -1309,11 +1314,11 @@
             }, {
                 type: "separator"
             }, {
-                label: "代理模式",
+                label: language(state.language, "Proxy Mode", "代理模式"),
                 id: "mode",
                 enabled: !1
             }, {
-                label: "全局",
+                label: language(state.language, "Global", "全局"),
                 type: "radio",
                 id: "mode-global",
                 enabled: !1,
@@ -1321,16 +1326,16 @@
                     return g.webContents.send("mode-changed", "global")
                 }
             }, {
-                label: "规则",
+                label: language(state.language, "Rule", "规则"),
                 type: "radio",
                 id: "mode-rule",
-                enabled: a.isReady,
-                checked: "rule" === a.menuMode,
+                enabled: state.isReady,
+                checked: "rule" === state.menuMode,
                 click: function() {
                     return g.webContents.send("mode-changed", "rule")
                 }
             }, {
-                label: "直连",
+                label: language(state.language, "Direct", "直连"),
                 type: "radio",
                 id: "mode-direct",
                 enabled: !1,
@@ -1338,7 +1343,7 @@
                     return g.webContents.send("mode-changed", "direct")
                 }
             }, {
-                label: "脚本",
+                label: language(state.language, "Script", "脚本"),
                 type: "radio",
                 id: "mode-script",
                 enabled: !1,
@@ -1348,19 +1353,19 @@
             }, {
                 type: "separator"
             }, {
-                label: "更多",
+                label: language(state.language, "More", "更多"),
                 submenu: [{
-                    label: "切换Dev工具",
+                    label: language(state.language, "Toggle DevTools", "切换Dev工具"),
                     click: function() {
                         g.webContents.toggleDevTools()
                     }
                 }, {
-                    label: "将仪表板移至最近的显示器",
+                    label: language(state.language, "Move Dashboard To Nearest Monitor", "将仪表板移至最近的显示器"),
                     click: function() {
                         g.setBounds(B(g.getBounds())), Launch()
                     }
                 }, {
-                    label: "重启",
+                    label: language(state.language, "Restart", "重启"),
                     click: function() {
                         if (g.isMaximized) {
                             g.unmaximize();
@@ -1368,7 +1373,7 @@
                         host.app.relaunch(), host.app.exit(0)
                     }
                 }, {
-                    label: "强制退出",
+                    label: language(state.language, "Force Quit", "强制退出"),
                     click: function() {
                         host.app.isQuiting = !0, host.app.quit()
                     }
@@ -1376,7 +1381,7 @@
             }, {
                 type: "separator"
             }, {
-                label: "退出",
+                label: language(state.language, "Quit", "退出"),
                 click: function() {
                     if (g.isMaximized) {
                         g.unmaximize();
@@ -1389,7 +1394,7 @@
                 j() && toolBar && toolBar.setContextMenu(O)
             }
             D(), host.ipcMain.on("clash-core-status-change", (function(e, t) {
-                if (a.isReady = !0, j()) {
+                if (state.isReady = !0, j()) {
                     var n = O.getMenuItemById("system-proxy");
                     n && (n.enabled = 1 !== t);
                     var r = O.getMenuItemById("mixin");
@@ -1402,29 +1407,31 @@
                 }
             })), host.ipcMain.handle("tray-proxies-style", (function(e, t) {
                 if (t === 0) {
-                    a.menuStyle = 1;
+                    state.menuStyle = 1;
                 } else if (t === 1) {
-                    a.menuStyle = 0;
+                    state.menuStyle = 0;
                 } else {
-                    a.menuStyle = 2
+                    state.menuStyle = 2
                 }
             })), host.ipcMain.handle("tray-proxies-icon", (function(e, t) {
-                a.isShowDelayIcon = t
+                state.isShowDelayIcon = t
             })), host.ipcMain.on("mode-changed", (function(e, t) {
-                if (a.menuMode = t, j()) {
+                if (state.menuMode = t, j()) {
                     var n = "mode-".concat(t),
                         r = O.getMenuItemById(n);
                     r && (r.checked = !0), D()
                 }
+            })), host.ipcMain.handle("cfw-language", (function (e, t) {
+                state.language = t
             })), host.ipcMain.on("system-proxy-changed", (function(e, t) {
-                a.systemProxyChecked = t
+                state.systemProxyChecked = t
             })), host.ipcMain.on("mixin-changed", (function(e, t) {
-                if (a.mixinChecked = t, j()) {
+                if (state.mixinChecked = t, j()) {
                     var n = O.getMenuItemById("mixin");
                     n && (n.checked = t), D()
                 }
             })), host.ipcMain.on("tun-changed", (function(e, t) {
-                if (a.tunModeChecked = t, j()) {
+                if (state.tunModeChecked = t, j()) {
                     var n = O.getMenuItemById("tun");
                     n && (n.checked = t), D()
                 }
