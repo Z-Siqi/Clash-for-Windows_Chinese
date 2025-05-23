@@ -1,13 +1,13 @@
 {
-  "html_url": "https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/CFW-V0.20.39_OPT-1",
+  "html_url": "https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/0.20.39.2",
   "tag_name": "0.20.39.2",
   "assets": [
     {
-      "name": "Clash.for.Windows.Setup.20.39.1.exe",
-      "browser_download_url": "https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/download/CFW-V0.20.39_OPT-1/Clash.for.Windows.Setup.0.20.39_Opt-1.exe"
+      "name": "Clash.for.Windows.Setup.20.39.2.exe",
+      "browser_download_url": "https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/download/0.20.39.2/Clash.for.Windows.Setup.0.20.39_Opt-2.exe"
     }
   ],
-  "body": "- **新版本已发布! 测试中，请忽略该信息!**",
+  "body": "- **新版本已发布!**",
   "reactions": {
   }
 }
