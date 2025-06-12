@@ -1288,13 +1288,13 @@ function language(v, en, cn) {
                     }
                 }
             });
-            var O = host.Menu.buildFromTemplate([{
-                label: language(state.language, "Dashboard", "仪表盘"),
+            var O_CN = host.Menu.buildFromTemplate([{
+                label: "仪表盘",
                 click: Launch
             }, {
                 type: "separator"
             }, {
-                label: language(state.language, "TUN Mode", "TUN 模式"),
+                label: "TUN 模式",
                 type: "checkbox",
                 id: "tun",
                 enabled: !1,
@@ -1303,7 +1303,7 @@ function language(v, en, cn) {
                     g.webContents.send("tun-changed", t)
                 }
             }, {
-                label: language(state.language, "Mixin", "混合配置"),
+                label: "混合配置",
                 type: "checkbox",
                 id: "mixin",
                 enabled: !1,
@@ -1314,11 +1314,11 @@ function language(v, en, cn) {
             }, {
                 type: "separator"
             }, {
-                label: language(state.language, "Proxy Mode", "代理模式"),
+                label: "代理模式",
                 id: "mode",
                 enabled: !1
             }, {
-                label: language(state.language, "Global", "全局"),
+                label: "全局",
                 type: "radio",
                 id: "mode-global",
                 enabled: !1,
@@ -1326,7 +1326,7 @@ function language(v, en, cn) {
                     return g.webContents.send("mode-changed", "global")
                 }
             }, {
-                label: language(state.language, "Rule", "规则"),
+                label: "规则",
                 type: "radio",
                 id: "mode-rule",
                 enabled: state.isReady,
@@ -1335,7 +1335,7 @@ function language(v, en, cn) {
                     return g.webContents.send("mode-changed", "rule")
                 }
             }, {
-                label: language(state.language, "Direct", "直连"),
+                label: "直连",
                 type: "radio",
                 id: "mode-direct",
                 enabled: !1,
@@ -1343,7 +1343,7 @@ function language(v, en, cn) {
                     return g.webContents.send("mode-changed", "direct")
                 }
             }, {
-                label: language(state.language, "Script", "脚本"),
+                label: "脚本",
                 type: "radio",
                 id: "mode-script",
                 enabled: !1,
@@ -1353,19 +1353,19 @@ function language(v, en, cn) {
             }, {
                 type: "separator"
             }, {
-                label: language(state.language, "More", "更多"),
+                label: "更多",
                 submenu: [{
-                    label: language(state.language, "Toggle DevTools", "切换Dev工具"),
+                    label: "切换Dev工具",
                     click: function() {
                         g.webContents.toggleDevTools()
                     }
                 }, {
-                    label: language(state.language, "Move Dashboard To Nearest Monitor", "将仪表板移至最近的显示器"),
+                    label: "将仪表板移至最近的显示器",
                     click: function() {
                         g.setBounds(B(g.getBounds())), Launch()
                     }
                 }, {
-                    label: language(state.language, "Restart", "重启"),
+                    label: "重启",
                     click: function() {
                         if (g.isMaximized) {
                             g.unmaximize();
@@ -1373,7 +1373,7 @@ function language(v, en, cn) {
                         host.app.relaunch(), host.app.exit(0)
                     }
                 }, {
-                    label: language(state.language, "Force Quit", "强制退出"),
+                    label: "强制退出",
                     click: function() {
                         host.app.isQuiting = !0, host.app.quit()
                     }
@@ -1381,8 +1381,110 @@ function language(v, en, cn) {
             }, {
                 type: "separator"
             }, {
-                label: language(state.language, "Quit", "退出"),
+                label: "退出",
                 click: function() {
+                    if (g.isMaximized) {
+                        g.unmaximize();
+                    }
+                    return g.webContents.send("app-exit")
+                }
+                }]);
+
+            var O_EN = host.Menu.buildFromTemplate([{
+                label: "Dashboard",
+                click: Launch
+            }, {
+                type: "separator"
+            }, {
+                label: "TUN Mode",
+                type: "checkbox",
+                id: "tun",
+                enabled: !1,
+                click: function (e) {
+                    var t = e.checked;
+                    g.webContents.send("tun-changed", t)
+                }
+            }, {
+                label: "Mixin",
+                type: "checkbox",
+                id: "mixin",
+                enabled: !1,
+                click: function (e) {
+                    var t = e.checked;
+                    g.webContents.send("mixin-changed", t)
+                }
+            }, {
+                type: "separator"
+            }, {
+                label: "Proxy Mode",
+                id: "mode",
+                enabled: !1
+            }, {
+                label: "Global",
+                type: "radio",
+                id: "mode-global",
+                enabled: !1,
+                click: function () {
+                    return g.webContents.send("mode-changed", "global")
+                }
+            }, {
+                label: "Rule",
+                type: "radio",
+                id: "mode-rule",
+                enabled: state.isReady,
+                checked: "rule" === state.menuMode,
+                click: function () {
+                    return g.webContents.send("mode-changed", "rule")
+                }
+            }, {
+                label: "Direct",
+                type: "radio",
+                id: "mode-direct",
+                enabled: !1,
+                click: function () {
+                    return g.webContents.send("mode-changed", "direct")
+                }
+            }, {
+                label: "Script",
+                type: "radio",
+                id: "mode-script",
+                enabled: !1,
+                click: function () {
+                    return g.webContents.send("mode-changed", "script")
+                }
+            }, {
+                type: "separator"
+            }, {
+                label: "More",
+                submenu: [{
+                    label: "Toggle DevTools",
+                    click: function () {
+                        g.webContents.toggleDevTools()
+                    }
+                }, {
+                    label: "Move Dashboard To Nearest Monitor",
+                    click: function () {
+                        g.setBounds(B(g.getBounds())), Launch()
+                    }
+                }, {
+                    label: "Restart",
+                    click: function () {
+                        if (g.isMaximized) {
+                            g.unmaximize();
+                        }
+                        host.app.relaunch(), host.app.exit(0)
+                    }
+                }, {
+                    label: "Force Quit",
+                    click: function () {
+                        host.app.isQuiting = !0, host.app.quit()
+                    }
+                }]
+            }, {
+                type: "separator"
+            }, {
+                label: "Quit",
+                click: function () {
                     if (g.isMaximized) {
                         g.unmaximize();
                     }
@@ -1391,17 +1493,17 @@ function language(v, en, cn) {
             }]);
 
             function D() {
-                j() && toolBar && toolBar.setContextMenu(O)
+                j() && toolBar && toolBar.setContextMenu(language(state.language, O_EN, O_CN))
             }
             D(), host.ipcMain.on("clash-core-status-change", (function(e, t) {
                 if (state.isReady = !0, j()) {
-                    var n = O.getMenuItemById("system-proxy");
+                    var n = language(state.language, O_EN, O_CN).getMenuItemById("system-proxy");
                     n && (n.enabled = 1 !== t);
-                    var r = O.getMenuItemById("mixin");
+                    var r = language(state.language, O_EN, O_CN).getMenuItemById("mixin");
                     r && (r.enabled = 1 !== t);
-                    var o = O.getMenuItemById("tun");
+                    var o = language(state.language, O_EN, O_CN).getMenuItemById("tun");
                     o && (o.enabled = 1 !== t), ["global", "rule", "direct", "script"].forEach((function(e) {
-                        var n = O.getMenuItemById("mode-".concat(e));
+                        var n = language(state.language, O_EN, O_CN).getMenuItemById("mode-".concat(e));
                         n && (n.enabled = 1 !== t)
                     })), D()
                 }
@@ -1418,7 +1520,7 @@ function language(v, en, cn) {
             })), host.ipcMain.on("mode-changed", (function(e, t) {
                 if (state.menuMode = t, j()) {
                     var n = "mode-".concat(t),
-                        r = O.getMenuItemById(n);
+                        r = language(state.language, O_EN, O_CN).getMenuItemById(n);
                     r && (r.checked = !0), D()
                 }
             })), host.ipcMain.handle("cfw-language", (function (e, t) {
@@ -1427,12 +1529,12 @@ function language(v, en, cn) {
                 state.systemProxyChecked = t
             })), host.ipcMain.on("mixin-changed", (function(e, t) {
                 if (state.mixinChecked = t, j()) {
-                    var n = O.getMenuItemById("mixin");
+                    var n = language(state.language, O_EN, O_CN).getMenuItemById("mixin");
                     n && (n.checked = t), D()
                 }
             })), host.ipcMain.on("tun-changed", (function(e, t) {
                 if (state.tunModeChecked = t, j()) {
-                    var n = O.getMenuItemById("tun");
+                    var n = language(state.language, O_EN, O_CN).getMenuItemById("tun");
                     n && (n.checked = t), D()
                 }
             })), host.ipcMain.on("enhanced-tray-click", Launch), host.ipcMain.on("speed-update", (function(e, t, n) {

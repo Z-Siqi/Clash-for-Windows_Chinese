@@ -87,7 +87,7 @@ if (-not (Test-Path $outputDir)) {
 Write-Host 'Starting electron-packager...'
 & npx electron-packager `
     "`"$mainDir`"" "Clash for Windows" `
-    --platform=win32 --arch=x64 --electron-version=36.2.1 `
+    --platform=win32 --arch=x64 --electron-version=34.0.0 `
     --icon="`"$logoFile`"" --out="`"$outputDir`""
 if ($LASTEXITCODE -ne 0) {
     Write-Error 'electron-packager 执行失败'
