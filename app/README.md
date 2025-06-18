@@ -1,3 +1,4 @@
 ### Guide
 * Extract these files in ONE folder
-* Run `build.bat` to generate runnable software
+* Run `build_default_.bat` to quick generate runnable software (Windows x64)
+* Run `xxx.ps1` to build the program (linux, arm, etc.)
