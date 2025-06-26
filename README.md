@@ -5,7 +5,7 @@
 
 效果图
 
-[![photo](https://github.com/user-attachments/assets/9df18f14-e7e9-45cf-afad-b75229cd9ee1)](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/)
+[![photo](https://github.com/user-attachments/assets/83ed7ff1-9ec8-462b-be65-69a192440594)](https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/)
 
 **支持的clash版本:**
 
