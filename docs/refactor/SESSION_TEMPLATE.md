@@ -20,13 +20,19 @@ Task for this session:
 
 Constraints:
 - Do not edit app/main/node_modules.
-- Do not directly hand-edit app/main/dist/electron/renderer.js for feature work.
+- Do not broadly hand-edit app/main/dist/electron/renderer.js for feature work.
+- Small, mechanical edits to renderer.js/main.js are allowed only when they
+  remove or delegate an extracted behavior to a project-owned module.
 - Do not rewrite the whole app.
-- Keep old logic connected and runnable after each extraction.
+- Keep the app runnable after each extraction, but require the old call site to
+  delegate to the extracted module.
+- Deleting the extracted module should fail baseline, smoke, or runtime
+  verification for that extracted behavior.
 - Ask before deleting files, initializing git, installing dependencies, or
   running packaging scripts.
 - End by updating docs/refactor/CURRENT_STATE.md with completed work,
-  changed files, verification result, next task, and rollback method.
+  changed files, verification result, current main/renderer hashes, next task,
+  and rollback method.
 ```
 
 ## Session Checklist
@@ -34,14 +40,17 @@ Constraints:
 - Read current refactor docs.
 - Run `scripts/refactor/check-baseline.ps1`.
 - Inspect only the relevant runtime snippets.
-- Make one small, reversible change.
+- Make one small, reversible enforced extraction.
 - Verify the baseline still passes.
 - Record the result in `CURRENT_STATE.md`.
 
 ## Acceptance Criteria
 
 - Existing entry chain remains valid unless the task explicitly changes it.
-- `renderer.js` and `main.js` are not accidentally changed.
+- `renderer.js` and `main.js` are not accidentally changed; any intentional
+  change is narrow, anchored, and documented.
 - New code has a clear owner path outside generated or dependency files.
+- Old logic for the extracted behavior delegates to the new owner path.
+- Removing the extracted module would break the relevant verification.
 - The old packaged app can still load `index.html` and `renderer.js`.
 - Rollback is documented.

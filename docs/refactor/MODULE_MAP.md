@@ -32,6 +32,28 @@ Important entries:
 4. `app/main/dist/electron/renderer.js`
    - Large webpack renderer bundle.
    - No source map is present in the current extracted app.
+   - Enforced extraction sessions may make narrow, anchored edits that delegate
+     specific old behaviors to project-owned modules loaded before
+     `renderer.js`.
+
+## Project-Owned Patch Layer
+
+`app/main/dist/electron/patch-layer/` contains project-owned modules loaded by
+`index.html` before `renderer.js`.
+
+Current route extraction ownership:
+
+- `patch-layer/routes/route-catalog.js`
+  - Owns the `/home/*` route metadata and menu route metadata.
+  - Provides route matching helpers for probes.
+  - Provides builders used by the old renderer bundle when route/menu logic is
+    delegated out of `renderer.js`.
+- `patch-layer/route-readiness-probe.js`
+  - Observes route readiness using the route catalog.
+- `patch-layer/store-module-visibility-probe.js`
+  - Observes visible Vue/Vuex/webpack signals without mutation.
+- `patch-layer/ipc-surface-presence-probe.js`
+  - Observes IPC surface presence without sending or invoking channels.
 
 ## Dist Files
 
@@ -92,8 +114,9 @@ Use a narrow, reversible route:
 
 1. Keep the packaged app runnable at every step.
 2. Add baseline checks before changing runtime behavior.
-3. Add a patch layer outside `renderer.js` and `main.js`.
-4. Integrate that layer through the smallest loader or bridge possible.
+3. Add or extend a project-owned module outside `renderer.js` and `main.js`.
+4. Integrate that module through the smallest loader or bridge possible.
 5. Extract one behavior at a time into human-readable modules.
-6. Keep the old bundle wired until each extracted behavior is proven equivalent.
-7. Run the baseline script after every session.
+6. Replace the old call site with a narrow delegation to the extracted module.
+7. Keep the app runnable after every extraction.
+8. Run the baseline script after every session.

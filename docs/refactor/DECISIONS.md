@@ -36,7 +36,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\refactor\check
 
 Reason:
 
-- It catches accidental edits to `main.js` and `renderer.js`.
+- It catches accidental edits to `main.js` and uncontrolled edits to
+  `renderer.js`.
 - It confirms the renderer loading path is still intact.
 
 ### 004 - Do Not Edit Runtime Dependencies In Place
@@ -68,3 +69,48 @@ Reason:
 
 - The current app is an extracted binary/package tree.
 - Refactor work needs reviewable diffs and a simple rollback path.
+
+### 007 - Enforced Extraction, Not Sidecar Duplication
+
+After the first preparatory patch-layer sessions, a logic extraction only counts
+as real refactor work when the old packaged code delegates to the extracted
+project-owned module.
+
+Acceptance rule:
+
+- The extracted module must be loaded by the old entry chain.
+- The old `renderer.js` or `main.js` call site for that behavior must be
+  removed, shortened, or changed to call the extracted module.
+- Deleting the extracted module must break a baseline, smoke, syntax, or
+  runtime verification path.
+- Sidecar probes are useful only as support work; they are not sufficient by
+  themselves.
+
+Reason:
+
+- If `patch-layer/` can be deleted and the app still builds and runs the same
+  path, the old behavior has not actually been refactored.
+- The goal is gradual ownership transfer from bundled code into maintainable
+  project-owned modules, not parallel replacement software.
+
+### 008 - Small Audited Bundle Edits Are Allowed
+
+Small, mechanical edits to `app/main/dist/electron/renderer.js` or
+`app/main/dist/electron/main.js` are allowed when they remove or delegate an
+extracted behavior to a project-owned module.
+
+Guardrails:
+
+- Locate a unique bundle anchor with `rg` and inspect only the relevant
+  snippet.
+- Replace the smallest practical expression or object literal.
+- Do not do broad manual rewrites of the 6.8 MB renderer bundle.
+- Record old and new hashes after each enforced extraction.
+- Extend baseline checks so the new module is a required dependency.
+- Document the exact rollback path.
+
+Reason:
+
+- A no-bundle-edit policy only permits observation and sidecar duplication.
+- True extraction needs the old bundle to call the new module while the app is
+  still being migrated incrementally.

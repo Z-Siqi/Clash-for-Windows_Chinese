@@ -3690,28 +3690,7 @@ var modifyState = {
                         innerServerPort: 0,
                         isLocalMode: !0,
                         isLaunching: !0,
-                        menuItems: [{
-                            title: Lg.general(),
-                            path: "/home/general"
-                        }, {
-                            title: Lg.proxies(),
-                            path: "/home/proxy"
-                        }, {
-                            title: Lg.profiles(),
-                            path: "/home/server"
-                        }, {
-                            title: Lg.logs(),
-                            path: "/home/log"
-                        }, {
-                            title: Lg.connections(),
-                            path: "/home/connection"
-                        }, {
-                            title: Lg.settings(),
-                            path: "/home/setting"
-                        }, {
-                            title: Lg.feedback(),
-                            path: "/home/about"
-                        }],
+                        menuItems: window.__CFW_ROUTE_CATALOG__.buildMenuItems(Lg),
                         updateDownloadProgress: null,
                         isSystemProxyOn: N.Z.get(D.Z.SYSTEM_PROXY) || !1,
                         isSubViewShow: !1,
@@ -114905,66 +114884,7 @@ var modifyState = {
         var v = o.n(m);
         h.ZP.use(v());
         const _ = new(v())({
-            routes: [{
-                path: "/home",
-                name: "landing-page",
-                component: o(42016).Z,
-                children: [{
-                    path: "general",
-                    component: o(72797).Z,
-                    meta: {
-                        keepAlive: !0
-                    }
-                }, {
-                    path: "proxy",
-                    component: o(72094).Z,
-                    meta: {
-                        keepAlive: !0
-                    }
-                }, {
-                    path: "provider",
-                    component: o(38585).Z,
-                    meta: {
-                        keepAlive: !0
-                    }
-                }, {
-                    path: "log",
-                    component: o(11969).Z
-                }, {
-                    path: "server",
-                    component: o(74775).Z,
-                    meta: {
-                        keepAlive: !0
-                    }
-                }, {
-                    path: "connection",
-                    component: o(14196).Z,
-                    meta: {
-                        keepAlive: !0
-                    }
-                }, {
-                    path: "router",
-                    component: o(28779).Z,
-                    meta: {
-                        keepAlive: !0
-                    }
-                }, {
-                    path: "setting",
-                    component: o(99876).Z,
-                    meta: {
-                        keepAlive: !0
-                    }
-                }, {
-                    path: "about",
-                    component: o(58323).Z,
-                    meta: {
-                        keepAlive: !0
-                    }
-                }]
-            }, {
-                path: "*",
-                redirect: "/home/general"
-            }],
+            routes: window.__CFW_ROUTE_CATALOG__.buildVueRouterRoutes(o),
             saveScrollPosition: !0
         });
         var b = o(59273),
