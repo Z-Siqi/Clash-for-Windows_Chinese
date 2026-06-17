@@ -8,6 +8,15 @@ const rendererPatchPath = path.join(patchLayerDir, "renderer-patch.js");
 const runtimeProbePath = path.join(patchLayerDir, "runtime-smoke-probe.js");
 const readinessProbePath = path.join(patchLayerDir, "renderer-readiness-probe.js");
 const routeCatalogPath = path.join(patchLayerDir, "routes", "route-catalog.js");
+const menuStatePath = path.join(patchLayerDir, "packages", "menu", "menu-state.js");
+const menuOrderPath = path.join(patchLayerDir, "packages", "menu", "menu-order.js");
+const settingsDefaultsPath = path.join(patchLayerDir, "packages", "settings", "settings-defaults.js");
+const ipcClientPath = path.join(patchLayerDir, "packages", "ipc", "ipc-client.js");
+const appIpcPath = path.join(patchLayerDir, "packages", "ipc", "app-ipc.js");
+const windowIpcPath = path.join(patchLayerDir, "packages", "ipc", "window-ipc.js");
+const dialogIpcPath = path.join(patchLayerDir, "packages", "ipc", "dialog-ipc.js");
+const globalShortcutIpcPath = path.join(patchLayerDir, "packages", "ipc", "global-shortcut-ipc.js");
+const runtimeIpcPath = path.join(patchLayerDir, "packages", "ipc", "runtime-ipc.js");
 const routeReadinessProbePath = path.join(patchLayerDir, "route-readiness-probe.js");
 const storeModuleVisibilityProbePath = path.join(patchLayerDir, "store-module-visibility-probe.js");
 const ipcSurfacePresenceProbePath = path.join(patchLayerDir, "ipc-surface-presence-probe.js");
@@ -197,6 +206,15 @@ function main() {
     runScript(context, runtimeProbePath);
     runScript(context, readinessProbePath);
     runScript(context, routeCatalogPath);
+    runScript(context, menuStatePath);
+    runScript(context, menuOrderPath);
+    runScript(context, settingsDefaultsPath);
+    runScript(context, ipcClientPath);
+    runScript(context, appIpcPath);
+    runScript(context, windowIpcPath);
+    runScript(context, dialogIpcPath);
+    runScript(context, globalShortcutIpcPath);
+    runScript(context, runtimeIpcPath);
     runScript(context, routeReadinessProbePath);
     runScript(context, storeModuleVisibilityProbePath);
     runScript(context, ipcSurfacePresenceProbePath);
@@ -213,6 +231,7 @@ function main() {
     dispatchLifecycle(runtime);
 
     const catalog = runtime.__CFW_ROUTE_CATALOG__;
+    const menuState = runtime.__CFW_MENU_STATE__;
     const patchLayer = runtime.__CFW_PATCH_LAYER__;
     const health = patchLayer.getHealth();
     const routeIds = catalog.getRoutes().map((route) => route.id).join(",");
@@ -234,8 +253,10 @@ function main() {
     const ipcProbe = health.ipcSurfacePresence;
 
     assert(readyEvents.length === 1, "cfw:patch-layer-ready was not observed exactly once.");
-    assert(health.version === "006-enforced-route-delegation", "health.version mismatch.");
+    assert(health.version === "009-large-ipc-settings-runtime-extraction", "health.version mismatch.");
     assert(catalog.version === "006-enforced-route-delegation", "route catalog version mismatch.");
+    assert(menuState.version === "007-menu-current-route-extraction", "menu state version mismatch.");
+    assert(menuState.getInitialCurrentRoutePath({ get: () => "" }, "currentRoutePath") === "/home/general", "menu state fallback mismatch.");
     assert(catalog.routes.length === 9, "route catalog route count mismatch.");
     assert(catalog.getMenuRoutes().length === 7, "route catalog menu route count mismatch.");
     assert(routeIds === "general,proxy,provider,log,server,connection,router,setting,about", "route catalog order mismatch.");
@@ -281,6 +302,15 @@ function main() {
         "runtime-smoke-probe.js",
         "renderer-readiness-probe.js",
         "route-catalog.js",
+        "packages/menu/menu-state.js",
+        "packages/menu/menu-order.js",
+        "packages/settings/settings-defaults.js",
+        "packages/ipc/ipc-client.js",
+        "packages/ipc/app-ipc.js",
+        "packages/ipc/window-ipc.js",
+        "packages/ipc/dialog-ipc.js",
+        "packages/ipc/global-shortcut-ipc.js",
+        "packages/ipc/runtime-ipc.js",
         "route-readiness-probe.js",
         "store-module-visibility-probe.js",
         "ipc-surface-presence-probe.js",

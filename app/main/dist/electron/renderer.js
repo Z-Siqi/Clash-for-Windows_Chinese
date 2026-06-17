@@ -1213,14 +1213,14 @@ var modifyState = {
                             body: t,
                             silent: !0
                         }, i)).onclick = function() {
-                            !0 !== (null == i ? void 0 : i.hideWindowOnClick) && b.ipcRenderer.invoke("window-control", "show"), n()
+                            !0 !== (null == i ? void 0 : i.hideWindowOnClick) && window.__CFW_WINDOW_IPC__.show(b.ipcRenderer), n()
                         })
                     },
                     B = (D = d()(u().mark((function e(t) {
                         return u().wrap((function(e) {
                             for (;;) switch (e.prev = e.next) {
                                 case 0:
-                                    return e.next = 2, b.ipcRenderer.invoke("dialog", "showMessageBox", L({
+                                    return e.next = 2, window.__CFW_DIALOG_IPC__.showMessageBox(b.ipcRenderer, L({
                                         title: "Clash for Windows"
                                     }, t));
                                 case 2:
@@ -1303,7 +1303,7 @@ var modifyState = {
                         return u().wrap((function(e) {
                             for (;;) switch (e.prev = e.next) {
                                 case 0:
-                                    return e.next = 2, b.ipcRenderer.invoke("app", "getVersion");
+                                    return e.next = 2, window.__CFW_APP_IPC__.getVersion(b.ipcRenderer);
                                 case 2:
                                     return t = e.sent, null === j && (j = w.Z.get(y.Z.LAST_VERSION_CODE) || "", w.Z.put(y.Z.LAST_VERSION_CODE, t)), e.abrupt("return", j !== t);
                                 case 5:
@@ -2444,7 +2444,7 @@ var modifyState = {
                         return l().wrap((function(e) {
                             for (;;) switch (e.prev = e.next) {
                                 case 0:
-                                    return e.next = 2, m.ipcRenderer.invoke("app", "getPath", "temp");
+                                    return e.next = 2, window.__CFW_APP_IPC__.getPath(m.ipcRenderer, "temp");
                                 case 2:
                                     return e.abrupt("return", e.sent);
                                 case 3:
@@ -3025,7 +3025,7 @@ var modifyState = {
                         return l().wrap((function(e) {
                             for (;;) switch (e.prev = e.next) {
                                 case 0:
-                                    return e.next = 2, g.ipcRenderer.invoke("app", "getPath", "temp");
+                                    return e.next = 2, window.__CFW_APP_IPC__.getPath(g.ipcRenderer, "temp");
                                 case 2:
                                     return i = e.sent, n = (0, h.join)(i, p), e.next = 6, g.ipcRenderer.invoke("start-download", t, n);
                                 case 6:
@@ -3065,7 +3065,7 @@ var modifyState = {
                                     }
                                     return e.abrupt("return");
                                 case 5:
-                                    return e.next = 7, g.ipcRenderer.invoke("app", "getName");
+                                    return e.next = 7, window.__CFW_APP_IPC__.getName(g.ipcRenderer);
                                 case 7:
                                     return o = e.sent, (0, c.V5)() && (s = (0, d.execSync)("hdiutil attach '".concat(n, "' -nobrowse")), /\/Volumes\/(Clash for Windows.+?)\n/.test(s) && (r = RegExp.$1, (0, d.execSync)("rm -rf '/Applications/".concat(o, ".app' && cp -R '/Volumes/").concat(r, "/").concat(o, ".app' '/Applications/").concat(o, ".app'")), (0, d.execSync)("hdiutil eject '/Volumes/".concat(r, "'"), {
                                         stdio: ["ignore", "ignore", "ignore"]
@@ -3258,13 +3258,7 @@ var modifyState = {
                     D = i(81518),
                     I = i(83566),
                     E = function(e, t) {
-                        var i, n = null !== (i = N.Z.get(D.Z.MENU_ITEM_ORDER)) && void 0 !== i ? i : [],
-                            o = n.findIndex((function(t) {
-                                return t === e.title
-                            }));
-                        return -1 === o ? 1 : o - n.findIndex((function(e) {
-                            return e === t.title
-                        }))
+                        return window.__CFW_MENU_ORDER__.compareMenuItems(e, t, N.Z, D.Z.MENU_ITEM_ORDER)
                     },
                     T = i(72298);
 
@@ -3366,7 +3360,7 @@ var modifyState = {
                             return "light"
                         },
                         menuItemsWithOrder: function(e) {
-                            return r()(e.menuItems).sort(E)
+                            return window.__CFW_MENU_ORDER__.sortMenuItems(r()(e.menuItems), N.Z, D.Z.MENU_ITEM_ORDER)
                         },
                         fontFamily: function(e) {
                             var t = e.settings,
@@ -3634,7 +3628,7 @@ var modifyState = {
                                 return u().wrap((function(e) {
                                     for (;;) switch (e.prev = e.next) {
                                         case 0:
-                                            return e.next = 2, T.ipcRenderer.invoke("app", "getPath", "temp");
+                                            return e.next = 2, window.__CFW_APP_IPC__.getPath(T.ipcRenderer, "temp");
                                         case 2:
                                             return t = e.sent, e.abrupt("return", _().join(t, "cfw-parser.log"));
                                         case 4:
@@ -3650,7 +3644,7 @@ var modifyState = {
                                 return u().wrap((function(e) {
                                     for (;;) switch (e.prev = e.next) {
                                         case 0:
-                                            return e.next = 2, T.ipcRenderer.invoke("app", "getPath", "temp");
+                                            return e.next = 2, window.__CFW_APP_IPC__.getPath(T.ipcRenderer, "temp");
                                         case 2:
                                             return t = e.sent, e.abrupt("return", _().join(t, "cfw-script.log"));
                                         case 4:
@@ -3694,7 +3688,7 @@ var modifyState = {
                         updateDownloadProgress: null,
                         isSystemProxyOn: N.Z.get(D.Z.SYSTEM_PROXY) || !1,
                         isSubViewShow: !1,
-                        currentRoutePath: N.Z.get(D.Z.CURRENT_ROUTE_PATH) || "/home/general",
+                        currentRoutePath: window.__CFW_MENU_STATE__.getInitialCurrentRoutePath(N.Z, D.Z.CURRENT_ROUTE_PATH),
                         profileRefreshTimes: 0,
                         mode: "rule",
                         routerHijackMacAddresses: N.Z.get(D.Z.ROUTER_HIJACK_MAC_ADDRESSES) || [],
@@ -92403,20 +92397,20 @@ var modifyState = {
                         }),
                         methods: {
                             closeApp: function() {
-                                y.ipcRenderer.invoke("app", "quit")
+                                window.__CFW_IPC_CLIENT__.invokeApp(y.ipcRenderer, "quit")
                             },
                             miniApp: function() {
-                                y.ipcRenderer.invoke("window", "minimize")
+                                window.__CFW_IPC_CLIENT__.invokeWindow(y.ipcRenderer, "minimize")
                             },
                             maxApp: function() {
-                                if (this.isFullScreen) y.ipcRenderer.invoke("window", "setFullScreen", !1);
+                                if (this.isFullScreen) window.__CFW_WINDOW_IPC__.setFullScreen(y.ipcRenderer, !1);
                                 else {
                                     var e = this.isWinMax ? "unmaximize" : "maximize";
-                                    y.ipcRenderer.invoke("window", e)
+                                    window.__CFW_IPC_CLIENT__.invokeWindow(y.ipcRenderer, e)
                                 }
                             },
                             pinApp: function() {
-                                this.isPinned = !this.isPinned, y.ipcRenderer.invoke("window", "setAlwaysOnTop", this.isPinned), _.Z.put(W.Z.IS_PIN_ENABLED, this.isPinned)
+                                this.isPinned = !this.isPinned, window.__CFW_IPC_CLIENT__.invokeWindow(y.ipcRenderer, "setAlwaysOnTop", this.isPinned), _.Z.put(W.Z.IS_PIN_ENABLED, this.isPinned)
                             }
                         },
                         mounted: function() {
@@ -92431,7 +92425,7 @@ var modifyState = {
                                                     return u().wrap((function(t) {
                                                         for (;;) switch (t.prev = t.next) {
                                                             case 0:
-                                                                return t.next = 2, y.ipcRenderer.invoke("window", "isMaximized");
+                                                                return t.next = 2, window.__CFW_WINDOW_IPC__.isMaximized(y.ipcRenderer);
                                                             case 2:
                                                                 e.isWinMax = t.sent;
                                                             case 3:
@@ -92463,7 +92457,7 @@ var modifyState = {
                                                 return function(e, i) {
                                                     return t.apply(this, arguments)
                                                 }
-                                            }()), e.isPinned = _.Z.get(W.Z.IS_PIN_ENABLED) || !1, y.ipcRenderer.invoke("window", "setAlwaysOnTop", e.isPinned), t.next = 6, i();
+                                            }()), e.isPinned = _.Z.get(W.Z.IS_PIN_ENABLED) || !1, window.__CFW_WINDOW_IPC__.setAlwaysOnTop(y.ipcRenderer, e.isPinned), t.next = 6, i();
                                         case 6:
                                         case "end":
                                             return t.stop()
@@ -92808,7 +92802,7 @@ var modifyState = {
                                                 t.next = 5;
                                                 break
                                             }
-                                            return t.next = 3, y.ipcRenderer.invoke("window", "isVisible");
+                                            return t.next = 3, window.__CFW_WINDOW_IPC__.isVisible(y.ipcRenderer);
                                         case 3:
                                             i = t.sent, (0, he.vC)({
                                                 type: "error",
@@ -92816,7 +92810,7 @@ var modifyState = {
                                                 buttons: [i ? Lg.ok() : "Open dashboard", Lg.cancel()]
                                             }).then((function(e) {
                                                 var t = e.response;
-                                                i || 0 !== t || y.ipcRenderer.invoke("window-control", "show")
+                                                i || 0 !== t || window.__CFW_WINDOW_IPC__.show(y.ipcRenderer)
                                             }));
                                         case 5:
                                         case "end":
@@ -93061,7 +93055,7 @@ var modifyState = {
                         },
                         "settings.shortcutShowHideDashboard": function(e, t) {
                             this.rebindShortcut(e, t, (function() {
-                                y.ipcRenderer.invoke("window-control", "show-or-hide")
+                                window.__CFW_WINDOW_IPC__.showOrHide(y.ipcRenderer)
                             }))
                         },
                         "settings.systemProxyTypeIndex": function() {
@@ -94057,7 +94051,7 @@ var modifyState = {
                                             }
                                             return ee.info("silent upgrade done, stop checking"), t.abrupt("return");
                                         case 3:
-                                            return t.next = 5, y.ipcRenderer.invoke("app", "getVersion");
+                                            return t.next = 5, window.__CFW_APP_IPC__.getVersion(y.ipcRenderer);
                                         case 5:
                                             return i = t.sent, ee.info("check for app update, current: ".concat(i)), t.next = 9, re().get("https://raw.githubusercontent.com/Z-Siqi/Clash-for-Windows_Chinese/main/update");
                                         case 9:
@@ -94398,7 +94392,7 @@ var modifyState = {
                                                 o.next = 9;
                                                 break
                                             }
-                                            return o.prev = 1, o.next = 4, y.ipcRenderer.invoke("globalShortcut", "unregister", t);
+                                            return o.prev = 1, o.next = 4, window.__CFW_GLOBAL_SHORTCUT_IPC__.unregister(y.ipcRenderer, t);
                                         case 4:
                                             delete n.shortcuts[t], o.next = 9;
                                             break;
@@ -94409,9 +94403,9 @@ var modifyState = {
                                                 o.next = 23;
                                                 break
                                             }
-                                            return o.prev = 10, o.next = 13, y.ipcRenderer.invoke("globalShortcut", "register", e);
+                                            return o.prev = 10, o.next = 13, window.__CFW_GLOBAL_SHORTCUT_IPC__.register(y.ipcRenderer, e);
                                         case 13:
-                                            return o.next = 15, y.ipcRenderer.invoke("globalShortcut", "isRegistered", e);
+                                            return o.next = 15, window.__CFW_GLOBAL_SHORTCUT_IPC__.isRegistered(y.ipcRenderer, e);
                                         case 15:
                                             return (s = o.sent) && (n.shortcuts[e] = i), o.abrupt("return", s);
                                         case 20:
@@ -94485,11 +94479,11 @@ var modifyState = {
                             return u().wrap((function(t) {
                                 for (;;) switch (t.prev = t.next) {
                                     case 0:
-                                        return t.next = 2, y.ipcRenderer.invoke("window", "isVisible");
+                                        return t.next = 2, window.__CFW_WINDOW_IPC__.isVisible(y.ipcRenderer);
                                     case 2:
                                         return n = t.sent, e.setIsWindowShow({
                                             isShow: n
-                                        }), e.startTime = (new Date).getTime(), t.t0 = e, t.next = 8, y.ipcRenderer.invoke("app", "isPackaged");
+                                        }), e.startTime = (new Date).getTime(), t.t0 = e, t.next = 8, window.__CFW_APP_IPC__.isPackaged(y.ipcRenderer);
                                     case 8:
                                         if (t.t1 = !t.sent, t.t2 = {
                                                 isDevMode: t.t1
@@ -94502,7 +94496,7 @@ var modifyState = {
                                         t.t3 = "", t.next = 20;
                                         break;
                                     case 17:
-                                        return t.next = 19, y.ipcRenderer.invoke("app", "getPath", "exe");
+                                        return t.next = 19, window.__CFW_APP_IPC__.getPath(y.ipcRenderer, "exe");
                                     case 19:
                                         t.t3 = t.sent;
                                     case 20:
@@ -94520,7 +94514,7 @@ var modifyState = {
                                         } finally {
                                             c.f()
                                         }
-                                        return t.t4 = e, t.next = 30, y.ipcRenderer.invoke("nativeTheme", "shouldUseDarkColors");
+                                        return t.t4 = e, t.next = 30, window.__CFW_RUNTIME_IPC__.shouldUseDarkColors(y.ipcRenderer);
                                     case 30:
                                         return t.t5 = t.sent, t.t6 = {
                                             shouldUseDarkTheme: t.t5
@@ -94638,7 +94632,7 @@ var modifyState = {
                                                 var n = e.settings.lightweightMode;
                                                 void 0 !== n && n && !e.isLocalMode && (_.Z.put(W.Z.IS_LIGHTWEIGHT_MODE_CLOSE, !0), y.ipcRenderer.send("cleanup-done"))
                                             }
-                                        })), t.next = 52, y.ipcRenderer.invoke("app", "getPath", "home");
+                                        })), t.next = 52, window.__CFW_APP_IPC__.getPath(y.ipcRenderer, "home");
                                     case 52: //TODO: Support meta (/.config/clash -> /.config/mihomo)
                                         return p = t.sent, f = oe().join(o, "../data"), m = oe().join(p, "/.config/clash"), ie().existsSync(f) && (m = f, e.portableMode = !0), e.userPath = p, e.setClashPath({
                                             path: m
@@ -94661,7 +94655,7 @@ var modifyState = {
                                     case 70:
                                         t.prev = 70, t.t7 = t.catch(64), ee.info(new Language(modifyState.language).httpFailStart().concat(t.t7));
                                     case 73:
-                                        if (v = _.Z.get(W.Z.IS_LIGHTWEIGHT_MODE_CLOSE) || false, C = e.settings, x = C.hideTrayIcon, S = C.hideAfterStartup, (x || (v || !S)) && y.ipcRenderer.invoke("window-control", "show"), e.settings.fontFamily, k = e.settings.profilePath, e.setProfilesPath({
+                                    if (v = _.Z.get(W.Z.IS_LIGHTWEIGHT_MODE_CLOSE) || false, C = e.settings, x = C.hideTrayIcon, S = C.hideAfterStartup, (x || (v || !S)) && window.__CFW_WINDOW_IPC__.show(y.ipcRenderer), e.settings.fontFamily, k = e.settings.profilePath, e.setProfilesPath({
                                             path : k || oe().join(e.clashPath, "profiles")
                                         }), e.initProfilesFolder(), e.loadProfiles(), L = e.settings, N = L.randomControllerPort, D = void 0 === N || N, I = L.randomMixedPort, e.devMode || v) {
                                             /** @type {number} */
@@ -94741,11 +94735,11 @@ var modifyState = {
                                             if (i(24883).Z.get(LANGUAGE) === null) {
                                                 i(24883).Z.put(LANGUAGE, modifyState.languageInProfile);
                                                 if (modifyState.languageInProfile != 0) {
-                                                    require("electron").ipcRenderer.invoke("window", "reload");
+                                                    window.__CFW_WINDOW_IPC__.reload(require("electron").ipcRenderer);
                                                 }
                                             } else if (modifyState.languageInProfile !== i(24883).Z.get(LANGUAGE)) {
                                                 i(24883).Z.put(LANGUAGE, modifyState.languageInProfile);
-                                                require("electron").ipcRenderer.invoke("window", "reload");
+                                                window.__CFW_WINDOW_IPC__.reload(require("electron").ipcRenderer);
                                             }
                                         }
                                         if (!e.settings.disableLoadingAdsLink) {
@@ -94776,11 +94770,11 @@ var modifyState = {
                                         }, t.t11.setIsFirewallRuleExist.call(t.t11, t.t13);
                                     case 134:
                                         for (Fe.bind(["command+f12", "ctrl+f12"], (function() {
-                                                return y.ipcRenderer.invoke("webContent", "toggleDevTools"), !1
+                                                return window.__CFW_RUNTIME_IPC__.toggleDevTools(y.ipcRenderer), !1
                                             })), Fe.bind(["command+w", "ctrl+w"], (function(e) {
-                                                if (!e.target.className.split(" ").includes("no-esc")) return y.ipcRenderer.invoke("window", "close"), !1
+                                                if (!e.target.className.split(" ").includes("no-esc")) return window.__CFW_WINDOW_IPC__.close(y.ipcRenderer), !1
                                             })), Fe.bind("esc", (function(e) {
-                                                if (!e.target.className.split(" ").includes("no-esc")) return y.ipcRenderer.invoke("window", "close"), !1
+                                                if (!e.target.className.split(" ").includes("no-esc")) return window.__CFW_WINDOW_IPC__.close(y.ipcRenderer), !1
                                             }), "keydown"), F = function(t) {
                                                 var i = t - 1;
                                                 i >= 0 && i < e.menuItemsWithOrder.length && e.$router.replace({
@@ -97095,7 +97089,7 @@ var modifyState = {
                         setIsFirewallRuleExist: "SET_IS_FIREWALL_RULE_EXIST"
                     })), {}, {
                         handleTitleClick: function() {
-                            P.ipcRenderer.invoke("window", "reload")
+                            window.__CFW_WINDOW_IPC__.reload(P.ipcRenderer)
                         },
                         handleShowDNSQueryDialog: function() {
                             this.$dns().catch((function(e) {}))
@@ -97801,7 +97795,7 @@ var modifyState = {
                                                     return d().wrap((function(t) {
                                                         for (;;) switch (t.prev = t.next) {
                                                             case 0:
-                                                                return s = e.$parent.newVersionInfo, r = s.url, a = s.version, l = s.log, c = s.isPortable, h = void 0 !== c && c, u = s.reactions, g = s.reactionClick, t.next = 3, P.ipcRenderer.invoke("app", "getAppPath");
+                                                                return s = e.$parent.newVersionInfo, r = s.url, a = s.version, l = s.log, c = s.isPortable, h = void 0 !== c && c, u = s.reactions, g = s.reactionClick, t.next = 3, window.__CFW_APP_IPC__.getAppPath(P.ipcRenderer);
                                                             case 3:
                                                                 if (p = t.sent.startsWith(process.env.ProgramFiles), !r) {
                                                                     t.next = 36;
@@ -98066,7 +98060,7 @@ var modifyState = {
                                                 t.next = 39;
                                                 break
                                             }
-                                            return e.geoipUpdateTime = Lg.updating() + "... (0%)", t.t0 = g(), t.next = 25, P.ipcRenderer.invoke("app", "getPath", "temp");
+                                            return e.geoipUpdateTime = Lg.updating() + "... (0%)", t.t0 = g(), t.next = 25, window.__CFW_APP_IPC__.getPath(P.ipcRenderer, "temp");
                                         case 25:
                                             t.t1 = t.sent, h = t.t0.join.call(t.t0, t.t1), g().join(h, "cfw_geoip.tag.gz"), (u = b().stream("https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-Country&license_key=".concat(l, "&suffix=tar.gz"))).on("downloadProgress", (function(t) {
                                                 var i = "";
@@ -98185,7 +98179,7 @@ var modifyState = {
                             return d().wrap((function(e) {
                                 for (;;) switch (e.prev = e.next) {
                                     case 0:
-                                        return e.t0 = "v", e.next = 3, P.ipcRenderer.invoke("app", "getVersion");
+                                        return e.t0 = "v", e.next = 3, window.__CFW_APP_IPC__.getVersion(P.ipcRenderer);
                                     case 3:
                                         e.t1 = e.sent, t.version = e.t0.concat.call(e.t0, e.t1), t.serviceNeedUpdate = Ce(), t.setupComponent(), setTimeout(t.setupSwitches, 1);
                                     case 8:
@@ -101042,7 +101036,7 @@ var modifyState = {
                             }).catch((function() {}))
                         },
                         handleStartDHCPServer: function() {
-                            this.serverRunning ? (this.server && this.server.close(), this.server = null, this.clients = [], this.boundState = {}, h.ipcRenderer.invoke("powerSaveBlocker", "stop", this.powersaveBlockerID)) : this.isShowConfigView = !0
+                            this.serverRunning ? (this.server && this.server.close(), this.server = null, this.clients = [], this.boundState = {}, window.__CFW_RUNTIME_IPC__.stopPowerSaveBlocker(h.ipcRenderer, this.powersaveBlockerID)) : this.isShowConfigView = !0
                         },
                         handleConfigConfirm: function(e) {
                             var t, i, n = this;
@@ -101100,7 +101094,7 @@ var modifyState = {
                                 return d().wrap((function(e) {
                                     for (;;) switch (e.prev = e.next) {
                                         case 0:
-                                            return i = t.address(), console.log("dhcp server listen at ".concat(i.address, ":").concat(i.port)), n.server = l, e.next = 5, h.ipcRenderer.invoke("powerSaveBlocker", "start", "prevent-app-suspension");
+                                            return i = t.address(), console.log("dhcp server listen at ".concat(i.address, ":").concat(i.port)), n.server = l, e.next = 5, window.__CFW_RUNTIME_IPC__.startPowerSaveBlocker(h.ipcRenderer, "prevent-app-suspension");
                                         case 5:
                                             n.powersaveBlockerID = e.sent;
                                         case 6:
@@ -103391,7 +103385,7 @@ var modifyState = {
                                     return u().wrap((function(t) {
                                         for (;;) switch (t.prev = t.next) {
                                             case 0:
-                                                return t.next = 2, G.ipcRenderer.invoke("dialog", "showOpenDialogSync", {
+                                                return t.next = 2, window.__CFW_DIALOG_IPC__.showOpenDialogSync(G.ipcRenderer, {
                                                     properties: ["openFile"]
                                                 });
                                             case 2:
@@ -104424,7 +104418,7 @@ var modifyState = {
                         var t = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : "",
                             i = arguments.length > 2 && void 0 !== arguments[2] ? arguments[2] : "code --wait";
                         return new Promise((function(n, o) {
-                            U = o, W.ipcRenderer.invoke("app", "getPath", "temp").then((function(s) {
+                            U = o, window.__CFW_APP_IPC__.getPath(W.ipcRenderer, "temp").then((function(s) {
                                 var r = (0, H.join)(s, "close-to-save.".concat(e));
                                 (0, p.writeFileSync)(r, t), (0, j.exec)("".concat(i, " ").concat(r), {
                                     windowsHide: !0
@@ -104911,7 +104905,7 @@ var modifyState = {
                                 return u().wrap((function(t) {
                                     for (;;) switch (t.prev = t.next) {
                                         case 0:
-                                            return i = !(e.length > 0 && void 0 !== e[0]) || e[0], t.next = 3, W.ipcRenderer.invoke("dialog", "showOpenDialogSync", {
+                                            return i = !(e.length > 0 && void 0 !== e[0]) || e[0], t.next = 3, window.__CFW_DIALOG_IPC__.showOpenDialogSync(W.ipcRenderer, {
                                                 properties: [i ? "openFile" : "openDirectory"]
                                             });
                                         case 3:
@@ -104966,7 +104960,7 @@ var modifyState = {
                                 return u().wrap((function(e) {
                                     for (;;) switch (e.prev = e.next) {
                                         case 0:
-                                            return e.next = 2, W.ipcRenderer.invoke("app", "getPath", "userData");
+                                            return e.next = 2, window.__CFW_APP_IPC__.getPath(W.ipcRenderer, "userData");
                                         case 2:
                                             t = e.sent, W.shell.showItemInFolder(t);
                                         case 4:
@@ -105335,7 +105329,7 @@ var modifyState = {
                                     i(24883).Z.put(LANGUAGE, t);
                                     modifyState.language = t;
                                     e.$set(e.settings, "language", t);
-                                    require("electron").ipcRenderer.invoke("window", "reload");
+                                    window.__CFW_WINDOW_IPC__.reload(require("electron").ipcRenderer);
                                 }
                             },
                             expression: "settings.language"
@@ -115091,13 +115085,13 @@ var modifyState = {
                                 ["getPath", "exe"],
                                 ["getPath", "home"]
                             ].map((function(e) {
-                                return u.ipcRenderer.invoke.apply(u.ipcRenderer, ["app"].concat(P()(e)))
+                                return window.__CFW_APP_IPC__.invoke.apply(null, [u.ipcRenderer].concat(P()(e)))
                             })));
                         case 3:
                             i = e.sent, n = F()(i, 3), o = n[0], s = n[1], r = n[2], a = (0, B.join)(r, ".config", "autostart"), l = (0, B.join)(a, "cfw.desktop"), c = "[Desktop Entry]\n    Type=Application\n    Version=".concat(o, '\n    Name=Clash for Windows\n    Comment=Clash for Windows startup script\n    Exec="').concat(s, '"\n    StartupNotify=false\n    Terminal=false'), t ? ((0, W.existsSync)(a) || (0, W.mkdirSync)(a), (0, W.writeFileSync)(l, c)) : (0, W.existsSync)(l) && (0, W.unlinkSync)(l), e.next = 16;
                             break;
                         case 14:
-                            return e.next = 16, u.ipcRenderer.invoke("app", "setLoginItemSettings", {
+                            return e.next = 16, window.__CFW_APP_IPC__.setLoginItemSettings(u.ipcRenderer, {
                                 openAtLogin: t
                             });
                         case 16:
@@ -115229,9 +115223,9 @@ var modifyState = {
                         return d().wrap((function(e) {
                             for (;;) switch (e.prev = e.next) {
                                 case 0:
-                                    return e.next = 2, u.ipcRenderer.invoke("app", "relaunch");
+                                    return e.next = 2, window.__CFW_APP_IPC__.relaunch(u.ipcRenderer);
                                 case 2:
-                                    return e.next = 4, u.ipcRenderer.invoke("app", "exit", 0);
+                                    return e.next = 4, window.__CFW_APP_IPC__.exit(u.ipcRenderer, 0);
                                 case 4:
                                 case "end":
                                     return e.stop()
@@ -115254,36 +115248,11 @@ var modifyState = {
                         // 忽略错误
                     }
 
-                    // 为每个设置项提供默认值
-                    const showNewVersionIcon = settings.showNewVersionIcon !== false; // 默认为 true
-                    const hideAfterStartup = settings.hideAfterStartup === true; // 默认为 false
-                    const randomControllerPort = settings.randomControllerPort !== false; // 默认为 true
-                    const runTimeFormat = settings.runTimeFormat || "hh : mm : ss"; // 默认为 "hh : mm : ss"
-                    const trayOrders = settings.trayOrders || [["icon"], ["status", "traffic", "text"]]; // 默认托盘顺序
-                    const hideTrayIcon = settings.hideTrayIcon === true; // 默认为 false
-                    const connShowProcess = settings.connShowProcess !== false; // 默认为 true
-                    const showTrayProxyDelayIndicator = settings.showTrayProxyDelayIndicator !== false; // 默认为 true
-                    const checkForUpdates = settings.checkForUpdates !== false; // 默认为 true
-                    const disableLoadingAdsLink = settings.disableLoadingAdsLink !== false
+                    const mergedSettings = window.__CFW_SETTINGS_DEFAULTS__.mergeSettings(settings);
 
-                    if (settings.language != null) {
-                        modifyState.languageInProfile = settings.language;
+                    if (mergedSettings.language != null) {
+                        modifyState.languageInProfile = mergedSettings.language;
                     }
-
-                    // 合并默认设置并设置到应用
-                    const mergedSettings = {
-                        ...settings,
-                        showNewVersionIcon,
-                        hideAfterStartup,
-                        randomControllerPort,
-                        runTimeFormat,
-                        trayOrders,
-                        hideTrayIcon,
-                        connShowProcess,
-                        showTrayProxyDelayIndicator,
-                        checkForUpdates,
-                        disableLoadingAdsLink
-                    };
 
                     this.setSettingsObject({ obj: mergedSettings });
                 }

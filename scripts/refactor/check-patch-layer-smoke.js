@@ -98,7 +98,7 @@ function main() {
     runScript(context, rendererPatchPath);
 
     assert(runtime.__CFW_PATCH_LAYER__, "window.__CFW_PATCH_LAYER__ was not created.");
-    assert(runtime.document.documentElement.dataset.cfwPatchLayer === "006-enforced-route-delegation", "documentElement dataset marker was not set.");
+    assert(runtime.document.documentElement.dataset.cfwPatchLayer === "009-large-ipc-settings-runtime-extraction", "documentElement dataset marker was not set.");
     assert(typeof runtime.__CFW_PATCH_LAYER__.registerProbe === "function", "registerProbe API is missing.");
     assert(typeof runtime.__CFW_PATCH_LAYER__.getHealth === "function", "getHealth API is missing.");
     assert(typeof runtime.__CFW_PATCH_LAYER__.recordScript === "function", "recordScript API is missing.");
@@ -113,7 +113,7 @@ function main() {
 
     assert(readyEvents.length === 1, "cfw:patch-layer-ready event was not observed exactly once.");
     assert(patchLayer.health.readyEventDispatched === true, "health.readyEventDispatched was not set.");
-    assert(health.version === "006-enforced-route-delegation", "health.version mismatch.");
+    assert(health.version === "009-large-ipc-settings-runtime-extraction", "health.version mismatch.");
     assert(health.probeCount === 2, "health.probeCount mismatch.");
     assert(health.documentReadyState === "loading", "health.documentReadyState mismatch.");
     assert(health.locationHref === runtime.location.href, "health.locationHref mismatch.");
@@ -123,7 +123,7 @@ function main() {
     assert(health.readyFlags.runtimeSmokeLoaded === true, "runtime smoke ready flag mismatch.");
     assert(health.readyFlags.patchLayerReadyEventObserved === true, "ready event observed flag mismatch.");
     assert(patchLayer.probes.some((probe) => probe.name === "runtime-smoke-probe-loaded"), "runtime smoke probe was not registered.");
-    assert(readyEvents[0].detail.health.version === "006-enforced-route-delegation", "ready event health payload mismatch.");
+    assert(readyEvents[0].detail.health.version === "009-large-ipc-settings-runtime-extraction", "ready event health payload mismatch.");
     assert(health.scriptOrder.map((entry) => entry.name).join(">") === "renderer-patch.js>runtime-smoke-probe.js", "initial script order mismatch.");
 
     console.log("Patch layer smoke check passed.");

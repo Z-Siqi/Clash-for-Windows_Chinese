@@ -147,7 +147,7 @@ function main() {
     const lastSample = readinessSamples[readinessSamples.length - 1];
 
     assert(readyEvents.length === 1, "cfw:patch-layer-ready was not observed exactly once.");
-    assert(health.version === "006-enforced-route-delegation", "health.version mismatch.");
+    assert(health.version === "009-large-ipc-settings-runtime-extraction", "health.version mismatch.");
     assert(health.hasDocumentElementDataset === true, "patch layer dataset marker is missing.");
     assert(health.appRootPresent === true, "#app was not observed.");
     assert(health.documentReadyState === "complete", "document lifecycle did not reach complete.");

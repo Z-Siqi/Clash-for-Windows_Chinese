@@ -1,5 +1,503 @@
 # Current Refactor State
 
+## Session 009 - Large IPC Cluster Extraction
+
+Date: 2026-06-16
+
+This session completed five additional enforced extractions from packaged
+`renderer.js` into project-owned IPC package modules:
+
+- app IPC helpers in `patch-layer/packages/ipc/app-ipc.js`;
+- window and window-control IPC helpers in
+  `patch-layer/packages/ipc/window-ipc.js`;
+- dialog IPC helpers in `patch-layer/packages/ipc/dialog-ipc.js`;
+- global shortcut IPC helpers in
+  `patch-layer/packages/ipc/global-shortcut-ipc.js`;
+- runtime IPC helpers for `nativeTheme`, `powerSaveBlocker`, and `webContent`
+  in `patch-layer/packages/ipc/runtime-ipc.js`.
+
+The old packaged renderer no longer directly invokes the extracted
+`app`, `window`, `window-control`, `dialog`, `globalShortcut`, `nativeTheme`,
+`powerSaveBlocker`, or `webContent` IPC channels. Those call sites now delegate
+through the new package modules, while the existing narrow titlebar
+`app quit`, `window minimize`, `window maximize/unmaximize`, and pin-window
+delegates from Session 008 remain routed through `__CFW_IPC_CLIENT__`.
+
+`main.js` was inspected again for a small main-side helper candidate and left
+unchanged because the handler bodies remain coupled to BrowserWindow, tray,
+dock, global shortcut, native theme, and power lifecycle state. No files under
+`app/main/node_modules/` were changed.
+
+## Completed This Session
+
+- Added:
+  - `app/main/dist/electron/patch-layer/packages/ipc/app-ipc.js`
+  - `app/main/dist/electron/patch-layer/packages/ipc/window-ipc.js`
+  - `app/main/dist/electron/patch-layer/packages/ipc/dialog-ipc.js`
+  - `app/main/dist/electron/patch-layer/packages/ipc/global-shortcut-ipc.js`
+  - `app/main/dist/electron/patch-layer/packages/ipc/runtime-ipc.js`
+  - `scripts/refactor/check-ipc-clusters-smoke.js`
+- Updated `index.html` to load the five new IPC package modules after
+  `ipc-client.js` and before the runtime probes.
+- Updated `renderer-patch.js` and the IPC client version to
+  `009-large-ipc-settings-runtime-extraction`.
+- Replaced direct renderer IPC invokes for the extracted channel clusters with
+  package delegates.
+- Extended `scripts/refactor/check-route-catalog-smoke.js` so the VM load chain
+  includes the new IPC package modules.
+- Extended `scripts/refactor/check-baseline.ps1` so it now:
+  - requires the five new IPC modules and the new smoke script;
+  - verifies `index.html` loads the new modules in order;
+  - verifies renderer delegate calls to the new IPC package modules;
+  - verifies old direct invoke anchors for the extracted channels are gone;
+  - rejects the Session 008 renderer hash as incomplete for this batch;
+  - accepts the new Session 009 renderer hash.
+
+## Files Changed
+
+- Updated `app/main/dist/electron/index.html`
+- Updated `app/main/dist/electron/renderer.js`
+- Updated `app/main/dist/electron/patch-layer/renderer-patch.js`
+- Updated `app/main/dist/electron/patch-layer/packages/ipc/ipc-client.js`
+- Added `app/main/dist/electron/patch-layer/packages/ipc/app-ipc.js`
+- Added `app/main/dist/electron/patch-layer/packages/ipc/window-ipc.js`
+- Added `app/main/dist/electron/patch-layer/packages/ipc/dialog-ipc.js`
+- Added `app/main/dist/electron/patch-layer/packages/ipc/global-shortcut-ipc.js`
+- Added `app/main/dist/electron/patch-layer/packages/ipc/runtime-ipc.js`
+- Updated `scripts/refactor/check-baseline.ps1`
+- Updated `scripts/refactor/check-patch-layer-smoke.js`
+- Updated `scripts/refactor/check-renderer-readiness-smoke.js`
+- Updated `scripts/refactor/check-route-catalog-smoke.js`
+- Updated `scripts/refactor/check-menu-order-ipc-smoke.js`
+- Added `scripts/refactor/check-ipc-clusters-smoke.js`
+- Updated `docs/refactor/CURRENT_STATE.md`
+- Updated `docs/refactor/MODULE_MAP.md`
+- Added `docs/refactor/sessions/009-large-ipc-settings-runtime-extraction.md`
+
+No changes were made to:
+
+- `app/main/dist/electron/main.js`
+- `app/main/node_modules/`
+
+## Enforced Extraction Boundaries
+
+App IPC:
+
+- Old direct renderer calls to `ipcRenderer.invoke("app", ...)` for
+  `getPath`, `getVersion`, `getName`, `getAppPath`, `isPackaged`,
+  `setLoginItemSettings`, `relaunch`, and `exit` were replaced.
+- `app-ipc.js` now owns those renderer-side app invoke helpers.
+
+Window IPC:
+
+- Old direct renderer calls to `ipcRenderer.invoke("window", ...)` and
+  `ipcRenderer.invoke("window-control", ...)` for visibility, reload, close,
+  fullscreen, always-on-top, and show/show-or-hide paths were replaced.
+- `window-ipc.js` now owns those renderer-side window and window-control
+  helpers.
+
+Dialog IPC:
+
+- Old direct renderer calls to `ipcRenderer.invoke("dialog", ...)` for
+  `showMessageBox` and `showOpenDialogSync` were replaced.
+- `dialog-ipc.js` now owns those renderer-side dialog helpers.
+
+Global shortcut IPC:
+
+- Old direct renderer calls to `ipcRenderer.invoke("globalShortcut", ...)` for
+  register, unregister, and isRegistered were replaced.
+- `global-shortcut-ipc.js` now owns those renderer-side shortcut helpers.
+
+Runtime IPC:
+
+- Old direct renderer calls to `ipcRenderer.invoke("nativeTheme", ...)`,
+  `ipcRenderer.invoke("powerSaveBlocker", ...)`, and
+  `ipcRenderer.invoke("webContent", ...)` were replaced.
+- `runtime-ipc.js` now owns those renderer-side runtime helpers.
+
+## Verification Results
+
+Actual result from this session:
+
+- Initial required git status, baseline, and smoke commands passed before
+  edits.
+- `node --check` passed for:
+  - `app/main/dist/electron/renderer.js`
+  - `app/main/dist/electron/patch-layer/packages/ipc/ipc-client.js`
+  - all five new IPC package modules
+  - changed and new smoke scripts.
+- `node .\scripts\refactor\check-patch-layer-smoke.js`: passed with version
+  `009-large-ipc-settings-runtime-extraction`.
+- `node .\scripts\refactor\check-renderer-readiness-smoke.js`: passed with
+  version `009-large-ipc-settings-runtime-extraction`.
+- `node .\scripts\refactor\check-route-catalog-smoke.js`: passed with version
+  `009-large-ipc-settings-runtime-extraction`.
+- `node .\scripts\refactor\check-menu-state-smoke.js`: passed.
+- `node .\scripts\refactor\check-settings-defaults-smoke.js`: passed.
+- `node .\scripts\refactor\check-menu-order-ipc-smoke.js`: passed.
+- `node .\scripts\refactor\check-ipc-clusters-smoke.js`: passed and recorded
+  ten representative calls across the extracted IPC clusters.
+- `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\refactor\check-baseline.ps1`:
+  passed.
+- Baseline now verifies that deleting any new IPC module or the IPC cluster
+  smoke breaks required-file checks, script-order checks, renderer delegate
+  checks, and/or runtime smoke coverage.
+- A true Electron launch or package build was not run. Local Electron,
+  electron-packager, and asar packages are absent, and `app/build_win_x64.ps1`
+  still can use `npx`, install global tools, prompt before deleting output,
+  and create packaged output.
+- `window.__CFW_PATCH_LAYER__.getHealth()` was read through the Node VM smoke
+  path, reporting health version
+  `009-large-ipc-settings-runtime-extraction`.
+- `main.js` SHA256 remains
+  `AC7AEAB113BD96F831C5A8CC3819A2EB95211F1C2289C3D3A520FDB66672B25F`.
+- `renderer.js` SHA256 is now
+  `9CAF1DE5C36964F1147F07A30B8A3585318CD1CD44DC4BC7C96E984F7F073523`.
+
+## Rollback
+
+Rollback for this session:
+
+1. Restore direct `renderer.js` IPC invoke expressions for the extracted
+   `app`, `window`, `window-control`, `dialog`, `globalShortcut`,
+   `nativeTheme`, `powerSaveBlocker`, and `webContent` calls.
+2. Remove the five Session 009 IPC package script tags from `index.html`.
+3. Remove:
+   - `patch-layer/packages/ipc/app-ipc.js`
+   - `patch-layer/packages/ipc/window-ipc.js`
+   - `patch-layer/packages/ipc/dialog-ipc.js`
+   - `patch-layer/packages/ipc/global-shortcut-ipc.js`
+   - `patch-layer/packages/ipc/runtime-ipc.js`
+   - `scripts/refactor/check-ipc-clusters-smoke.js`
+4. Restore the Session 008 patch-layer and IPC client version expectations.
+5. Restore the Session 008 renderer hash
+   `4A44A113D996A69C3CEE85BC7E5F89C1F698D04BB861CEA3259C2E7667AD8E62`.
+6. Remove Session 009 checks from `check-baseline.ps1` and
+   `check-route-catalog-smoke.js`.
+
+## Next Conversation Task
+
+Good next candidates:
+
+- continue IPC extraction for adjacent non-core channels such as
+  `tray-create-destroy`, `tray-proxies-style`, `tray-proxies-icon`,
+  `wlan-status-wanted`, and `start-download` if their call sites remain narrow;
+- extract a settings load/path helper around `cfw-settings.yaml` now that
+  defaults and merge logic are already package-owned;
+- revisit main-side extraction only for a pure channel metadata/catalog helper,
+  not for handler bodies coupled to BrowserWindow lifecycle.
+
+## Session 008 - Batched Enforced Extractions
+
+Date: 2026-06-15
+
+This session completed three small enforced extractions from the packaged
+renderer into project-owned package modules:
+
+- settings default/merge normalization into
+  `patch-layer/packages/settings/settings-defaults.js`;
+- menu item order comparison/sorting into
+  `patch-layer/packages/menu/menu-order.js`;
+- a renderer IPC channel/client helper into
+  `patch-layer/packages/ipc/ipc-client.js`.
+
+The old packaged `renderer.js` now calls:
+
+- `window.__CFW_SETTINGS_DEFAULTS__.mergeSettings(settings)`;
+- `window.__CFW_MENU_ORDER__.compareMenuItems(e, t, N.Z, D.Z.MENU_ITEM_ORDER)`;
+- `window.__CFW_MENU_ORDER__.sortMenuItems(r()(e.menuItems), N.Z, D.Z.MENU_ITEM_ORDER)`;
+- `window.__CFW_IPC_CLIENT__.invokeApp(y.ipcRenderer, "quit")`;
+- `window.__CFW_IPC_CLIENT__.invokeWindow(...)` for the extracted minimize,
+  maximize/unmaximize, and pin-window call sites.
+
+`main.js` was inspected for a small main-side IPC helper candidate and left
+unchanged because its handlers are broad, minified, and coupled to
+BrowserWindow/tray lifecycle state. No files under `app/main/node_modules/`
+were changed.
+
+## Completed This Session
+
+- Added `app/main/dist/electron/patch-layer/packages/settings/settings-defaults.js`.
+- Added `app/main/dist/electron/patch-layer/packages/menu/menu-order.js`.
+- Added `app/main/dist/electron/patch-layer/packages/ipc/ipc-client.js`.
+- Updated `index.html` to load the three new package modules after menu state
+  and before route readiness probes.
+- Updated `renderer-patch.js` health version to
+  `008-batched-enforced-extractions`.
+- Replaced the old inline settings default block with a settings package merge
+  delegate.
+- Replaced the old inline menu order comparator and `menuItemsWithOrder` sort
+  call with menu order package delegates.
+- Replaced direct app/window IPC invokes in the titlebar control methods with
+  IPC client package delegates.
+- Added:
+  - `scripts/refactor/check-settings-defaults-smoke.js`
+  - `scripts/refactor/check-menu-order-ipc-smoke.js`
+- Extended `scripts/refactor/check-baseline.ps1` so it now:
+  - requires the three new package modules and two smoke scripts;
+  - verifies `index.html` loads the new modules in the expected order;
+  - verifies `renderer.js` delegates settings merge, menu order, and extracted
+    IPC invokes;
+  - verifies old inline settings/menu-order/direct-IPC anchors are gone;
+  - rejects the Session 007 renderer hash as incomplete for this batch;
+  - accepts the new Session 008 renderer hash.
+
+## Files Changed
+
+- Updated `app/main/dist/electron/index.html`
+- Updated `app/main/dist/electron/renderer.js`
+- Updated `app/main/dist/electron/patch-layer/renderer-patch.js`
+- Added `app/main/dist/electron/patch-layer/packages/settings/settings-defaults.js`
+- Added `app/main/dist/electron/patch-layer/packages/menu/menu-order.js`
+- Added `app/main/dist/electron/patch-layer/packages/ipc/ipc-client.js`
+- Updated `scripts/refactor/check-baseline.ps1`
+- Updated `scripts/refactor/check-patch-layer-smoke.js`
+- Updated `scripts/refactor/check-renderer-readiness-smoke.js`
+- Updated `scripts/refactor/check-route-catalog-smoke.js`
+- Added `scripts/refactor/check-settings-defaults-smoke.js`
+- Added `scripts/refactor/check-menu-order-ipc-smoke.js`
+- Updated `docs/refactor/CURRENT_STATE.md`
+- Updated `docs/refactor/MODULE_MAP.md`
+- Added `docs/refactor/sessions/008-batched-enforced-extractions.md`
+
+No changes were made to:
+
+- `app/main/dist/electron/main.js`
+- `app/main/node_modules/`
+
+## Enforced Extraction Boundaries
+
+Settings defaults:
+
+- Old inline renderer default variables for `showNewVersionIcon`,
+  `hideAfterStartup`, `randomControllerPort`, `runTimeFormat`, `trayOrders`,
+  `hideTrayIcon`, `connShowProcess`, `showTrayProxyDelayIndicator`,
+  `checkForUpdates`, and `disableLoadingAdsLink` were removed.
+- `settings-defaults.js` now owns those defaults and returns the merged object
+  consumed by the old settings load path.
+
+Menu order:
+
+- The old comparator body that read `N.Z.get(D.Z.MENU_ITEM_ORDER)` and used
+  inline `findIndex` logic was removed.
+- The old `return r()(e.menuItems).sort(E)` getter body was replaced with a
+  `sortMenuItems(...)` delegate.
+
+Renderer IPC:
+
+- The titlebar control methods no longer directly invoke the extracted app and
+  window IPC calls.
+- The wider renderer still owns many IPC call sites; this session only moved
+  the small app/window titlebar cluster.
+
+## Verification Results
+
+Actual result from this session:
+
+- Initial required git status, baseline, and smoke commands passed before
+  edits.
+- `node --check` passed for:
+  - `app/main/dist/electron/renderer.js`
+  - `app/main/dist/electron/patch-layer/packages/settings/settings-defaults.js`
+  - `app/main/dist/electron/patch-layer/packages/menu/menu-order.js`
+  - `app/main/dist/electron/patch-layer/packages/ipc/ipc-client.js`
+  - changed and new smoke scripts.
+- `node .\scripts\refactor\check-patch-layer-smoke.js`: passed with version
+  `008-batched-enforced-extractions`.
+- `node .\scripts\refactor\check-renderer-readiness-smoke.js`: passed with
+  version `008-batched-enforced-extractions`.
+- `node .\scripts\refactor\check-route-catalog-smoke.js`: passed with version
+  `008-batched-enforced-extractions`.
+- `node .\scripts\refactor\check-menu-state-smoke.js`: passed.
+- `node .\scripts\refactor\check-settings-defaults-smoke.js`: passed.
+- `node .\scripts\refactor\check-menu-order-ipc-smoke.js`: passed.
+- `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\refactor\check-baseline.ps1`:
+  passed.
+- Baseline now verifies that deleting any new module breaks required-file
+  checks, script-order checks, and/or renderer delegate checks.
+- A true Electron launch or package build was not run because local Electron
+  runtime/package tooling is still absent and `app/build_win_x64.ps1` can use
+  `npx`, install global tools, prompt before deleting output, and create
+  packaged output.
+- `window.__CFW_PATCH_LAYER__.getHealth()` was read through the Node VM smoke
+  path, reporting health version `008-batched-enforced-extractions`.
+- `main.js` SHA256 remains
+  `AC7AEAB113BD96F831C5A8CC3819A2EB95211F1C2289C3D3A520FDB66672B25F`.
+- `renderer.js` SHA256 is now
+  `4A44A113D996A69C3CEE85BC7E5F89C1F698D04BB861CEA3259C2E7667AD8E62`.
+
+## Rollback
+
+Rollback for this session:
+
+1. Restore the Session 007 `renderer.js` anchors:
+   - replace `window.__CFW_SETTINGS_DEFAULTS__.mergeSettings(settings)` with
+     the previous inline default/merge block;
+   - restore the inline `MENU_ITEM_ORDER` comparator and
+     `return r()(e.menuItems).sort(E)`;
+   - restore the direct `y.ipcRenderer.invoke(...)` calls for the extracted
+     titlebar app/window methods.
+2. Remove the three new package script tags from `index.html`.
+3. Remove:
+   - `patch-layer/packages/settings/settings-defaults.js`
+   - `patch-layer/packages/menu/menu-order.js`
+   - `patch-layer/packages/ipc/ipc-client.js`
+   - `scripts/refactor/check-settings-defaults-smoke.js`
+   - `scripts/refactor/check-menu-order-ipc-smoke.js`
+4. Restore Session 007 patch-layer version expectations and renderer hash
+   `86D5A17606353E6CA0485F4C41B2DB7EE1A0C321EA7313595BF6A79FDFC99ADE`.
+5. Remove Session 008 checks from `check-baseline.ps1`.
+
+## Next Conversation Task
+
+Continue with another small enforced extraction. Good candidates:
+
+- a second renderer IPC cluster, preferably a cohesive `window-control` or
+  `app/getPath` helper cluster;
+- a settings load/save helper that is adjacent to the defaults extracted here;
+- a router fallback/normalize helper if a unique renderer call site is found.
+
+## Session 007 - Menu Current Route Extraction
+
+Date: 2026-06-15
+
+This session added the package namespace for continued enforced extraction and
+moved the renderer's initial `currentRoutePath` fallback rule into a
+project-owned menu state package. The old packaged `renderer.js` now calls
+`window.__CFW_MENU_STATE__.getInitialCurrentRoutePath(N.Z, D.Z.CURRENT_ROUTE_PATH)`
+instead of owning the inline
+`N.Z.get(D.Z.CURRENT_ROUTE_PATH) || "/home/general"` expression.
+
+`main.js` was left unchanged. No files under `app/main/node_modules/` were
+changed.
+
+## Completed This Session
+
+- Added package namespace directories under
+  `app/main/dist/electron/patch-layer/packages/`:
+  - `packages/`
+  - `packages/router/`
+  - `packages/menu/`
+  - `packages/settings/`
+  - `packages/ipc/`
+  - `packages/runtime/`
+  - `packages/main/`
+- Added `app/main/dist/electron/patch-layer/packages/menu/menu-state.js`.
+- Updated `index.html` to load
+  `patch-layer/packages/menu/menu-state.js` after the route catalog and before
+  route readiness probes.
+- Replaced the old inline `renderer.js` current route initializer with:
+  - `window.__CFW_MENU_STATE__.getInitialCurrentRoutePath(N.Z, D.Z.CURRENT_ROUTE_PATH)`
+- Updated `renderer-patch.js` health version to
+  `007-menu-current-route-extraction`.
+- Added `scripts/refactor/check-menu-state-smoke.js`.
+- Extended `scripts/refactor/check-baseline.ps1` so it now:
+  - checks the new package directories;
+  - requires the menu state module and smoke script;
+  - verifies `index.html` loads the menu state module in order;
+  - verifies `renderer.js` delegates current-route initialization to the menu
+    state package;
+  - verifies the old inline current-route fallback anchor is gone;
+  - rejects the Session 006 renderer hash as incomplete for this extraction;
+  - accepts the new Session 007 renderer hash.
+
+## Files Changed
+
+- Updated `app/main/dist/electron/index.html`
+- Updated `app/main/dist/electron/renderer.js`
+- Updated `app/main/dist/electron/patch-layer/renderer-patch.js`
+- Added `app/main/dist/electron/patch-layer/packages/.gitkeep`
+- Added `app/main/dist/electron/patch-layer/packages/router/.gitkeep`
+- Added `app/main/dist/electron/patch-layer/packages/menu/menu-state.js`
+- Added `app/main/dist/electron/patch-layer/packages/settings/.gitkeep`
+- Added `app/main/dist/electron/patch-layer/packages/ipc/.gitkeep`
+- Added `app/main/dist/electron/patch-layer/packages/runtime/.gitkeep`
+- Added `app/main/dist/electron/patch-layer/packages/main/.gitkeep`
+- Updated `scripts/refactor/check-baseline.ps1`
+- Updated `scripts/refactor/check-patch-layer-smoke.js`
+- Updated `scripts/refactor/check-renderer-readiness-smoke.js`
+- Updated `scripts/refactor/check-route-catalog-smoke.js`
+- Added `scripts/refactor/check-menu-state-smoke.js`
+- Updated `docs/refactor/CURRENT_STATE.md`
+- Updated `docs/refactor/MODULE_MAP.md`
+- Added `docs/refactor/sessions/007-menu-current-route-extraction.md`
+
+No changes were made to:
+
+- `app/main/dist/electron/main.js`
+- `app/main/node_modules/`
+
+## Enforced Extraction Boundary
+
+The extracted menu state package now owns:
+
+- the persisted current route storage key metadata;
+- reading the old storage adapter through `storage.get(key)`;
+- the fallback route path `/home/general`, sourced from the route catalog when
+  available;
+- the `window.__CFW_MENU_STATE__` renderer API used by the old bundle.
+
+The old renderer still owns the wider Vuex app state object and route mutation
+flow. This session only delegates initial `currentRoutePath` resolution.
+
+## Verification Results
+
+Actual result from this session:
+
+- Initial required baseline and smoke commands passed before edits.
+- `renderer.js` syntax check passed after the narrow bundle edit.
+- New/changed patch-layer and smoke scripts passed syntax checks.
+- `node .\scripts\refactor\check-patch-layer-smoke.js`: passed with version
+  `007-menu-current-route-extraction`.
+- `node .\scripts\refactor\check-renderer-readiness-smoke.js`: passed with
+  version `007-menu-current-route-extraction`.
+- `node .\scripts\refactor\check-route-catalog-smoke.js`: passed with version
+  `007-menu-current-route-extraction`.
+- `node .\scripts\refactor\check-menu-state-smoke.js`: passed with fallback
+  path `/home/general` and stored route `/home/proxy`.
+- `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\refactor\check-baseline.ps1`:
+  passed.
+- Baseline now verifies that:
+  - package directories exist;
+  - menu state module and smoke script exist;
+  - `index.html` loads the menu state package in the expected order;
+  - `renderer.js` delegates current-route initialization to menu state;
+  - the old inline current-route fallback expression is absent;
+  - the Session 006 renderer hash is no longer accepted for this step.
+- A true Electron launch or package build was not run because local/global
+  Electron packaging tools are absent and the packaging script may install
+  global tools, prompt before deleting output, and create packaged output.
+- `window.__CFW_PATCH_LAYER__.getHealth()` was read through the Node VM smoke
+  path, which reported health version `007-menu-current-route-extraction`.
+- `main.js` SHA256 remains
+  `AC7AEAB113BD96F831C5A8CC3819A2EB95211F1C2289C3D3A520FDB66672B25F`.
+- `renderer.js` SHA256 is now
+  `86D5A17606353E6CA0485F4C41B2DB7EE1A0C321EA7313595BF6A79FDFC99ADE`.
+
+## Rollback
+
+Rollback for this session:
+
+1. Restore the previous `renderer.js` current-route initializer:
+   - replace
+     `window.__CFW_MENU_STATE__.getInitialCurrentRoutePath(N.Z, D.Z.CURRENT_ROUTE_PATH)`
+     with `N.Z.get(D.Z.CURRENT_ROUTE_PATH) || "/home/general"`.
+2. Remove the `patch-layer/packages/menu/menu-state.js` script tag from
+   `index.html`.
+3. Remove `scripts/refactor/check-menu-state-smoke.js` and the Session 007
+   package/menu-state checks from `check-baseline.ps1`.
+4. Restore the Session 006 patch-layer version and renderer hash
+   `E0A54DC7914C441880BD12B84A91F91979CA128CED9886C4EFDCCBA545BE0E5C`.
+
+## Next Conversation Task
+
+Continue with another small enforced extraction using the new package
+namespace. Prefer one of:
+
+- settings default/merge logic into `packages/settings/`;
+- IPC channel catalog/client helper into `packages/ipc/`;
+- a slightly larger menu/order helper into `packages/menu/`.
+
 ## Session 006 - Enforced Route Delegation
 
 Date: 2026-06-15

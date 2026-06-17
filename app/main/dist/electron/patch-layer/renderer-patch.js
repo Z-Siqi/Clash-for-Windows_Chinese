@@ -1,6 +1,6 @@
 (function () {
     var root = typeof window !== "undefined" ? window : globalThis;
-    var version = "006-enforced-route-delegation";
+    var version = "009-large-ipc-settings-runtime-extraction";
     var probes = [];
     var scriptOrder = [];
     var eventCounts = {};
