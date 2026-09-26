@@ -7,7 +7,7 @@ export function assert (condition: any, message: string) {
 }
 
 export function warn (condition: any, message: string) {
-  if (process.env.NODE_ENV !== 'production' && !condition) {
+  if (!condition) {
     typeof console !== 'undefined' && console.warn(`[vue-router] ${message}`)
   }
 }

@@ -1,0 +1,27 @@
+mixed-port: 7890
+external-controller: 127.0.0.1:9090
+mode: rule
+log-level: silent
+proxies:
+  - name: anytls-smoke
+    type: anytls
+    server: 127.0.0.1
+    port: 443
+    password: test-password
+    client-fingerprint: chrome
+    udp: true
+    idle-session-check-interval: 30
+    idle-session-timeout: 30
+    min-idle-session: 0
+    sni: example.com
+    alpn:
+      - h2
+      - http/1.1
+    skip-cert-verify: true
+proxy-groups:
+  - name: PROXY
+    type: select
+    proxies:
+      - anytls-smoke
+rules:
+  - MATCH,PROXY

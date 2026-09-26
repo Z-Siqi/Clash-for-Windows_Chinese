@@ -1,0 +1,8 @@
+mixed-port: 7890
+external-controller: 127.0.0.1:9090
+mode: rule
+log-level: silent
+proxies: []
+proxy-groups: []
+rules:
+  - MATCH,DIRECT

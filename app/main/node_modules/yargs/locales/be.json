@@ -8,12 +8,19 @@
   "number": "лік",
   "array": "масіў",
   "required": "неабходна",
+  "default": "па змаўчанні",
   "default:": "па змаўчанні:",
   "choices:": "магчымасці:",
   "aliases:": "аліасы:",
   "generated-value": "згенераванае значэнне",
-  "Not enough non-option arguments: got %s, need at least %s": "Недастаткова неапцыйных аргументаў: ёсць %s, трэба як мінімум %s",
-  "Too many non-option arguments: got %s, maximum of %s": "Занадта шмат неапцыйных аргументаў: ёсць %s, максімум дапушчальна %s",
+  "Not enough non-option arguments: got %s, need at least %s": {
+    "one": "Недастаткова неапцыйных аргументаў: ёсць %s, трэба як мінімум %s",
+    "other": "Недастаткова неапцыйных аргументаў: ёсць %s, трэба як мінімум %s"
+  },
+  "Too many non-option arguments: got %s, maximum of %s": {
+    "one": "Занадта шмат неапцыйных аргументаў: ёсць %s, максімум дапушчальна %s",
+    "other": "Занадта шмат неапцыйных аргументаў: ёсць %s, максімум дапушчальна %s"
+  },
   "Missing argument value: %s": {
     "one": "Не хапае значэння аргументу: %s",
     "other": "Не хапае значэнняў аргументаў: %s"

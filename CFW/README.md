@@ -2,6 +2,10 @@
 
 **考虑到因为原版的online资料都已经缺失，部分维护仍然是必要的**
 
+`./InnoSetup/*` - script-driven installation builder
+
+`./chinese_file/*` 用于存放以前的翻译文档
+
 ***
 
 **以下是一些原版包的存档**

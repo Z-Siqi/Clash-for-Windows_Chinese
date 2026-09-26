@@ -1,2 +1,6 @@
 /.vs
 /app/output
+/app/build
+/app/.electron-*
+/node_modules
+.DS_Store

@@ -25,6 +25,7 @@ function SourceMapGenerator(aArgs) {
   this._file = util.getArg(aArgs, 'file', null);
   this._sourceRoot = util.getArg(aArgs, 'sourceRoot', null);
   this._skipValidation = util.getArg(aArgs, 'skipValidation', false);
+  this._ignoreInvalidMapping = util.getArg(aArgs, 'ignoreInvalidMapping', false);
   this._sources = new ArraySet();
   this._names = new ArraySet();
   this._mappings = new MappingList();
@@ -39,12 +40,12 @@ SourceMapGenerator.prototype._version = 3;
  * @param aSourceMapConsumer The SourceMap.
  */
 SourceMapGenerator.fromSourceMap =
-  function SourceMapGenerator_fromSourceMap(aSourceMapConsumer) {
+  function SourceMapGenerator_fromSourceMap(aSourceMapConsumer, generatorOps) {
     var sourceRoot = aSourceMapConsumer.sourceRoot;
-    var generator = new SourceMapGenerator({
+    var generator = new SourceMapGenerator(Object.assign(generatorOps || {}, {
       file: aSourceMapConsumer.file,
       sourceRoot: sourceRoot
-    });
+    }));
     aSourceMapConsumer.eachMapping(function (mapping) {
       var newMapping = {
         generated: {
@@ -107,7 +108,9 @@ SourceMapGenerator.prototype.addMapping =
     var name = util.getArg(aArgs, 'name', null);
 
     if (!this._skipValidation) {
-      this._validateMapping(generated, original, source, name);
+      if (this._validateMapping(generated, original, source, name) === false) {
+        return;
+      }
     }
 
     if (source != null) {
@@ -273,11 +276,18 @@ SourceMapGenerator.prototype._validateMapping =
     // specific error message to try to guide them the right way.
     // For example: https://github.com/Polymer/polymer-bundler/pull/519
     if (aOriginal && typeof aOriginal.line !== 'number' && typeof aOriginal.column !== 'number') {
-        throw new Error(
-            'original.line and original.column are not numbers -- you probably meant to omit ' +
-            'the original mapping entirely and only map the generated position. If so, pass ' +
-            'null for the original mapping instead of an object with empty or null values.'
-        );
+      var message = 'original.line and original.column are not numbers -- you probably meant to omit ' +
+      'the original mapping entirely and only map the generated position. If so, pass ' +
+      'null for the original mapping instead of an object with empty or null values.'
+
+      if (this._ignoreInvalidMapping) {
+        if (typeof console !== 'undefined' && console.warn) {
+          console.warn(message);
+        }
+        return false;
+      } else {
+        throw new Error(message);
+      }
     }
 
     if (aGenerated && 'line' in aGenerated && 'column' in aGenerated
@@ -295,12 +305,21 @@ SourceMapGenerator.prototype._validateMapping =
       return;
     }
     else {
-      throw new Error('Invalid mapping: ' + JSON.stringify({
+      var message = 'Invalid mapping: ' + JSON.stringify({
         generated: aGenerated,
         source: aSource,
         original: aOriginal,
         name: aName
-      }));
+      });
+
+      if (this._ignoreInvalidMapping) {
+        if (typeof console !== 'undefined' && console.warn) {
+          console.warn(message);
+        }
+        return false;
+      } else {
+        throw new Error(message)
+      }
     }
   };
 

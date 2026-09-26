@@ -1,4 +1,4 @@
-var Utils = require('./utils')
+const Utils = require('./utils')
 
 function clearCanvas (ctx, canvas, size) {
   ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -19,8 +19,8 @@ function getCanvasElement () {
 }
 
 exports.render = function render (qrData, canvas, options) {
-  var opts = options
-  var canvasEl = canvas
+  let opts = options
+  let canvasEl = canvas
 
   if (typeof opts === 'undefined' && (!canvas || !canvas.getContext)) {
     opts = canvas
@@ -32,10 +32,10 @@ exports.render = function render (qrData, canvas, options) {
   }
 
   opts = Utils.getOptions(opts)
-  var size = Utils.getImageWidth(qrData.modules.size, opts)
+  const size = Utils.getImageWidth(qrData.modules.size, opts)
 
-  var ctx = canvasEl.getContext('2d')
-  var image = ctx.createImageData(size, size)
+  const ctx = canvasEl.getContext('2d')
+  const image = ctx.createImageData(size, size)
   Utils.qrToImageData(image.data, qrData, opts)
 
   clearCanvas(ctx, canvasEl, size)
@@ -45,7 +45,7 @@ exports.render = function render (qrData, canvas, options) {
 }
 
 exports.renderToDataURL = function renderToDataURL (qrData, canvas, options) {
-  var opts = options
+  let opts = options
 
   if (typeof opts === 'undefined' && (!canvas || !canvas.getContext)) {
     opts = canvas
@@ -54,10 +54,10 @@ exports.renderToDataURL = function renderToDataURL (qrData, canvas, options) {
 
   if (!opts) opts = {}
 
-  var canvasEl = exports.render(qrData, canvas, opts)
+  const canvasEl = exports.render(qrData, canvas, opts)
 
-  var type = opts.type || 'image/png'
-  var rendererOpts = opts.rendererOpts || {}
+  const type = opts.type || 'image/png'
+  const rendererOpts = opts.rendererOpts || {}
 
   return canvasEl.toDataURL(type, rendererOpts.quality)
 }

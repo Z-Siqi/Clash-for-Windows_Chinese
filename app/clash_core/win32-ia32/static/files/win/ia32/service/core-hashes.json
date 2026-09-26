@@ -1,0 +1,12 @@
+{
+  "cores": [
+    {
+      "name": "clash-win32.exe",
+      "sha256": "229DB12B5247656A8CB39D74EFE97561D5447BA560EE8A035F7592F36085A215"
+    },
+    {
+      "name": "mihomo-windows-386.exe",
+      "sha256": "05FD0C26EE7A60A4F8D86CE0B59212A802ECA509B73B0096148EECE9E066A971"
+    }
+  ]
+}

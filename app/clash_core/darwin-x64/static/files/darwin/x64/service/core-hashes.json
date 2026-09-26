@@ -1,0 +1,18 @@
+{
+  "cores": [
+    {
+      "name": "clash-darwin",
+      "sha256": "957FBE04E01E348A4120B658734D530613E3F33C1F24AE98366C84ECC93D6623"
+    },
+    {
+      "name": "mihomo-darwin-amd64",
+      "sha256": "D1361FDB7F93AC500D8C936CFD61516B2445C6ACFAABE982244FDD765872E077"
+    }
+  ],
+  "helpers": [
+    {
+      "name": "sysproxy",
+      "sha256": "2C83BEF7DD040BF27396487B718C41C2ADDF7F63CE52FC16B7C3517EE2FB4E6D"
+    }
+  ]
+}

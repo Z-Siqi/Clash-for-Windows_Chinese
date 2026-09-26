@@ -1,27 +1,6 @@
 'use strict';
 
-//
-// Allowed token characters:
-//
-// '!', '#', '$', '%', '&', ''', '*', '+', '-',
-// '.', 0-9, A-Z, '^', '_', '`', a-z, '|', '~'
-//
-// tokenChars[32] === 0 // ' '
-// tokenChars[33] === 1 // '!'
-// tokenChars[34] === 0 // '"'
-// ...
-//
-// prettier-ignore
-const tokenChars = [
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0 - 15
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 16 - 31
-  0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, // 32 - 47
-  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, // 48 - 63
-  0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 64 - 79
-  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, // 80 - 95
-  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 96 - 111
-  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0 // 112 - 127
-];
+const { tokenChars } = require('./validation');
 
 /**
  * Adds an offer to the map of extension offers or a parameter to the map of
@@ -47,9 +26,6 @@ function push(dest, name, elem) {
  */
 function parse(header) {
   const offers = Object.create(null);
-
-  if (header === undefined || header === '') return offers;
-
   let params = Object.create(null);
   let mustUnescape = false;
   let isEscaping = false;
@@ -57,16 +33,20 @@ function parse(header) {
   let extensionName;
   let paramName;
   let start = -1;
+  let code = -1;
   let end = -1;
   let i = 0;
 
   for (; i < header.length; i++) {
-    const code = header.charCodeAt(i);
+    code = header.charCodeAt(i);
 
     if (extensionName === undefined) {
       if (end === -1 && tokenChars[code] === 1) {
         if (start === -1) start = i;
-      } else if (code === 0x20 /* ' ' */ || code === 0x09 /* '\t' */) {
+      } else if (
+        i !== 0 &&
+        (code === 0x20 /* ' ' */ || code === 0x09) /* '\t' */
+      ) {
         if (end === -1 && start !== -1) end = i;
       } else if (code === 0x3b /* ';' */ || code === 0x2c /* ',' */) {
         if (start === -1) {
@@ -167,7 +147,7 @@ function parse(header) {
     }
   }
 
-  if (start === -1 || inQuotes) {
+  if (start === -1 || inQuotes || code === 0x20 || code === 0x09) {
     throw new SyntaxError('Unexpected end of input');
   }
 

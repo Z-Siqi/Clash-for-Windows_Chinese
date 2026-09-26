@@ -1,0 +1,5 @@
+{
+  "name": "cfw-electron-security-smoke",
+  "private": true,
+  "main": "main.js"
+}

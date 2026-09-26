@@ -1,0 +1,38 @@
+{
+  "name": "clash-for-windows-chinese-maintenance",
+  "private": true,
+  "scripts": {
+    "build:monaco": "node scripts/build/build-monaco.js",
+    "build:linux-service-helper": "node scripts/build/build-linux-service-helper.js",
+    "build:mac-service-helper": "node scripts/build/build-macos-service-helper.js",
+    "package:win-x64": "node scripts/build/package-application.js win-x64",
+    "package:win-ia32": "node scripts/build/package-application.js win-ia32",
+    "package:win-arm64": "node scripts/build/package-application.js win-arm64",
+    "package:linux-x64": "node scripts/build/package-application.js linux-x64",
+    "package:linux-arm64": "node scripts/build/package-application.js linux-arm64",
+    "package:mac-x64": "node scripts/build/package-application.js mac-x64",
+    "package:mac-arm64": "node scripts/build/package-application.js mac-arm64",
+    "package:dmg:mac-x64": "node scripts/build/package-dmg.js mac-x64",
+    "package:dmg:mac-arm64": "node scripts/build/package-dmg.js mac-arm64",
+    "postinstall": "node scripts/build/build-monaco.js",
+    "pretest": "node scripts/build/build-monaco.js",
+    "test": "node scripts/run-test-group.js all",
+    "pretest:unit": "node scripts/build/build-monaco.js",
+    "test:unit": "node scripts/run-test-group.js unit",
+    "pretest:integration": "node scripts/build/build-monaco.js",
+    "test:integration": "node scripts/run-test-group.js integration",
+    "pretest:architecture": "node scripts/build/build-monaco.js",
+    "test:architecture": "node scripts/run-test-group.js architecture",
+    "pretest:application": "node scripts/build/build-monaco.js",
+    "test:application": "node scripts/run-test-group.js application"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@electron/asar": "4.3.0",
+    "@electron/packager": "20.3.0",
+    "esbuild": "0.28.2",
+    "monaco-editor": "0.57.0"
+  }
+}

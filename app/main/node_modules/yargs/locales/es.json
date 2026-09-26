@@ -8,12 +8,19 @@
   "number": "número",
   "array": "tabla",
   "required": "requerido",
+  "default": "defecto",
   "default:": "defecto:",
   "choices:": "selección:",
   "aliases:": "alias:",
   "generated-value": "valor-generado",
-  "Not enough non-option arguments: got %s, need at least %s": "Hacen falta argumentos no-opcionales: Número recibido %s, necesita por lo menos %s",
-  "Too many non-option arguments: got %s, maximum of %s": "Demasiados argumentos no-opcionales: Número recibido %s, máximo es %s",
+  "Not enough non-option arguments: got %s, need at least %s": {
+    "one": "Hacen falta argumentos no-opcionales: Número recibido %s, necesita por lo menos %s",
+    "other": "Hacen falta argumentos no-opcionales: Número recibido %s, necesita por lo menos %s"
+  },
+  "Too many non-option arguments: got %s, maximum of %s": {
+    "one": "Demasiados argumentos no-opcionales: Número recibido %s, máximo es %s",
+    "other": "Demasiados argumentos no-opcionales: Número recibido %s, máximo es %s"
+  },
   "Missing argument value: %s": {
     "one": "Falta argumento: %s",
     "other": "Faltan argumentos: %s"

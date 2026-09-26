@@ -1,0 +1,12 @@
+Mihomo core binary
+
+Project: MetaCubeX/mihomo
+Version: 1.19.31
+Release: https://github.com/MetaCubeX/mihomo/releases/tag/v1.19.31
+Corresponding source: https://github.com/MetaCubeX/mihomo/tree/v1.19.31
+License: GNU General Public License v3.0
+License text: https://github.com/MetaCubeX/mihomo/blob/v1.19.31/LICENSE
+
+The binary is redistributed unmodified from the official release. See
+app/clash_core/mihomo-core-manifest.json in the source repository for the
+asset URL and SHA-256 digest.

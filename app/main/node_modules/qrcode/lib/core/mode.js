@@ -1,5 +1,5 @@
-var VersionCheck = require('./version-check')
-var Regex = require('./regex')
+const VersionCheck = require('./version-check')
+const Regex = require('./regex')
 
 /**
  * Numeric mode encodes data from the decimal digit set (0 - 9)
@@ -130,7 +130,7 @@ function fromString (string) {
     throw new Error('Param is not a string')
   }
 
-  var lcStr = string.toLowerCase()
+  const lcStr = string.toLowerCase()
 
   switch (lcStr) {
     case 'numeric':

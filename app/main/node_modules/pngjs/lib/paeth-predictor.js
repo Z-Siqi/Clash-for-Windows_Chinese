@@ -1,11 +1,10 @@
-'use strict';
+"use strict";
 
 module.exports = function paethPredictor(left, above, upLeft) {
-
-  var paeth = left + above - upLeft;
-  var pLeft = Math.abs(paeth - left);
-  var pAbove = Math.abs(paeth - above);
-  var pUpLeft = Math.abs(paeth - upLeft);
+  let paeth = left + above - upLeft;
+  let pLeft = Math.abs(paeth - left);
+  let pAbove = Math.abs(paeth - above);
+  let pUpLeft = Math.abs(paeth - upLeft);
 
   if (pLeft <= pAbove && pLeft <= pUpLeft) {
     return left;

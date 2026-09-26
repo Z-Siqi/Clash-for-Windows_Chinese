@@ -9,12 +9,19 @@
   "string": "string",
   "array": "larik",
   "required": "diperlukan",
+  "default": "bawaan",
   "default:": "bawaan:",
   "aliases:": "istilah lain:",
   "choices:": "pilihan:",
   "generated-value": "nilai-yang-dihasilkan",
-  "Not enough non-option arguments: got %s, need at least %s": "Argumen wajib kurang: hanya %s, minimal %s",
-  "Too many non-option arguments: got %s, maximum of %s": "Terlalu banyak argumen wajib: ada %s, maksimal %s",
+  "Not enough non-option arguments: got %s, need at least %s": {
+    "one": "Argumen wajib kurang: hanya %s, minimal %s",
+    "other": "Argumen wajib kurang: hanya %s, minimal %s"
+  },
+  "Too many non-option arguments: got %s, maximum of %s": {
+    "one": "Terlalu banyak argumen wajib: ada %s, maksimal %s",
+    "other": "Terlalu banyak argumen wajib: ada %s, maksimal %s"
+  },
   "Missing argument value: %s": {
     "one": "Kurang argumen: %s",
     "other": "Kurang argumen: %s"

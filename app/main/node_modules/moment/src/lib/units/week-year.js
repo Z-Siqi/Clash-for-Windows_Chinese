@@ -1,6 +1,4 @@
 import { addFormatToken } from '../format/format';
-import { addUnitAlias } from './aliases';
-import { addUnitPriority } from './priorities';
 import {
     addRegexToken,
     match1to2,
@@ -42,14 +40,6 @@ addWeekYearFormatToken('GGGGG', 'isoWeekYear');
 
 // ALIASES
 
-addUnitAlias('weekYear', 'gg');
-addUnitAlias('isoWeekYear', 'GG');
-
-// PRIORITY
-
-addUnitPriority('weekYear', 1);
-addUnitPriority('isoWeekYear', 1);
-
 // PARSING
 
 addRegexToken('G', matchSigned);
@@ -61,14 +51,12 @@ addRegexToken('gggg', match1to4, match4);
 addRegexToken('GGGGG', match1to6, match6);
 addRegexToken('ggggg', match1to6, match6);
 
-addWeekParseToken(['gggg', 'ggggg', 'GGGG', 'GGGGG'], function (
-    input,
-    week,
-    config,
-    token
-) {
-    week[token.substr(0, 2)] = toInt(input);
-});
+addWeekParseToken(
+    ['gggg', 'ggggg', 'GGGG', 'GGGGG'],
+    function (input, week, config, token) {
+        week[token.substr(0, 2)] = toInt(input);
+    }
+);
 
 addWeekParseToken(['gg', 'GG'], function (input, week, config, token) {
     week[token] = hooks.parseTwoDigitYear(input);
@@ -81,7 +69,7 @@ export function getSetWeekYear(input) {
         this,
         input,
         this.week(),
-        this.weekday(),
+        this.weekday() + this.localeData()._week.dow,
         this.localeData()._week.dow,
         this.localeData()._week.doy
     );

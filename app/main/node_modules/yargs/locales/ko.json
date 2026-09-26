@@ -8,12 +8,19 @@
   "number": "숫자",
   "array": "배열",
   "required": "필수",
+  "default": "기본",
   "default:": "기본:",
   "choices:": "선택:",
   "aliases:": "별칭:",
   "generated-value": "생성된 값",
-  "Not enough non-option arguments: got %s, need at least %s": "옵션이 아닌 인자가 충분치 않습니다: %s개를 받았지만, 적어도 %s개는 필요합니다",
-  "Too many non-option arguments: got %s, maximum of %s": "옵션이 아닌 인자가 너무 많습니다: %s개를 받았지만, %s개 이하여야 합니다",
+  "Not enough non-option arguments: got %s, need at least %s": {
+    "one": "옵션이 아닌 인자가 충분치 않습니다: %s개를 받았지만, 적어도 %s개는 필요합니다",
+    "other": "옵션이 아닌 인자가 충분치 않습니다: %s개를 받았지만, 적어도 %s개는 필요합니다"
+  },
+  "Too many non-option arguments: got %s, maximum of %s": {
+    "one": "옵션이 아닌 인자가 너무 많습니다: %s개를 받았지만, %s개 이하여야 합니다",
+    "other": "옵션이 아닌 인자가 너무 많습니다: %s개를 받았지만, %s개 이하여야 합니다"
+  },
   "Missing argument value: %s": {
     "one": "인자값을 받지 못했습니다: %s",
     "other": "인자값들을 받지 못했습니다: %s"

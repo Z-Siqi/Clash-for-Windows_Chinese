@@ -8,13 +8,18 @@
   "number": "nummer",
   "array": "matrise",
   "required": "obligatorisk",
+  "default": "standard",
   "default:": "standard:",
   "choices:": "val:",
   "generated-value": "generert-verdi",
-  "Not enough non-option arguments: got %s, need at least %s":
-    "Ikkje nok ikkje-alternativ argument: fekk %s, treng minst %s",
-  "Too many non-option arguments: got %s, maximum of %s":
-    "For mange ikkje-alternativ argument: fekk %s, maksimum %s",
+  "Not enough non-option arguments: got %s, need at least %s": {
+    "one": "Ikkje nok ikkje-alternativ argument: fekk %s, treng minst %s",
+    "other": "Ikkje nok ikkje-alternativ argument: fekk %s, treng minst %s"
+  },
+  "Too many non-option arguments: got %s, maximum of %s": {
+    "one": "For mange ikkje-alternativ argument: fekk %s, maksimum %s",
+    "other": "For mange ikkje-alternativ argument: fekk %s, maksimum %s"
+  },
   "Missing argument value: %s": {
     "one": "Manglar argumentverdi: %s",
     "other": "Manglar argumentverdiar: %s"

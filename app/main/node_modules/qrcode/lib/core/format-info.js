@@ -1,8 +1,8 @@
-var Utils = require('./utils')
+const Utils = require('./utils')
 
-var G15 = (1 << 10) | (1 << 8) | (1 << 5) | (1 << 4) | (1 << 2) | (1 << 1) | (1 << 0)
-var G15_MASK = (1 << 14) | (1 << 12) | (1 << 10) | (1 << 4) | (1 << 1)
-var G15_BCH = Utils.getBCHDigit(G15)
+const G15 = (1 << 10) | (1 << 8) | (1 << 5) | (1 << 4) | (1 << 2) | (1 << 1) | (1 << 0)
+const G15_MASK = (1 << 14) | (1 << 12) | (1 << 10) | (1 << 4) | (1 << 1)
+const G15_BCH = Utils.getBCHDigit(G15)
 
 /**
  * Returns format information with relative error correction bits
@@ -15,8 +15,8 @@ var G15_BCH = Utils.getBCHDigit(G15)
  * @return {Number}                      Encoded format information bits
  */
 exports.getEncodedBits = function getEncodedBits (errorCorrectionLevel, mask) {
-  var data = ((errorCorrectionLevel.bit << 3) | mask)
-  var d = data << 10
+  const data = ((errorCorrectionLevel.bit << 3) | mask)
+  let d = data << 10
 
   while (Utils.getBCHDigit(d) - G15_BCH >= 0) {
     d ^= (G15 << (Utils.getBCHDigit(d) - G15_BCH))

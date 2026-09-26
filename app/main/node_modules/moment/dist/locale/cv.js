@@ -9,9 +9,10 @@ export default moment.defineLocale('cv', {
         '_'
     ),
     monthsShort: 'кӑр_нар_пуш_ака_май_ҫӗр_утӑ_ҫур_авн_юпа_чӳк_раш'.split('_'),
-    weekdays: 'вырсарникун_тунтикун_ытларикун_юнкун_кӗҫнерникун_эрнекун_шӑматкун'.split(
-        '_'
-    ),
+    weekdays:
+        'вырсарникун_тунтикун_ытларикун_юнкун_кӗҫнерникун_эрнекун_шӑматкун'.split(
+            '_'
+        ),
     weekdaysShort: 'выр_тун_ытл_юн_кӗҫ_эрн_шӑм'.split('_'),
     weekdaysMin: 'вр_тн_ыт_юн_кҫ_эр_шм'.split('_'),
     longDateFormat: {
@@ -35,8 +36,8 @@ export default moment.defineLocale('cv', {
             var affix = /сехет$/i.exec(output)
                 ? 'рен'
                 : /ҫул$/i.exec(output)
-                ? 'тан'
-                : 'ран';
+                  ? 'тан'
+                  : 'ран';
             return output + affix;
         },
         past: '%s каялла',

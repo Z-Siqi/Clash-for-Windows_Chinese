@@ -8,12 +8,19 @@
   "number": "numara",
   "array": "array",
   "required": "zorunlu",
+  "default": "varsayılan",
   "default:": "varsayılan:",
   "choices:": "seçimler:",
   "aliases:": "takma adlar:",
   "generated-value": "oluşturulan-değer",
-  "Not enough non-option arguments: got %s, need at least %s": "Seçenek dışı argümanlar yetersiz: %s bulundu, %s gerekli",
-  "Too many non-option arguments: got %s, maximum of %s": "Seçenek dışı argümanlar gereğinden fazla: %s bulundu, azami %s",
+  "Not enough non-option arguments: got %s, need at least %s": {
+    "one": "Seçenek dışı argümanlar yetersiz: %s bulundu, %s gerekli",
+    "other": "Seçenek dışı argümanlar yetersiz: %s bulundu, %s gerekli"
+  },
+  "Too many non-option arguments: got %s, maximum of %s": {
+    "one": "Seçenek dışı argümanlar gereğinden fazla: %s bulundu, azami %s",
+    "other": "Seçenek dışı argümanlar gereğinden fazla: %s bulundu, azami %s"
+  },
   "Missing argument value: %s": {
     "one": "Eksik argüman değeri: %s",
     "other": "Eksik argüman değerleri: %s"

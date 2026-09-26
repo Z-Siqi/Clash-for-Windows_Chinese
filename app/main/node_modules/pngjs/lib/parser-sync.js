@@ -1,30 +1,30 @@
-'use strict';
+"use strict";
 
-var hasSyncZlib = true;
-var zlib = require('zlib');
-var inflateSync = require('./sync-inflate');
+let hasSyncZlib = true;
+let zlib = require("zlib");
+let inflateSync = require("./sync-inflate");
 if (!zlib.deflateSync) {
   hasSyncZlib = false;
 }
-var SyncReader = require('./sync-reader');
-var FilterSync = require('./filter-parse-sync');
-var Parser = require('./parser');
-var bitmapper = require('./bitmapper');
-var formatNormaliser = require('./format-normaliser');
+let SyncReader = require("./sync-reader");
+let FilterSync = require("./filter-parse-sync");
+let Parser = require("./parser");
+let bitmapper = require("./bitmapper");
+let formatNormaliser = require("./format-normaliser");
 
-
-module.exports = function(buffer, options) {
-
+module.exports = function (buffer, options) {
   if (!hasSyncZlib) {
-    throw new Error('To use the sync capability of this library in old node versions, please pin pngjs to v2.3.0');
+    throw new Error(
+      "To use the sync capability of this library in old node versions, please pin pngjs to v2.3.0"
+    );
   }
 
-  var err;
+  let err;
   function handleError(_err_) {
     err = _err_;
   }
 
-  var metaData;
+  let metaData;
   function handleMetaData(_metaData_) {
     metaData = _metaData_;
   }
@@ -41,19 +41,19 @@ module.exports = function(buffer, options) {
     metaData.alpha = true;
   }
 
-  var gamma;
+  let gamma;
   function handleGamma(_gamma_) {
     gamma = _gamma_;
   }
 
-  var inflateDataList = [];
+  let inflateDataList = [];
   function handleInflateData(inflatedData) {
     inflateDataList.push(inflatedData);
   }
 
-  var reader = new SyncReader(buffer);
+  let reader = new SyncReader(buffer);
 
-  var parser = new Parser(options, {
+  let parser = new Parser(options, {
     read: reader.read.bind(reader),
     error: handleError,
     metadata: handleMetaData,
@@ -61,7 +61,7 @@ module.exports = function(buffer, options) {
     palette: handlePalette,
     transColor: handleTransColor,
     inflateData: handleInflateData,
-    simpleTransparency: handleSimpleTransparency
+    simpleTransparency: handleSimpleTransparency,
   });
 
   parser.start();
@@ -72,31 +72,34 @@ module.exports = function(buffer, options) {
   }
 
   //join together the inflate datas
-  var inflateData = Buffer.concat(inflateDataList);
+  let inflateData = Buffer.concat(inflateDataList);
   inflateDataList.length = 0;
 
-  var inflatedData;
+  let inflatedData;
   if (metaData.interlace) {
     inflatedData = zlib.inflateSync(inflateData);
-  }
-  else {
-    var rowSize = ((metaData.width * metaData.bpp * metaData.depth + 7) >> 3) + 1;
-    var imageSize = rowSize * metaData.height;
-    inflatedData = inflateSync(inflateData, { chunkSize: imageSize, maxLength: imageSize });
+  } else {
+    let rowSize =
+      ((metaData.width * metaData.bpp * metaData.depth + 7) >> 3) + 1;
+    let imageSize = rowSize * metaData.height;
+    inflatedData = inflateSync(inflateData, {
+      chunkSize: imageSize,
+      maxLength: imageSize,
+    });
   }
   inflateData = null;
 
   if (!inflatedData || !inflatedData.length) {
-    throw new Error('bad png - invalid inflate data response');
+    throw new Error("bad png - invalid inflate data response");
   }
 
-  var unfilteredData = FilterSync.process(inflatedData, metaData);
+  let unfilteredData = FilterSync.process(inflatedData, metaData);
   inflateData = null;
 
-  var bitmapData = bitmapper.dataToBitMap(unfilteredData, metaData);
+  let bitmapData = bitmapper.dataToBitMap(unfilteredData, metaData);
   unfilteredData = null;
 
-  var normalisedBitmapData = formatNormaliser(bitmapData, metaData);
+  let normalisedBitmapData = formatNormaliser(bitmapData, metaData);
 
   metaData.data = normalisedBitmapData;
   metaData.gamma = gamma || 0;

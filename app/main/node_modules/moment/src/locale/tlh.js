@@ -12,10 +12,10 @@ function translateFuture(output) {
         output.indexOf('jaj') !== -1
             ? time.slice(0, -3) + 'leS'
             : output.indexOf('jar') !== -1
-            ? time.slice(0, -3) + 'waQ'
-            : output.indexOf('DIS') !== -1
-            ? time.slice(0, -3) + 'nem'
-            : time + ' pIq';
+              ? time.slice(0, -3) + 'waQ'
+              : output.indexOf('DIS') !== -1
+                ? time.slice(0, -3) + 'nem'
+                : time + ' pIq';
     return time;
 }
 
@@ -25,10 +25,10 @@ function translatePast(output) {
         output.indexOf('jaj') !== -1
             ? time.slice(0, -3) + 'Hu’'
             : output.indexOf('jar') !== -1
-            ? time.slice(0, -3) + 'wen'
-            : output.indexOf('DIS') !== -1
-            ? time.slice(0, -3) + 'ben'
-            : time + ' ret';
+              ? time.slice(0, -3) + 'wen'
+              : output.indexOf('DIS') !== -1
+                ? time.slice(0, -3) + 'ben'
+                : time + ' ret';
     return time;
 }
 
@@ -71,19 +71,18 @@ export default moment.defineLocale('tlh', {
     months: 'tera’ jar wa’_tera’ jar cha’_tera’ jar wej_tera’ jar loS_tera’ jar vagh_tera’ jar jav_tera’ jar Soch_tera’ jar chorgh_tera’ jar Hut_tera’ jar wa’maH_tera’ jar wa’maH wa’_tera’ jar wa’maH cha’'.split(
         '_'
     ),
-    monthsShort: 'jar wa’_jar cha’_jar wej_jar loS_jar vagh_jar jav_jar Soch_jar chorgh_jar Hut_jar wa’maH_jar wa’maH wa’_jar wa’maH cha’'.split(
-        '_'
-    ),
+    monthsShort:
+        'jar wa’_jar cha’_jar wej_jar loS_jar vagh_jar jav_jar Soch_jar chorgh_jar Hut_jar wa’maH_jar wa’maH wa’_jar wa’maH cha’'.split(
+            '_'
+        ),
     monthsParseExact: true,
     weekdays: 'lojmItjaj_DaSjaj_povjaj_ghItlhjaj_loghjaj_buqjaj_ghInjaj'.split(
         '_'
     ),
-    weekdaysShort: 'lojmItjaj_DaSjaj_povjaj_ghItlhjaj_loghjaj_buqjaj_ghInjaj'.split(
-        '_'
-    ),
-    weekdaysMin: 'lojmItjaj_DaSjaj_povjaj_ghItlhjaj_loghjaj_buqjaj_ghInjaj'.split(
-        '_'
-    ),
+    weekdaysShort:
+        'lojmItjaj_DaSjaj_povjaj_ghItlhjaj_loghjaj_buqjaj_ghInjaj'.split('_'),
+    weekdaysMin:
+        'lojmItjaj_DaSjaj_povjaj_ghItlhjaj_loghjaj_buqjaj_ghInjaj'.split('_'),
     longDateFormat: {
         LT: 'HH:mm',
         LTS: 'HH:mm:ss',

@@ -8,12 +8,19 @@
   "number": "szám",
   "array": "tömb",
   "required": "kötelező",
+  "default": "alapértelmezett",
   "default:": "alapértelmezett:",
   "choices:": "lehetőségek:",
   "aliases:": "aliaszok:",
   "generated-value": "generált-érték",
-  "Not enough non-option arguments: got %s, need at least %s": "Nincs elég nem opcionális argumentum: %s van, legalább %s kell",
-  "Too many non-option arguments: got %s, maximum of %s": "Túl sok nem opciánlis argumentum van: %s van, maximum %s lehet",
+  "Not enough non-option arguments: got %s, need at least %s": {
+    "one": "Nincs elég nem opcionális argumentum: %s van, legalább %s kell",
+    "other": "Nincs elég nem opcionális argumentum: %s van, legalább %s kell"
+  },
+  "Too many non-option arguments: got %s, maximum of %s": {
+    "one": "Túl sok nem opciánlis argumentum van: %s van, maximum %s lehet",
+    "other": "Túl sok nem opciánlis argumentum van: %s van, maximum %s lehet"
+  },
   "Missing argument value: %s": {
     "one": "Hiányzó argumentum érték: %s",
     "other": "Hiányzó argumentum értékek: %s"

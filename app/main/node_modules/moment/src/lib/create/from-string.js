@@ -8,8 +8,10 @@ import { defaultLocaleWeekdaysShort } from '../units/day-of-week';
 
 // iso 8601 regex
 // 0000-00-00 0000-W00 or 0000-W00-0 + T + 00 or 00:00 or 00:00:00 or 00:00:00.000 + +00:00 or +0000 or +00)
-var extendedIsoRegex = /^\s*((?:[+-]\d{6}|\d{4})-(?:\d\d-\d\d|W\d\d-\d|W\d\d|\d\d\d|\d\d))(?:(T| )(\d\d(?::\d\d(?::\d\d(?:[.,]\d+)?)?)?)([+-]\d\d(?::?\d\d)?|\s*Z)?)?$/,
-    basicIsoRegex = /^\s*((?:[+-]\d{6}|\d{4})(?:\d\d\d\d|W\d\d\d|W\d\d|\d\d\d|\d\d|))(?:(T| )(\d\d(?:\d\d(?:\d\d(?:[.,]\d+)?)?)?)([+-]\d\d(?::?\d\d)?|\s*Z)?)?$/,
+var extendedIsoRegex =
+        /^\s*((?:[+-]\d{6}|\d{4})-(?:\d\d-\d\d|W\d\d-\d|W\d\d|\d\d\d|\d\d))(?:(T| )(\d\d(?::\d\d(?::\d\d(?:[.,]\d+)?)?)?)([+-]\d\d(?::?\d\d)?|\s*Z)?)?$/,
+    basicIsoRegex =
+        /^\s*((?:[+-]\d{6}|\d{4})(?:\d\d\d\d|W\d\d\d|W\d\d|\d\d\d|\d\d|))(?:(T| )(\d\d(?:\d\d(?:\d\d(?:[.,]\d+)?)?)?)([+-]\d\d(?::?\d\d)?|\s*Z)?)?$/,
     tzRegex = /Z|[+-]\d\d(?::?\d\d)?/,
     isoDates = [
         ['YYYYYY-MM-DD', /[+-]\d{6}-\d\d-\d\d/],
@@ -40,7 +42,8 @@ var extendedIsoRegex = /^\s*((?:[+-]\d{6}|\d{4})-(?:\d\d-\d\d|W\d\d-\d|W\d\d|\d\
     ],
     aspNetJsonRegex = /^\/?Date\((-?\d+)/i,
     // RFC 2822 regex: For details see https://tools.ietf.org/html/rfc2822#section-3.3
-    rfc2822 = /^(?:(Mon|Tue|Wed|Thu|Fri|Sat|Sun),?\s)?(\d{1,2})\s(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s(\d{2,4})\s(\d\d):(\d\d)(?::(\d\d))?\s(?:(UT|GMT|[ECMP][SD]T)|([Zz])|([+-]\d{4}))$/,
+    rfc2822 =
+        /^(?:(Mon|Tue|Wed|Thu|Fri|Sat|Sun),?\s)?(\d{1,2})\s(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s(\d{2,4})\s(\d\d):(\d\d)(?::(\d\d))?\s(?:(UT|GMT|[ECMP][SD]T)|([Zz])|([+-]\d{4}))$/,
     obsOffsets = {
         UT: 0,
         GMT: 0,
@@ -63,12 +66,13 @@ export function configFromISO(config) {
         allowTime,
         dateFormat,
         timeFormat,
-        tzFormat;
+        tzFormat,
+        isoDatesLen = isoDates.length,
+        isoTimesLen = isoTimes.length;
 
     if (match) {
         getParsingFlags(config).iso = true;
-
-        for (i = 0, l = isoDates.length; i < l; i++) {
+        for (i = 0, l = isoDatesLen; i < l; i++) {
             if (isoDates[i][1].exec(match[1])) {
                 dateFormat = isoDates[i][0];
                 allowTime = isoDates[i][2] !== false;
@@ -80,7 +84,7 @@ export function configFromISO(config) {
             return;
         }
         if (match[3]) {
-            for (i = 0, l = isoTimes.length; i < l; i++) {
+            for (i = 0, l = isoTimesLen; i < l; i++) {
                 if (isoTimes[i][1].exec(match[3])) {
                     // match[2] should be 'T' or space
                     timeFormat = (match[2] || ' ') + isoTimes[i][0];
@@ -147,7 +151,7 @@ function untruncateYear(yearStr) {
 function preprocessRFC2822(s) {
     // Remove comments and folding whitespace and replace multiple-spaces with a single space
     return s
-        .replace(/\([^)]*\)|[\n\t]/g, ' ')
+        .replace(/\([^()]*\)|[\n\t]/g, ' ')
         .replace(/(\s\s+)/g, ' ')
         .replace(/^\s\s*/, '')
         .replace(/\s\s*$/, '');

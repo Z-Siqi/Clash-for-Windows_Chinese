@@ -1,0 +1,49 @@
+{
+    "project":  "MetaCubeX/mihomo",
+    "version":  "1.19.31",
+    "release":  "https://github.com/MetaCubeX/mihomo/releases/tag/v1.19.31",
+    "targets":  [
+                    {
+                        "asset":  "mihomo-windows-amd64-compatible-v1.19.31.zip",
+                        "output":  "clash_core/win_x64/static/files/win/x64/mihomo-windows-amd64.exe",
+                        "source":  "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.31/mihomo-windows-amd64-compatible-v1.19.31.zip",
+                        "sha256":  "1fa8055e03596fc35167f70e9ecd1890517d38d960a39177445746a1b0defc2b"
+                    },
+                    {
+                        "asset":  "mihomo-windows-386-v1.19.31.zip",
+                        "output":  "clash_core/win32-ia32/static/files/win/ia32/mihomo-windows-386.exe",
+                        "source":  "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.31/mihomo-windows-386-v1.19.31.zip",
+                        "sha256":  "05fd0c26ee7a60a4f8d86ce0b59212a802eca509b73b0096148eece9e066a971"
+                    },
+                    {
+                        "asset":  "mihomo-windows-arm64-v1.19.31.zip",
+                        "output":  "clash_core/win32-arm64/static/files/win/arm64/mihomo-windows-arm64.exe",
+                        "source":  "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.31/mihomo-windows-arm64-v1.19.31.zip",
+                        "sha256":  "4c63f401f013896a75fd9048878ea8340f0dcde7b84fbdc5397325691f0a4355"
+                    },
+                    {
+                        "asset":  "mihomo-linux-amd64-compatible-v1.19.31.gz",
+                        "output":  "clash_core/linux-x64/static/files/linux/x64/mihomo-linux-amd64",
+                        "source":  "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.31/mihomo-linux-amd64-compatible-v1.19.31.gz",
+                        "sha256":  "b341a765412c192685264e038a6aad2ac1c67c12b8aceeb5c6f64955cf43f5ed"
+                    },
+                    {
+                        "asset":  "mihomo-linux-arm64-v1.19.31.gz",
+                        "output":  "clash_core/linux-arm64/static/files/linux/arm64/mihomo-linux-arm64",
+                        "source":  "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.31/mihomo-linux-arm64-v1.19.31.gz",
+                        "sha256":  "1b315bc038d05f84ee86d232f3c3d2b020b5044e9b971bb8fe215b6e6a2148f3"
+                    },
+                    {
+                        "asset":  "mihomo-darwin-amd64-compatible-v1.19.31.gz",
+                        "output":  "clash_core/darwin-x64/static/files/darwin/x64/mihomo-darwin-amd64",
+                        "source":  "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.31/mihomo-darwin-amd64-compatible-v1.19.31.gz",
+                        "sha256":  "d1361fdb7f93ac500d8c936cfd61516b2445c6acfaabe982244fdd765872e077"
+                    },
+                    {
+                        "asset":  "mihomo-darwin-arm64-v1.19.31.gz",
+                        "output":  "clash_core/darwin-arm64/static/files/darwin/arm64/mihomo-darwin-arm64",
+                        "source":  "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.31/mihomo-darwin-arm64-v1.19.31.gz",
+                        "sha256":  "fae1f37e28ee53fcf5be7a8bb121099db1fe442e44205734ed49c62579364090"
+                    }
+                ]
+}

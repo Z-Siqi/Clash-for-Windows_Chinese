@@ -8,12 +8,19 @@
   "number": "число",
   "array": "массив",
   "required": "необходимо",
+  "default": "по умолчанию",
   "default:": "по умолчанию:",
   "choices:": "возможности:",
   "aliases:": "алиасы:",
   "generated-value": "генерированное значение",
-  "Not enough non-option arguments: got %s, need at least %s": "Недостаточно неопционных аргументов: есть %s, нужно как минимум %s",
-  "Too many non-option arguments: got %s, maximum of %s": "Слишком много неопционных аргументов: есть %s, максимум допустимо %s",
+  "Not enough non-option arguments: got %s, need at least %s": {
+    "one": "Недостаточно неопционных аргументов: есть %s, нужно как минимум %s",
+    "other": "Недостаточно неопционных аргументов: есть %s, нужно как минимум %s"
+  },
+  "Too many non-option arguments: got %s, maximum of %s": {
+    "one": "Слишком много неопционных аргументов: есть %s, максимум допустимо %s",
+    "other": "Слишком много неопционных аргументов: есть %s, максимум допустимо %s"
+  },
   "Missing argument value: %s": {
     "one": "Не хватает значения аргумента: %s",
     "other": "Не хватает значений аргументов: %s"

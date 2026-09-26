@@ -8,11 +8,18 @@
   "number": "número",
   "array": "arranjo",
   "required": "requerido",
+  "default": "padrão",
   "default:": "padrão:",
   "choices:": "escolhas:",
   "generated-value": "valor-gerado",
-  "Not enough non-option arguments: got %s, need at least %s": "Argumentos insuficientes não opcionais: Argumento %s, necessário pelo menos %s",
-  "Too many non-option arguments: got %s, maximum of %s": "Excesso de argumentos não opcionais: recebido %s, máximo de %s",
+  "Not enough non-option arguments: got %s, need at least %s": {
+    "one": "Argumentos insuficientes não opcionais: Argumento %s, necessário pelo menos %s",
+    "other": "Argumentos insuficientes não opcionais: Argumento %s, necessário pelo menos %s"
+  },
+  "Too many non-option arguments: got %s, maximum of %s": {
+    "one": "Excesso de argumentos não opcionais: recebido %s, máximo de %s",
+    "other": "Excesso de argumentos não opcionais: recebido %s, máximo de %s"
+  },
   "Missing argument value: %s": {
     "one": "Falta valor de argumento: %s",
     "other": "Falta valores de argumento: %s"

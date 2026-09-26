@@ -17,7 +17,7 @@ exports.Patterns = {
  * Weighted penalty scores for the undesirable features
  * @type {Object}
  */
-var PenaltyScores = {
+const PenaltyScores = {
   N1: 3,
   N2: 3,
   N3: 40,
@@ -53,19 +53,19 @@ exports.from = function from (value) {
 * i is the amount by which the number of adjacent modules of the same color exceeds 5
 */
 exports.getPenaltyN1 = function getPenaltyN1 (data) {
-  var size = data.size
-  var points = 0
-  var sameCountCol = 0
-  var sameCountRow = 0
-  var lastCol = null
-  var lastRow = null
+  const size = data.size
+  let points = 0
+  let sameCountCol = 0
+  let sameCountRow = 0
+  let lastCol = null
+  let lastRow = null
 
-  for (var row = 0; row < size; row++) {
+  for (let row = 0; row < size; row++) {
     sameCountCol = sameCountRow = 0
     lastCol = lastRow = null
 
-    for (var col = 0; col < size; col++) {
-      var module = data.get(row, col)
+    for (let col = 0; col < size; col++) {
+      let module = data.get(row, col)
       if (module === lastCol) {
         sameCountCol++
       } else {
@@ -97,12 +97,12 @@ exports.getPenaltyN1 = function getPenaltyN1 (data) {
  * Points: N2 * (m - 1) * (n - 1)
  */
 exports.getPenaltyN2 = function getPenaltyN2 (data) {
-  var size = data.size
-  var points = 0
+  const size = data.size
+  let points = 0
 
-  for (var row = 0; row < size - 1; row++) {
-    for (var col = 0; col < size - 1; col++) {
-      var last = data.get(row, col) +
+  for (let row = 0; row < size - 1; row++) {
+    for (let col = 0; col < size - 1; col++) {
+      const last = data.get(row, col) +
         data.get(row, col + 1) +
         data.get(row + 1, col) +
         data.get(row + 1, col + 1)
@@ -121,14 +121,14 @@ exports.getPenaltyN2 = function getPenaltyN2 (data) {
  * Points: N3 * number of pattern found
  */
 exports.getPenaltyN3 = function getPenaltyN3 (data) {
-  var size = data.size
-  var points = 0
-  var bitsCol = 0
-  var bitsRow = 0
+  const size = data.size
+  let points = 0
+  let bitsCol = 0
+  let bitsRow = 0
 
-  for (var row = 0; row < size; row++) {
+  for (let row = 0; row < size; row++) {
     bitsCol = bitsRow = 0
-    for (var col = 0; col < size; col++) {
+    for (let col = 0; col < size; col++) {
       bitsCol = ((bitsCol << 1) & 0x7FF) | data.get(row, col)
       if (col >= 10 && (bitsCol === 0x5D0 || bitsCol === 0x05D)) points++
 
@@ -149,12 +149,12 @@ exports.getPenaltyN3 = function getPenaltyN3 (data) {
  * in the symbol from 50% in steps of 5%
  */
 exports.getPenaltyN4 = function getPenaltyN4 (data) {
-  var darkCount = 0
-  var modulesCount = data.data.length
+  let darkCount = 0
+  const modulesCount = data.data.length
 
-  for (var i = 0; i < modulesCount; i++) darkCount += data.data[i]
+  for (let i = 0; i < modulesCount; i++) darkCount += data.data[i]
 
-  var k = Math.abs(Math.ceil((darkCount * 100 / modulesCount) / 5) - 10)
+  const k = Math.abs(Math.ceil((darkCount * 100 / modulesCount) / 5) - 10)
 
   return k * PenaltyScores.N4
 }
@@ -189,10 +189,10 @@ function getMaskAt (maskPattern, i, j) {
  * @param  {BitMatrix} data    BitMatrix data
  */
 exports.applyMask = function applyMask (pattern, data) {
-  var size = data.size
+  const size = data.size
 
-  for (var col = 0; col < size; col++) {
-    for (var row = 0; row < size; row++) {
+  for (let col = 0; col < size; col++) {
+    for (let row = 0; row < size; row++) {
       if (data.isReserved(row, col)) continue
       data.xor(row, col, getMaskAt(pattern, row, col))
     }
@@ -206,16 +206,16 @@ exports.applyMask = function applyMask (pattern, data) {
  * @return {Number} Mask pattern reference number
  */
 exports.getBestMask = function getBestMask (data, setupFormatFunc) {
-  var numPatterns = Object.keys(exports.Patterns).length
-  var bestPattern = 0
-  var lowerPenalty = Infinity
+  const numPatterns = Object.keys(exports.Patterns).length
+  let bestPattern = 0
+  let lowerPenalty = Infinity
 
-  for (var p = 0; p < numPatterns; p++) {
+  for (let p = 0; p < numPatterns; p++) {
     setupFormatFunc(p)
     exports.applyMask(p, data)
 
     // Calculate penalty
-    var penalty =
+    const penalty =
       exports.getPenaltyN1(data) +
       exports.getPenaltyN2(data) +
       exports.getPenaltyN3(data) +

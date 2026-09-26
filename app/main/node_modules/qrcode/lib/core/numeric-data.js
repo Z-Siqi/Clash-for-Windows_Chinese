@@ -1,4 +1,4 @@
-var Mode = require('./mode')
+const Mode = require('./mode')
 
 function NumericData (data) {
   this.mode = Mode.NUMERIC
@@ -18,7 +18,7 @@ NumericData.prototype.getBitsLength = function getBitsLength () {
 }
 
 NumericData.prototype.write = function write (bitBuffer) {
-  var i, group, value
+  let i, group, value
 
   // The input data string is divided into groups of three digits,
   // and each group is converted to its 10-bit binary equivalent.
@@ -31,7 +31,7 @@ NumericData.prototype.write = function write (bitBuffer) {
 
   // If the number of input digits is not an exact multiple of three,
   // the final one or two digits are converted to 4 or 7 bits respectively.
-  var remainingNum = this.data.length - i
+  const remainingNum = this.data.length - i
   if (remainingNum > 0) {
     group = this.data.substr(i)
     value = parseInt(group, 10)

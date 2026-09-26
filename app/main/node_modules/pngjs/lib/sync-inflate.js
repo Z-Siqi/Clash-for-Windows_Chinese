@@ -1,10 +1,10 @@
-'use strict';
+"use strict";
 
-var assert = require('assert').ok;
-var zlib = require('zlib');
-var util = require('util');
+let assert = require("assert").ok;
+let zlib = require("zlib");
+let util = require("util");
 
-var kMaxLength = require('buffer').kMaxLength;
+let kMaxLength = require("buffer").kMaxLength;
 
 function Inflate(opts) {
   if (!(this instanceof Inflate)) {
@@ -44,23 +44,23 @@ function _close(engine, callback) {
   engine._handle = null;
 }
 
-Inflate.prototype._processChunk = function(chunk, flushFlag, asyncCb) {
-  if (typeof asyncCb === 'function') {
+Inflate.prototype._processChunk = function (chunk, flushFlag, asyncCb) {
+  if (typeof asyncCb === "function") {
     return zlib.Inflate._processChunk.call(this, chunk, flushFlag, asyncCb);
   }
 
-  var self = this;
+  let self = this;
 
-  var availInBefore = chunk && chunk.length;
-  var availOutBefore = this._chunkSize - this._offset;
-  var leftToInflate = this._maxLength;
-  var inOff = 0;
+  let availInBefore = chunk && chunk.length;
+  let availOutBefore = this._chunkSize - this._offset;
+  let leftToInflate = this._maxLength;
+  let inOff = 0;
 
-  var buffers = [];
-  var nread = 0;
+  let buffers = [];
+  let nread = 0;
 
-  var error;
-  this.on('error', function(err) {
+  let error;
+  this.on("error", function (err) {
     error = err;
   });
 
@@ -69,11 +69,11 @@ Inflate.prototype._processChunk = function(chunk, flushFlag, asyncCb) {
       return;
     }
 
-    var have = availOutBefore - availOutAfter;
-    assert(have >= 0, 'have should not go down');
+    let have = availOutBefore - availOutAfter;
+    assert(have >= 0, "have should not go down");
 
     if (have > 0) {
-      var out = self._buffer.slice(self._offset, self._offset + have);
+      let out = self._buffer.slice(self._offset, self._offset + have);
       self._offset += have;
 
       if (out.length > leftToInflate) {
@@ -96,7 +96,7 @@ Inflate.prototype._processChunk = function(chunk, flushFlag, asyncCb) {
     }
 
     if (availOutAfter === 0) {
-      inOff += (availInBefore - availInAfter);
+      inOff += availInBefore - availInAfter;
       availInBefore = availInAfter;
 
       return true;
@@ -105,15 +105,18 @@ Inflate.prototype._processChunk = function(chunk, flushFlag, asyncCb) {
     return false;
   }
 
-  assert(this._handle, 'zlib binding closed');
+  assert(this._handle, "zlib binding closed");
+  let res;
   do {
-    var res = this._handle.writeSync(flushFlag,
+    res = this._handle.writeSync(
+      flushFlag,
       chunk, // in
       inOff, // in_off
       availInBefore, // in_len
       this._buffer, // out
       this._offset, //out_off
-      availOutBefore); // out_len
+      availOutBefore
+    ); // out_len
     // Node 8 --> 9 compatibility check
     res = res || this._writeState;
   } while (!this._hadError && handleChunk(res[0], res[1]));
@@ -124,10 +127,14 @@ Inflate.prototype._processChunk = function(chunk, flushFlag, asyncCb) {
 
   if (nread >= kMaxLength) {
     _close(this);
-    throw new RangeError('Cannot create final Buffer. It would be larger than 0x' + kMaxLength.toString(16) + ' bytes');
+    throw new RangeError(
+      "Cannot create final Buffer. It would be larger than 0x" +
+        kMaxLength.toString(16) +
+        " bytes"
+    );
   }
 
-  var buf = Buffer.concat(buffers, nread);
+  let buf = Buffer.concat(buffers, nread);
   _close(this);
 
   return buf;
@@ -136,14 +143,14 @@ Inflate.prototype._processChunk = function(chunk, flushFlag, asyncCb) {
 util.inherits(Inflate, zlib.Inflate);
 
 function zlibBufferSync(engine, buffer) {
-  if (typeof buffer === 'string') {
+  if (typeof buffer === "string") {
     buffer = Buffer.from(buffer);
   }
   if (!(buffer instanceof Buffer)) {
-    throw new TypeError('Not a string or buffer');
+    throw new TypeError("Not a string or buffer");
   }
 
-  var flushFlag = engine._finishFlushFlag;
+  let flushFlag = engine._finishFlushFlag;
   if (flushFlag == null) {
     flushFlag = zlib.Z_FINISH;
   }

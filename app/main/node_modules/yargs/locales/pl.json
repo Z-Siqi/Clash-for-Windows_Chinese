@@ -8,12 +8,19 @@
   "number": "liczba",
   "array": "tablica",
   "required": "wymagany",
+  "default": "domyślny",
   "default:": "domyślny:",
   "choices:": "dostępne:",
   "aliases:": "aliasy:",
   "generated-value": "wygenerowana-wartość",
-  "Not enough non-option arguments: got %s, need at least %s": "Niewystarczająca ilość argumentów: otrzymano %s, wymagane co najmniej %s",
-  "Too many non-option arguments: got %s, maximum of %s": "Zbyt duża ilość argumentów: otrzymano %s, wymagane co najwyżej %s",
+  "Not enough non-option arguments: got %s, need at least %s": {
+    "one": "Niewystarczająca ilość argumentów: otrzymano %s, wymagane co najmniej %s",
+    "other": "Niewystarczająca ilość argumentów: otrzymano %s, wymagane co najmniej %s"
+  },
+  "Too many non-option arguments: got %s, maximum of %s": {
+    "one": "Zbyt duża ilość argumentów: otrzymano %s, wymagane co najwyżej %s",
+    "other": "Zbyt duża ilość argumentów: otrzymano %s, wymagane co najwyżej %s"
+  },
   "Missing argument value: %s": {
     "one": "Brak wartości dla argumentu: %s",
     "other": "Brak wartości dla argumentów: %s"

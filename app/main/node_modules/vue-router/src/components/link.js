@@ -189,7 +189,7 @@ export default {
   }
 }
 
-function guardEvent (e) {
+export function guardEvent (e: any) {
   // don't redirect with control keys
   if (e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) return
   // don't redirect when preventDefault called

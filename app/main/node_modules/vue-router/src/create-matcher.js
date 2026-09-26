@@ -32,7 +32,7 @@ export function createMatcher (
     createRouteMap([route || parentOrRoute], pathList, pathMap, nameMap, parent)
 
     // add aliases of parent
-    if (parent) {
+    if (parent && parent.alias.length) {
       createRouteMap(
         // $flow-disable-line route is defined if parent is
         parent.alias.map(alias => ({ path: alias, children: [route] })),

@@ -1,14 +1,14 @@
 
-var canPromise = require('./can-promise')
+const canPromise = require('./can-promise')
 
-var QRCode = require('./core/qrcode')
-var CanvasRenderer = require('./renderer/canvas')
-var SvgRenderer = require('./renderer/svg-tag.js')
+const QRCode = require('./core/qrcode')
+const CanvasRenderer = require('./renderer/canvas')
+const SvgRenderer = require('./renderer/svg-tag.js')
 
 function renderCanvas (renderFunc, canvas, text, opts, cb) {
-  var args = [].slice.call(arguments, 1)
-  var argsNum = args.length
-  var isLastArgCb = typeof args[argsNum - 1] === 'function'
+  const args = [].slice.call(arguments, 1)
+  const argsNum = args.length
+  const isLastArgCb = typeof args[argsNum - 1] === 'function'
 
   if (!isLastArgCb && !canPromise()) {
     throw new Error('Callback required as last argument')
@@ -50,7 +50,7 @@ function renderCanvas (renderFunc, canvas, text, opts, cb) {
 
     return new Promise(function (resolve, reject) {
       try {
-        var data = QRCode.create(text, opts)
+        const data = QRCode.create(text, opts)
         resolve(renderFunc(data, canvas, opts))
       } catch (e) {
         reject(e)
@@ -59,7 +59,7 @@ function renderCanvas (renderFunc, canvas, text, opts, cb) {
   }
 
   try {
-    var data = QRCode.create(text, opts)
+    const data = QRCode.create(text, opts)
     cb(null, renderFunc(data, canvas, opts))
   } catch (e) {
     cb(e)

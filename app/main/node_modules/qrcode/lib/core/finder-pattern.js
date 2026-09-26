@@ -1,5 +1,5 @@
-var getSymbolSize = require('./utils').getSymbolSize
-var FINDER_PATTERN_SIZE = 7
+const getSymbolSize = require('./utils').getSymbolSize
+const FINDER_PATTERN_SIZE = 7
 
 /**
  * Returns an array containing the positions of each finder pattern.
@@ -9,7 +9,7 @@ var FINDER_PATTERN_SIZE = 7
  * @return {Array}          Array of coordinates
  */
 exports.getPositions = function getPositions (version) {
-  var size = getSymbolSize(version)
+  const size = getSymbolSize(version)
 
   return [
     // top-left

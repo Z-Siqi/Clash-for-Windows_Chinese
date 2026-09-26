@@ -8,12 +8,19 @@
   "number": "數字",
   "array": "陣列",
   "required": "必須",
+  "default": "預設值",
   "default:": "預設值:",
   "choices:": "可選值:",
   "aliases:": "別名:",
   "generated-value": "生成的值",
-  "Not enough non-option arguments: got %s, need at least %s": "non-option 引數不足：只傳入了 %s 個, 至少要 %s 個",
-  "Too many non-option arguments: got %s, maximum of %s": "non-option 引數過多：傳入了 %s 個, 但最多 %s 個",
+  "Not enough non-option arguments: got %s, need at least %s": {
+    "one": "non-option 引數不足：只傳入了 %s 個, 至少要 %s 個",
+    "other": "non-option 引數不足：只傳入了 %s 個, 至少要 %s 個"
+  },
+  "Too many non-option arguments: got %s, maximum of %s": {
+    "one": "non-option 引數過多：傳入了 %s 個, 但最多 %s 個",
+    "other": "non-option 引數過多：傳入了 %s 個, 但最多 %s 個"
+  },
   "Missing argument value: %s": {
     "one": "此引數無指定值：%s",
     "other": "這些引數無指定值：%s"

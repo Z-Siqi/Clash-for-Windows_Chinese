@@ -151,7 +151,9 @@ SourceMapConsumer.prototype.eachMapping =
     for (var i = 0, n = mappings.length; i < n; i++) {
       var mapping = mappings[i];
       var source = mapping.source === null ? null : sources.at(mapping.source);
-      source = util.computeSourceURL(sourceRoot, source, sourceMapURL);
+      if(source !== null) {
+        source = util.computeSourceURL(sourceRoot, source, sourceMapURL);
+      }
       boundCallback({
         source: source,
         generatedLine: mapping.generatedLine,
@@ -1066,7 +1068,7 @@ IndexedSourceMapConsumer.prototype.sourceContentFor =
       var section = this._sections[i];
 
       var content = section.consumer.sourceContentFor(aSource, true);
-      if (content) {
+      if (content || content === '') {
         return content;
       }
     }
@@ -1142,7 +1144,9 @@ IndexedSourceMapConsumer.prototype._parseMappings =
         var mapping = sectionMappings[j];
 
         var source = section.consumer._sources.at(mapping.source);
-        source = util.computeSourceURL(section.consumer.sourceRoot, source, this._sourceMapURL);
+        if(source !== null) {
+          source = util.computeSourceURL(section.consumer.sourceRoot, source, this._sourceMapURL);
+        }
         this._sources.add(source);
         source = this._sources.indexOf(source);
 

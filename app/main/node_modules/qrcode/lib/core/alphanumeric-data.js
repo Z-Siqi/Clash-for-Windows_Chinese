@@ -1,4 +1,4 @@
-var Mode = require('./mode')
+const Mode = require('./mode')
 
 /**
  * Array of characters available in alphanumeric mode
@@ -9,7 +9,7 @@ var Mode = require('./mode')
  *
  * @type {Array}
  */
-var ALPHA_NUM_CHARS = [
+const ALPHA_NUM_CHARS = [
   '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
   'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
   'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
@@ -34,13 +34,13 @@ AlphanumericData.prototype.getBitsLength = function getBitsLength () {
 }
 
 AlphanumericData.prototype.write = function write (bitBuffer) {
-  var i
+  let i
 
   // Input data characters are divided into groups of two characters
   // and encoded as 11-bit binary codes.
   for (i = 0; i + 2 <= this.data.length; i += 2) {
     // The character value of the first character is multiplied by 45
-    var value = ALPHA_NUM_CHARS.indexOf(this.data[i]) * 45
+    let value = ALPHA_NUM_CHARS.indexOf(this.data[i]) * 45
 
     // The character value of the second digit is added to the product
     value += ALPHA_NUM_CHARS.indexOf(this.data[i + 1])

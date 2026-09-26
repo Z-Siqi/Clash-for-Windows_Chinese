@@ -1,5 +1,5 @@
-var toSJISFunction
-var CODEWORDS_COUNT = [
+let toSJISFunction
+const CODEWORDS_COUNT = [
   0, // Not used
   26, 44, 70, 100, 134, 172, 196, 242, 292, 346,
   404, 466, 532, 581, 655, 733, 815, 901, 991, 1085,
@@ -36,7 +36,7 @@ exports.getSymbolTotalCodewords = function getSymbolTotalCodewords (version) {
  * @return {Number}      Encoded value
  */
 exports.getBCHDigit = function (data) {
-  var digit = 0
+  let digit = 0
 
   while (data !== 0) {
     digit++
