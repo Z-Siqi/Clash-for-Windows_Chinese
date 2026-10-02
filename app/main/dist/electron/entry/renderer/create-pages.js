@@ -75,7 +75,6 @@ function createRendererPages({ Vuex, Language, modifyState, runtime, components,
         isLinux: platform.isLinux, currentTarget: platform.assetTarget,
         updateTargets: {
             windowsX64: platform.windowsX64,
-            windowsIa32: platform.windowsX86,
             windowsArm64: platform.windowsArm64,
             macArm64: platform.macArm64,
             macX64: platform.macX64,

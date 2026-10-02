@@ -23,10 +23,6 @@ const targets = {
         clash: "app/clash_core/win_x64/static/files/win/x64/clash-win64.exe",
         mihomo: "app/clash_core/win_x64/static/files/win/x64/mihomo-windows-amd64.exe"
     },
-    "win32:ia32": {
-        clash: "app/clash_core/win32-ia32/static/files/win/ia32/clash-win32.exe",
-        mihomo: "app/clash_core/win32-ia32/static/files/win/ia32/mihomo-windows-386.exe"
-    },
     "win32:arm64": {
         clash: "app/clash_core/win32-arm64/static/files/win/arm64/clash-win-arm64.exe",
         mihomo: "app/clash_core/win32-arm64/static/files/win/arm64/mihomo-windows-arm64.exe"

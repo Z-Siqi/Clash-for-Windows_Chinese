@@ -18,12 +18,6 @@ const targets = Object.freeze({
         productName: "Clash for Windows",
         staticRoot: "win_x64"
     },
-    "win-ia32": {
-        platform: "win32",
-        arch: "ia32",
-        productName: "Clash for Windows",
-        staticRoot: "win32-ia32"
-    },
     "win-arm64": {
         platform: "win32",
         arch: "arm64",

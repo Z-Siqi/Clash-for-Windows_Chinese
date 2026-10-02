@@ -47,22 +47,16 @@ set "HOST_ARCH=%PROCESSOR_ARCHITEW6432%"
 if not defined HOST_ARCH set "HOST_ARCH=%PROCESSOR_ARCHITECTURE%"
 
 if /I "%HOST_ARCH%"=="AMD64" goto :select_x64
-if /I "%HOST_ARCH%"=="x86" goto :select_x86
 if /I "%HOST_ARCH%"=="ARM64" goto :select_arm64
 
 echo ERROR: Unsupported Windows architecture: %HOST_ARCH%
-echo Supported architectures: AMD64, x86, ARM64.
+echo Supported architectures: AMD64, ARM64.
 set "BUILD_EXIT_CODE=1"
 goto :finish
 
 :select_x64
 set "BUILD_TARGET=win-x64"
 set "BUILD_SCRIPT=build_win_x64.ps1"
-goto :build
-
-:select_x86
-set "BUILD_TARGET=win-ia32"
-set "BUILD_SCRIPT=build_win32-ia32.ps1"
 goto :build
 
 :select_arm64

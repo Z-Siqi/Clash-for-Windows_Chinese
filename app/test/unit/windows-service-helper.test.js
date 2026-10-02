@@ -13,11 +13,6 @@ const variants = [
         cores: ["clash-win64.exe", "mihomo-windows-amd64.exe"]
     },
     {
-        root: "app/clash_core/win32-ia32/static/files/win",
-        arch: "ia32",
-        cores: ["clash-win32.exe", "mihomo-windows-386.exe"]
-    },
-    {
         root: "app/clash_core/win32-arm64/static/files/win",
         arch: "arm64",
         cores: ["clash-win-arm64.exe", "mihomo-windows-arm64.exe"]

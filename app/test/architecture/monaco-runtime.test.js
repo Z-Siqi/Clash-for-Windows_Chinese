@@ -75,13 +75,15 @@ test("generated Monaco assets have a complete auditable manifest and browser-onl
 
 test("every packaging target delegates to the lock-safe build pipeline", () => {
     const scripts = fs.readdirSync(path.join(root, "app")).filter(name => /^build_.+\.ps1$/.test(name));
-    assert.deepEqual(scripts.sort(), ["build_linux_arm64.ps1", "build_linux_x64.ps1", "build_win32-ia32.ps1", "build_win32_arm64.ps1", "build_win_x64.ps1"]);
+    assert.deepEqual(scripts.sort(), ["build_linux_arm64.ps1", "build_linux_x64.ps1", "build_win32_arm64.ps1", "build_win_x64.ps1"]);
     for (const name of scripts) {
         const source = fs.readFileSync(path.join(root, "app", name), "utf8");
         assert.match(source, /npm --prefix \$repoRoot run package:/, name);
     }
     const packager = fs.readFileSync(path.join(root, "scripts/build/package-application.js"), "utf8");
     const packageJson = require(path.join(root, "package.json"));
+    assert.equal(packageJson.scripts["package:win-ia32"], undefined);
+    assert.doesNotMatch(packager, /"win-ia32"|arch: "ia32"/);
     assert.match(packageJson.scripts["package:mac-x64"], /package-application\.js mac-x64/);
     assert.match(packageJson.scripts["package:mac-arm64"], /package-application\.js mac-arm64/);
     assert.match(packageJson.scripts["package:dmg:mac-x64"], /package-dmg\.js mac-x64/);
@@ -126,7 +128,7 @@ test("native default build wrappers detect supported architectures and pause bef
     assert.match(windows, /PROCESSOR_ARCHITEW6432/);
     assert.match(windows, /PROCESSOR_ARCHITECTURE/);
     assert.match(windows, /build_win_x64\.ps1/);
-    assert.match(windows, /build_win32-ia32\.ps1/);
+    assert.doesNotMatch(windows, /ia32|build_win32-ia32\.ps1/);
     assert.match(windows, /build_win32_arm64\.ps1/);
     assert.match(windows, /pause/);
     assert.match(windows, /exit \/b %BUILD_EXIT_CODE%/);

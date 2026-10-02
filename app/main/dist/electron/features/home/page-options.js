@@ -638,11 +638,9 @@ function createHomePageOptions(dependencies) {
                     const name = asset.name;
                     if (!name) continue;
                     if (/\d+\.\d+\.\d+(?:-Opt\.\d+)?-win\.7z/.test(name)) assets.portable[updateTargets.windowsX64] = asset;
-                    else if (/\d+\.\d+\.\d+(?:-Opt\.\d+)?-ia32-win\.7z/.test(name)) assets.portable[updateTargets.windowsIa32] = asset;
                     else if (/\d+\.\d+\.\d+(?:-Opt\.\d+)?-arm64-win\.7z/.test(name)) assets.portable[updateTargets.windowsArm64] = asset;
                     else if (/\d+\.\d+\.\d+(?:-Opt\.\d+)?-arm64-mac\.7z/.test(name)) assets.portable[updateTargets.macArm64] = asset;
                     else if (/\d+\.\d+\.\d+(?:-Opt\.\d+)?-mac\.7z/.test(name)) assets.portable[updateTargets.macX64] = asset;
-                    else if (/\d+\.\d+\.\d+(?:-Opt\.\d+)?[-\.]ia32\.exe/.test(name)) assets.installer[updateTargets.windowsIa32] = asset;
                     else if (/\d+\.\d+\.\d+(?:-Opt\.\d+)?\.arm64\.exe/.test(name)) assets.installer[updateTargets.windowsArm64] = asset;
                     else if (/\d+\.\d+\.\d+(?:-Opt\.\d+)?\.exe/.test(name)) assets.installer[updateTargets.windowsX64] = asset;
                     else if (/arm64\.dmg/.test(name)) assets.diskImage[updateTargets.macArm64] = asset;

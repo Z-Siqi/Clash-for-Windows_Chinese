@@ -118,8 +118,8 @@ function registerNativeAdminIpc({
             throw new Error("Core binary is outside the packaged files directory");
         }
         const names = new Set([
-            "clash-win32.exe", "clash-win64.exe", "clash-windows-arm64.exe",
-            "mihomo-windows-386.exe", "mihomo-windows-amd64.exe", "mihomo-windows-arm64.exe"
+            "clash-win64.exe", "clash-windows-arm64.exe",
+            "mihomo-windows-amd64.exe", "mihomo-windows-arm64.exe"
         ]);
         if (!names.has(path.basename(resolved).toLowerCase())) {
             throw new Error("Core binary is not an allowed packaged executable");

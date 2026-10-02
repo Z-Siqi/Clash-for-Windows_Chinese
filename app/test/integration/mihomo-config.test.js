@@ -9,7 +9,6 @@ const { spawnSync } = require("node:child_process");
 const root = path.resolve(__dirname, "../../..");
 const targets = {
     "win32:x64": "app/clash_core/win_x64/static/files/win/x64/mihomo-windows-amd64.exe",
-    "win32:ia32": "app/clash_core/win32-ia32/static/files/win/ia32/mihomo-windows-386.exe",
     "win32:arm64": "app/clash_core/win32-arm64/static/files/win/arm64/mihomo-windows-arm64.exe",
     "linux:x64": "app/clash_core/linux-x64/static/files/linux/x64/mihomo-linux-amd64",
     "linux:arm64": "app/clash_core/linux-arm64/static/files/linux/arm64/mihomo-linux-arm64",

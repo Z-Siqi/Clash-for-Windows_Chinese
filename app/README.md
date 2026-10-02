@@ -45,7 +45,6 @@ Use one of the npm targets:
 
 ```powershell
 npm run package:win-x64
-npm run package:win-ia32
 npm run package:win-arm64
 npm run package:linux-x64
 npm run package:linux-arm64
@@ -57,7 +56,7 @@ The native default wrappers detect the host architecture and select the matching
 package target automatically:
 
 ```powershell
-# Windows: detects AMD64, x86, or ARM64. The window waits for a key before closing.
+# Windows: detects AMD64 or ARM64. The window waits for a key before closing.
 app\build_default.bat
 ```
 

@@ -6,7 +6,6 @@ const CORE_TYPES = Object.freeze({
 });
 
 const TARGETS = Object.freeze({
-    "win32:ia32": { directory: ["win", "ia32"], clash: "clash-win32.exe", mihomo: "mihomo-windows-386.exe" },
     "win32:x64": { directory: ["win", "x64"], clash: "clash-win64.exe", mihomo: "mihomo-windows-amd64.exe" },
     "win32:arm64": { directory: ["win", "arm64"], clash: "clash-win-arm64.exe", mihomo: "mihomo-windows-arm64.exe" },
     "darwin:x64": { directory: ["darwin", "x64"], clash: "clash-darwin", mihomo: "mihomo-darwin-amd64" },

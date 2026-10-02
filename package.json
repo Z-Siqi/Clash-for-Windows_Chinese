@@ -6,7 +6,6 @@
     "build:linux-service-helper": "node scripts/build/build-linux-service-helper.js",
     "build:mac-service-helper": "node scripts/build/build-macos-service-helper.js",
     "package:win-x64": "node scripts/build/package-application.js win-x64",
-    "package:win-ia32": "node scripts/build/package-application.js win-ia32",
     "package:win-arm64": "node scripts/build/package-application.js win-arm64",
     "package:linux-x64": "node scripts/build/package-application.js linux-x64",
     "package:linux-arm64": "node scripts/build/package-application.js linux-arm64",

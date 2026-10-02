@@ -12,7 +12,8 @@ const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8").replace(/^\uFE
 
 assert.equal(manifest.project, "MetaCubeX/mihomo");
 assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
-assert.equal(manifest.targets.length, 7);
+assert.equal(manifest.targets.length, 6);
+assert.equal(manifest.targets.some(target => /win32-ia32|windows-386/.test(target.output)), false);
 
 for (const target of manifest.targets) {
     const binaryPath = path.join(appRoot, target.output);

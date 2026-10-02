@@ -43,7 +43,7 @@ function createTunRuntime({
 
     function setupTapDevice(install = true) {
         const folder = path.join(filesPath, "win", "common", "tun2socks");
-        const tapArch = { x64: "amd64", ia32: "i386", arm64: "i386" }[arch];
+        const tapArch = { x64: "amd64", arm64: "i386" }[arch];
         const script = path.join(folder, `${install ? "add" : "remove"}_tap_device.bat`);
         return sudoRun(`"${script}" ${tapArch} ${ip} ${subnet} ${gateway}`);
     }
@@ -66,7 +66,7 @@ function createTunRuntime({
         const binaryFolder = path.join(
             filesPath,
             "win",
-            { x64: "x64", ia32: "ia32", arm64: "ia32" }[arch]
+            { x64: "x64", arm64: "arm64" }[arch]
         );
         const processHandle = childProcess.spawn("go-tun2socks.exe", args, {
             cwd: binaryFolder,

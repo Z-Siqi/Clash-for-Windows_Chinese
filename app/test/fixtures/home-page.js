@@ -42,7 +42,7 @@ function homePageDependencies(overrides = {}) {
         isMacOS: () => false, isWindows: () => true, isLinux: () => false,
         currentTarget: () => "win32-x64",
         updateTargets: {
-            windowsX64: "win32-x64", windowsIa32: "win32-ia32", windowsArm64: "win32-arm64",
+            windowsX64: "win32-x64", windowsArm64: "win32-arm64",
             macArm64: "darwin-arm64", macX64: "darwin-x64", linuxX64: "linux-x64"
         },
         ...overrides

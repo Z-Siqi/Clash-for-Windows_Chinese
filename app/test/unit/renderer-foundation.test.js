@@ -10,9 +10,9 @@ const { createAutoLaunch } = require("../../main/dist/electron/features/applicat
 const { createRendererCapabilities } = require("../../main/dist/electron/entry/renderer/capabilities");
 const { createPlatform } = require("../../main/dist/electron/core/runtime/platform");
 
-test("platform identities preserve packaged target comparisons and Windows ARM32 fallback", () => {
+test("platform identities preserve supported packaged target comparisons", () => {
     for (const [platform, arch, key] of [
-        ["win32", "x64", "windowsX64"], ["win32", "ia32", "windowsX86"], ["win32", "arm64", "windowsArm64"],
+        ["win32", "x64", "windowsX64"], ["win32", "arm64", "windowsArm64"],
         ["darwin", "x64", "macX64"], ["darwin", "arm64", "macArm64"],
         ["linux", "x64", "linuxX64"], ["linux", "arm64", "linuxArm64"]
     ]) {
@@ -23,9 +23,11 @@ test("platform identities preserve packaged target comparisons and Windows ARM32
         assert.equal(target.isMacOS(), platform === "darwin");
         assert.equal(target.isLinux(), platform === "linux");
     }
-    const arm = createPlatform({ platform: "win32", arch: "arm" });
-    assert.equal(arm.current(), arm.windowsArm);
-    assert.equal(arm.assetTarget(), arm.windowsX86);
+    for (const arch of ["ia32", "arm"]) {
+        const unsupported = createPlatform({ platform: "win32", arch });
+        assert.equal(unsupported.current(), unsupported.unknown);
+        assert.equal(unsupported.isWindows(), false);
+    }
     const unknown = createPlatform({ platform: "freebsd", arch: "x64" });
     assert.equal(unknown.current(), unknown.unknown);
     assert.equal(unknown.isLinux(), false);

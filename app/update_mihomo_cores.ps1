@@ -13,12 +13,6 @@ $targets = @(
         Kind = "zip"
     },
     @{
-        Asset = "mihomo-windows-386-v$Version.zip"
-        Output = "clash_core/win32-ia32/static/files/win/ia32/mihomo-windows-386.exe"
-        Notice = "clash_core/win32-ia32/static/files/MIHOMO_NOTICE.txt"
-        Kind = "zip"
-    },
-    @{
         Asset = "mihomo-windows-arm64-v$Version.zip"
         Output = "clash_core/win32-arm64/static/files/win/arm64/mihomo-windows-arm64.exe"
         Notice = "clash_core/win32-arm64/static/files/MIHOMO_NOTICE.txt"
@@ -126,7 +120,6 @@ asset URL and SHA-256 digest.
 
     $serviceTargets = @(
         @{ Directory = "clash_core/win_x64/static/files/win/x64"; Cores = @("clash-win64.exe", "mihomo-windows-amd64.exe") },
-        @{ Directory = "clash_core/win32-ia32/static/files/win/ia32"; Cores = @("clash-win32.exe", "mihomo-windows-386.exe") },
         @{ Directory = "clash_core/win32-arm64/static/files/win/arm64"; Cores = @("clash-win-arm64.exe", "mihomo-windows-arm64.exe") },
         @{ Directory = "clash_core/linux-x64/static/files/linux/x64"; Cores = @("clash-linux", "mihomo-linux-amd64") },
         @{ Directory = "clash_core/linux-arm64/static/files/linux/arm64"; Cores = @("clash-linux", "mihomo-linux-arm64") },

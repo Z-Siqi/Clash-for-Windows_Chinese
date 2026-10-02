@@ -10,12 +10,6 @@
                         "sha256":  "1fa8055e03596fc35167f70e9ecd1890517d38d960a39177445746a1b0defc2b"
                     },
                     {
-                        "asset":  "mihomo-windows-386-v1.19.31.zip",
-                        "output":  "clash_core/win32-ia32/static/files/win/ia32/mihomo-windows-386.exe",
-                        "source":  "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.31/mihomo-windows-386-v1.19.31.zip",
-                        "sha256":  "05fd0c26ee7a60a4f8d86ce0b59212a802eca509b73b0096148eece9e066a971"
-                    },
-                    {
                         "asset":  "mihomo-windows-arm64-v1.19.31.zip",
                         "output":  "clash_core/win32-arm64/static/files/win/arm64/mihomo-windows-arm64.exe",
                         "source":  "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.31/mihomo-windows-arm64-v1.19.31.zip",

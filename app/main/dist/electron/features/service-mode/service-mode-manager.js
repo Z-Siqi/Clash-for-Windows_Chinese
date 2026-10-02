@@ -103,7 +103,7 @@ function createServiceModeManager(dependencies) {
         const relative = {
             darwin: { x64: "darwin/x64/service", arm64: "darwin/arm64/service" },
             linux: { x64: "linux/x64/service", arm64: "linux/arm64/service" },
-            win32: { ia32: "win/ia32/service", x64: "win/x64/service", arm64: "win/arm64/service" }
+            win32: { x64: "win/x64/service", arm64: "win/arm64/service" }
         }[platform][arch];
         return path.join(getFilesPath(), relative);
     }
