@@ -10,7 +10,9 @@ npm test
 
 The command uses Node's built-in test runner, requires no third-party test framework, and supports Windows, Linux, and macOS. The minimum Node version is 18.
 
-The test entry points first run `npm run build:monaco`. This creates the ignored `app/build/generated/monaco/` directory from the exact `monaco-editor` and `esbuild` versions in the root lockfile. The generated manifest records dependency identity, license files, and SHA-256 hashes; architecture tests verify every emitted asset. Packaging scripts run the same build before creating the application ASAR.
+The test entry points first build Monaco and the browser renderer. The ignored `app/build/generated/monaco/` directory uses the exact `monaco-editor` and `esbuild` versions in the root lockfile; its manifest records dependency identity, license files and SHA-256 hashes. The ignored `app/build/generated/renderer/` directory records the browser bundle's source inputs and SHA-256 checksum. Architecture tests verify these assets and reject native renderer dependencies. Packaging scripts run both builds before creating the application ASAR.
+
+For an actual Electron isolation smoke test, use `node scripts/run-electron-security-smoke.js <stock-electron-binary> [application-directory-or-ASAR]`. The runner refuses packaged application executables, creates temporary application paths and reports renderer sandbox status, unavailable Node modules, private bridge isolation, page rendering and script-worker isolation. Native proxy, firewall, service and process side effects are faked; native core compatibility has separate integration tests.
 
 Focused commands:
 

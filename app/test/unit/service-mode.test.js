@@ -292,7 +292,8 @@ async function run() {
     assert.deepEqual(statusPingTimeouts, [400, 400, 400]);
 
     const rendererSource = readRendererCompositionSource(root);
-    assert.match(rendererSource, /features\/service-mode\/service-mode-manager/);
+    assert.doesNotMatch(rendererSource, /features\/service-mode\/service-mode-manager/);
+    assert.match(rendererSource, /core\/native\/service-mode-client/);
     assert.equal(rendererSource.includes("launchctl load -w"), false);
     assert.equal(rendererSource.includes("systemctl enable clash-core-service"), false);
     assert.equal(rendererSource.includes('schtasks /".concat'), false);

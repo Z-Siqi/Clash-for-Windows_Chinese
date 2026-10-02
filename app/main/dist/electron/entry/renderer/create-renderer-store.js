@@ -15,8 +15,8 @@ function createRendererAppModule(deps) {
         modifyState.isTun = cache.get(keys.IS_TUN);
         modifyState.isMixin = cache.get(keys.IS_MIXIN);
     }
-    const settings = createSettingsRepository(deps);
-    const profiles = createProfilesRepository(deps);
+    const settings = deps.settingsRepository || createSettingsRepository(deps);
+    const profiles = deps.profilesRepository || createProfilesRepository(deps);
     const base = createAppMutations(deps);
     const mutations = { ...base };
     mutations.LOAD_PROFILES = state => base.LOAD_PROFILES(state, { profiles: profiles.load(state.profilesPath) });

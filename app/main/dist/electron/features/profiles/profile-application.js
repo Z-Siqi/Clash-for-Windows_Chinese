@@ -27,21 +27,22 @@ function createProfileApplication(deps) {
         try {
             const profile = profiles.files[profiles.index];
             if (!profile) throw new Error("Selected profile does not exist");
-            const source = fs.readFileSync(path.join(profilesPath, profile.time), "utf8");
+            const source = deps.readProfileSource ? await deps.readProfileSource(profilesPath, profile.time)
+                : fs.readFileSync(path.join(profilesPath, profile.time), "utf8");
             const { config, hasProviders } = await prepareProfile({ ...input, source, profile }, deps);
             const tun = config.tun || {};
             const dns = config.dns || {};
             const autoDetect = tun["auto-detect-interface"] || tun["macOS-auto-detect-interface"];
             let needsTap = false;
             if (platform !== "linux" && tun.enable && !autoDetect && !config["interface-name"]) {
-                config["interface-name"] = effects.detectInterface();
+                config["interface-name"] = await effects.detectInterface();
                 if (!config["interface-name"]) return { success: false, message: messages.tunInterface };
             }
-            if (platform === "win32" && !tun.enable && effects.hasTap() && dns.enable && dns.listen) {
+            if (platform === "win32" && !tun.enable && await effects.hasTap() && dns.enable && dns.listen) {
                 const [host, port] = dns.listen.split(":").map(value => value.trim());
                 needsTap = ["", "0.0.0.0"].includes(host) && port === "53";
                 if (needsTap && !config["interface-name"] && !tun["auto-detect-interface"]) {
-                    config["interface-name"] = effects.detectInterface();
+                    config["interface-name"] = await effects.detectInterface();
                     if (!config["interface-name"]) return { success: false, message: messages.tapInterface };
                 }
             }
@@ -59,11 +60,11 @@ function createProfileApplication(deps) {
             if (tun.enable) {
                 const addresses = dnsHijackAddresses(tun["dns-hijack"]);
                 if (addresses.length) {
-                    try { effects.setDns(addresses); effects.setDnsChanged(true); }
+                    try { await effects.setDns(addresses); effects.setDnsChanged(true); }
                     catch (_error) { effects.setDnsChanged(false); }
                 }
-                if (platform === "win32" && tun.stack === "system") effects.renewDhcp();
-            } else effects.resetDns();
+                if (platform === "win32" && tun.stack === "system") await effects.renewDhcp();
+            } else await effects.resetDns();
             if (profile.selected) {
                 // A stale group must not prevent the remaining groups or mode from restoring.
                 await Promise.allSettled(profile.selected.map(({ name, now }) => clashApi.selectProxy(name, now)));

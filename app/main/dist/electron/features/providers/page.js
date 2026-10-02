@@ -6,9 +6,7 @@ function createProvidersPage({
     getLanguage,
     moment,
     connectedStatus,
-    electron,
-    fs,
-    path,
+    providerFiles,
     Hint,
     AbortController = globalThis.AbortController
 }) {
@@ -163,27 +161,18 @@ function createProvidersPage({
                     this.$set(this.ruleProviders, index, { ...provider, isUpdating: false, message: error });
                 }
             },
-            handleEditProviderFile(type, provider) {
+            async handleEditProviderFile(type, provider) {
                 const useEditor = this.settings.editProfileWithCFWEditor ?? false;
-                const providers = {
-                    rule: this.currentProfilePayload["rule-providers"] || {},
-                    proxy: this.currentProfilePayload["proxy-providers"] || {}
-                };
-                const providerPath = (providers[type][provider.name] || {}).path;
-                const open = async target => {
+                try {
                     if (!useEditor) {
-                        electron.shell.openPath(target);
+                        await providerFiles.open(type, provider.name);
                         return;
                     }
-                    try {
-                        const { code = "" } = await this.$code({
-                            code: fs.readFileSync(target).toString(),
-                            fontSize: this.settings.editorFontSize
-                        });
-                        fs.writeFileSync(target, code);
-                    } catch (_error) {}
-                };
-                if (providerPath) open(path.isAbsolute(providerPath) ? providerPath : path.join(this.clashPath, providerPath));
+                    const { code = "" } = await this.$code({
+                        code: await providerFiles.read(type, provider.name), fontSize: this.settings.editorFontSize
+                    });
+                    await providerFiles.write(type, provider.name, code);
+                } catch (_error) {}
             },
             async fetchSingleData(type, name) {
                 const { status, data } = await this.clashApi.getProvider(type, name, {

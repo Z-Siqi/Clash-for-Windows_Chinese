@@ -30,11 +30,11 @@ test("Application: production startup adapters initialize, load, and preserve a 
         setConfData: payload => store.commit("SET_CONF_DATA", payload),
         appendError: payload => store.commit("APPEND_ERROR", payload)
     };
-    await model.initConfigFolder(); model.loadConfData(); model.initProfilesFolder(); store.commit("LOAD_PROFILES");
+    await model.initConfigFolder(); await model.loadConfData(); model.initProfilesFolder(); store.commit("LOAD_PROFILES");
     assert.equal(store.state.app.profiles.index, -1);
     assert.equal(store.state.app.confData["external-controller"], "127.0.0.1:9090");
     fs.writeFileSync(path.join(home, "config.yaml"), "mixed-port: 7894\nexternal-controller: 127.0.0.1:9090");
-    model.loadConfData();
+    await model.loadConfData();
     store.commit("SAVE_SETTINGS_OBJECT", { obj: { randomMixedPort: false, randomControllerPort: true } });
     await model.createConfigurationRuntime().randomizePorts(false);
     assert.equal(store.state.app.confData["mixed-port"], 7894);
@@ -42,7 +42,7 @@ test("Application: production startup adapters initialize, load, and preserve a 
     const reloaded = yaml.parse(fs.readFileSync(path.join(home, "config.yaml"), "utf8"));
     assert.equal(reloaded["mixed-port"], 7894);
     fs.writeFileSync(path.join(home, "config.yaml"), "[broken");
-    model.loadConfData();
+    await model.loadConfData();
     assert.equal(store.state.app.errors.length, 1);
     assert.equal(store.state.app.confData["mixed-port"], 7894);
 });

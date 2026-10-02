@@ -10,6 +10,7 @@ function createProfileEditor({
     getLanguage,
     buildProxyConfig,
     fs,
+    profileFiles,
     path,
     yaml,
     draggable
@@ -371,14 +372,18 @@ function createProfileEditor({
                     this.addType = 1; proxy._index = index; this.addData = proxy;
                 } else this.$alert({ content: `${getLanguage().cannotEditProxyType()} [${proxy.type}].` });
             },
-            loadData() {
-                const content = fs.readFileSync(path.join(this.profilesPath, this.profileName), "utf8");
-                try { this.conf = yaml.parse(content); } catch (_error) {}
-            },
-            saveData() {
-                if (getLanguage().save() !== this.saveBtn) return;
+            async loadData() {
                 try {
-                    fs.writeFileSync(path.join(this.profilesPath, this.profileName), yaml.stringify(this.conf));
+                    const content = profileFiles ? await profileFiles.readProfile(this.profilesPath, this.profileName)
+                        : fs.readFileSync(path.join(this.profilesPath, this.profileName), "utf8");
+                    this.conf = yaml.parse(content);
+                } catch (_error) {}
+            },
+            async saveData() {
+                if (!this.conf || getLanguage().save() !== this.saveBtn) return;
+                try {
+                    if (profileFiles) await profileFiles.writeProfile(this.profilesPath, this.profileName, yaml.stringify(this.conf));
+                    else fs.writeFileSync(path.join(this.profilesPath, this.profileName), yaml.stringify(this.conf));
                     this.$emit("done");
                 } catch (_error) { this.$emit("error"); }
             }

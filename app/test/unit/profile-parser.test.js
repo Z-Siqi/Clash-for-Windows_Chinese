@@ -142,7 +142,7 @@ test("profile download preserves request headers and appends a parsed profile", 
         createWriteStream: () => ({}),
         existsSync: fs.existsSync,
         readFileSync: fs.readFileSync,
-        writeFileSync: fs.writeFileSync
+        writeFileSync: fs.writeFileSync, renameSync: fs.renameSync, unlinkSync: fs.unlinkSync
     };
     const commits = [];
     const store = {
@@ -206,7 +206,7 @@ test("profile download through Clash uses Axios with an authenticated loopback p
         createWriteStream: () => ({}),
         existsSync: fs.existsSync,
         readFileSync: fs.readFileSync,
-        writeFileSync: fs.writeFileSync
+        writeFileSync: fs.writeFileSync, renameSync: fs.renameSync, unlinkSync: fs.unlinkSync
     };
     class FakeHttpsProxyAgent {
         constructor(options) { this.options = options; }

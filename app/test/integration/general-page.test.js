@@ -40,7 +40,7 @@ function createPage(overrides = {}) {
         platform: { isWindows: () => false, isMacOS: () => false },
         utilities: { buildTunConfig: value => JSON.parse(JSON.stringify(value)), showMessageBox: async () => ({ response: 0 }) },
         scheduler: { add: () => 1, stop() {} },
-        os: { networkInterfaces: () => ({}) },
+        getNetworkAddresses: async () => ({}),
         ...overrides
     });
 }

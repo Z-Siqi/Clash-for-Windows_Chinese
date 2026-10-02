@@ -12,10 +12,9 @@ function createClashCoreRuntime({
         const pid = processHandle && processHandle.pid;
         if (!pid) return;
         try {
-            const command = platform === "darwin" || platform === "linux"
-                ? `kill -9 ${pid}`
-                : `taskkill /F /PID ${pid}`;
-            childProcess.execSync(command, { windowsHide: true });
+            if (!Number.isSafeInteger(pid) || pid <= 0) return;
+            if (platform === "win32") childProcess.execFileSync("taskkill", ["/F", "/PID", String(pid)], { windowsHide: true });
+            else processHandle.kill("SIGKILL");
         } catch (_error) {}
     }
 
@@ -122,6 +121,7 @@ function createClashCoreRuntime({
         processHandle.stdout.on("data", handleOutput);
         processHandle.stderr.on("data", handleOutput);
         processHandle.on("exit", () => {});
+        processHandle.on("error", () => logger.error(startupErrorMessage));
 
         if (logLevel !== "silent") {
             const stream = fs.createWriteStream(logPath, { flags: "a" });

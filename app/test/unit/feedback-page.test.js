@@ -33,7 +33,7 @@ function createPage(overrides = {}) {
         modifyState: { language: 0, adImages: "https://example/ads?t=" },
         cache: { get: () => [{ img: "cached", click: "https://cached.test/" }], put: (...args) => saved.push(args) },
         keys: { AD_IMAGES: "ads" },
-        httpClient: { get: async () => ({ status: 200, data: { feedback: [{ img: "fresh", click: "https://fresh.test/path" }] } }) },
+        publicContent: { getAds: async () => ({ status: 200, data: { feedback: [{ img: "fresh", click: "https://fresh.test/path" }] } }) },
         shell: { openExternal: value => opened.push(value) },
         ...overrides
     });

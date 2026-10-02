@@ -24,8 +24,8 @@ function refreshProfile(vm, dependencies) {
             ...dependencies,
             clashApi: vm.clashApi,
             effects: {
-                ...createProfileNetworkEffects({ childProcess, getPort }),
-                detectInterface() { vm.detectInterfaceName(); return vm.finalInterfaceName; },
+                ...(dependencies.profileNetworkEffects || createProfileNetworkEffects({ childProcess, getPort })),
+                async detectInterface() { await vm.detectInterfaceName(); return vm.finalInterfaceName; },
                 setPayload(config) { payload = config; vm.setCurrentProfilePayload({ payload: config }); },
                 setProvidersVisible(visible) {
                     const title = messages.providers;
@@ -39,7 +39,7 @@ function refreshProfile(vm, dependencies) {
                 resetDns() { return vm.resetDNS(); },
                 switchMode(mode) { return vm.switchMode(mode, false); },
                 startTap() { return vm.spawnTun2socks(); },
-                stopTap() { vm.killSpawned(vm.tun2socks); vm.tun2socks = null; }
+                async stopTap() { await vm.killSpawned(vm.tun2socks); vm.tun2socks = null; }
             }
         });
         const result = await apply({

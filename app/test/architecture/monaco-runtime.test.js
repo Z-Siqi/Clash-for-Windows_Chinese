@@ -27,7 +27,7 @@ test("Monaco is a pinned build-time dependency loaded before the renderer", () =
     const lockfile = require(path.join(root, "package-lock.json"));
     const html = fs.readFileSync(path.join(electronRoot, "index.html"), "utf8");
     const preload = fs.readFileSync(path.join(electronRoot, "preload.js"), "utf8");
-    const loader = fs.readFileSync(path.join(electronRoot, "entry/renderer/preload-loader.js"), "utf8");
+    const loader = fs.readFileSync(path.join(electronRoot, "entry/main/load-sandboxed-renderer.js"), "utf8");
     const renderer = fs.readFileSync(path.join(electronRoot, "renderer.js"), "utf8");
     const sharedComponents = fs.readFileSync(path.join(electronRoot, "entry/renderer/create-shared-components.js"), "utf8");
 
@@ -37,8 +37,8 @@ test("Monaco is a pinned build-time dependency loaded before the renderer", () =
     assert.ok(lockfile.packages["node_modules/monaco-editor"].integrity);
     assert.match(html, /generated\/monaco\/monaco\.css/);
     assert.doesNotMatch(html, /generated\/monaco\/monaco\.js|renderer\.js/);
-    assert.match(preload, /createPreloadLoader/);
-    assert.ok(loader.indexOf('"monaco.js"') < loader.indexOf('"renderer.js"'));
+    assert.match(preload, /rendererSandboxed: process\.sandboxed === true/);
+    assert.match(loader, /bootstrap \+ "\\n" \+ monaco \+ "\\n" \+ renderer/);
     assert.match(loader, /__CFW_RENDERER_ASSET_BASE__/);
     assert.match(sharedComponents, /getMonacoRuntime\(windowObject\)/);
     assert.doesNotMatch(renderer, /\bi\(\d+\)|vendor\/monaco-runtime/);

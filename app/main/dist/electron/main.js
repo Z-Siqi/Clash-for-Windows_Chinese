@@ -34,6 +34,7 @@ const { createClashApi } = require("./core/network/clash-api");
 const { createClashClientRegistry } = require("./core/network/clash-client-registry");
 const { registerClashClientInfo } = require("./entry/main/register-clash-client-info");
 const { registerCoreIpc } = require("./entry/main/register-core-ipc");
+const { installSandboxedRenderer } = require("./entry/main/load-sandboxed-renderer");
 
 function selectLanguage(language, chinese, english) {
     return language === 0 ? chinese : english;
@@ -54,7 +55,6 @@ function startApplication() {
     global.__static = staticRoot;
     fixShellPath();
     electron.app.disableHardwareAcceleration();
-    electron.app.commandLine.appendSwitch("disable-features", "OutOfBlinkCors");
     if (process.platform === "darwin") electron.app.dock.hide();
 
     const unsafeUrlPolicy = createUnsafeUrlPolicy({ ipcMain: electron.ipcMain });
@@ -68,7 +68,8 @@ function startApplication() {
 
     registerClashClientInfo({
         ipcMain: electron.ipcMain,
-        registry: clashClientRegistry
+        registry: clashClientRegistry,
+        getMainWindow: () => mainWindow
     });
     const stopNetworkChangeMonitor = registerWlanStatus({
         ipcMain: electron.ipcMain,
@@ -95,6 +96,10 @@ function startApplication() {
             nativeTheme: electron.nativeTheme,
             path,
             dirname: __dirname,
+            initializeRenderer: window => installSandboxedRenderer({
+                window, fs, path, crypto: require("crypto"), pathToFileURL: require("url").pathToFileURL,
+                dirname: __dirname, staticRoot, platform: process.platform, arch: process.arch, cwd: process.cwd()
+            }),
             staticRoot,
             isLinux,
             app: electron.app,
@@ -116,6 +121,10 @@ function startApplication() {
             nativeTheme: electron.nativeTheme,
             powerSaveBlocker: electron.powerSaveBlocker,
             clipboard: electron.clipboard,
+            shell: electron.shell,
+            clashApi,
+            clashClientRegistry,
+            staticRoot,
             getMainWindow: () => mainWindow
         });
         registerMainWindowLifecycle({

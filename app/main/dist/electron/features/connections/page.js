@@ -158,6 +158,7 @@ function createConnectionsPage({
             const labels = getLanguage();
             return {
                 isPause: false,
+                isActive: false,
                 searchText: "",
                 client: null,
                 lastData: { uploadTotal: 0, downloadTotal: 0, connections: [] },
@@ -185,8 +186,8 @@ function createConnectionsPage({
                 cache.put(keys.CONNECTION_MODULE_SEARCH_TEXT, value);
             },
             clashStatus(value) {
-                if (this.client) this.client.terminate();
-                if (value === connectedStatus) this.setupComponent();
+                this.closeStream();
+                if (value === connectedStatus && this.isActive) this.setupComponent();
             }
         },
         computed: {
@@ -328,6 +329,7 @@ function createConnectionsPage({
                 this.client = null;
             },
             openStream() {
+                if (this.client) this.client.terminate();
                 const client = this.clashWSClient("connections");
                 if (!client) return;
                 client.on("message", payload => {
@@ -345,6 +347,7 @@ function createConnectionsPage({
         },
         beforeRouteEnter(route, _previousRoute, next) {
             next(viewModel => {
+                viewModel.isActive = true;
                 viewModel.setupComponent();
                 const searchText = route.query.searchText || "";
                 viewModel.searchText = searchText
@@ -353,8 +356,12 @@ function createConnectionsPage({
             });
         },
         beforeRouteLeave(_route, _previousRoute, next) {
+            this.isActive = false;
             this.closeStream();
             next();
+        },
+        beforeDestroy() {
+            this.closeStream();
         }
     }, function renderConnectionsPage() {
         const viewModel = this;

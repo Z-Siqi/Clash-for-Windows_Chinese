@@ -67,7 +67,7 @@ function createLazyImage({ defineComponent, Language, modifyState }) {
 
 function createFeedbackPage({
     defineComponent, escCaptureComponent, Language, modifyState,
-    cache, keys, httpClient, shell
+    cache, keys, publicContent, shell
 }) {
     const LazyImageView = createLazyImage({ defineComponent, Language, modifyState });
     const linkClass = "text-[color:var(--feedback-link-c)] cursor-pointer";
@@ -93,7 +93,8 @@ function createFeedbackPage({
         beforeRouteEnter(_to, _from, next) {
             next(async vm => {
                 vm.adImages = cache.get(keys.AD_IMAGES) || [];
-                const response = await httpClient.get(modifyState.adImages + Date.now());
+                if (!modifyState.adImages) return;
+                const response = await publicContent.getAds();
                 if (response.status === 200 && response.data.feedback) {
                     cache.put(keys.AD_IMAGES, response.data.feedback);
                     vm.adImages = response.data.feedback;

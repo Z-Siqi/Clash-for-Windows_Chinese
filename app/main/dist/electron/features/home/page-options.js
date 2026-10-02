@@ -10,11 +10,6 @@ const {
     recoverWithRandomPort
 } = require("../../core/network/mixed-port-recovery");
 
-function configureLogger(logger) {
-    logger.transports.console.format = message => message.data;
-    logger.transports.file.format = message => `time="${message.date}" level=${message.level} msg="${message.data}"`;
-}
-
 function createMacDnsHelpers({ runMacCommand, net }) {
     return {
         async setDns(addresses) {
@@ -29,41 +24,20 @@ function createMacDnsHelpers({ runMacCommand, net }) {
     };
 }
 
-async function startPacServer({ store, validatePort, getPort, Koa, defaultPac }) {
-    const configuredPort = store.state.app.settings.innerServerPort;
-    const port = validatePort(configuredPort) ? configuredPort : await getPort();
-    const server = new Koa();
-    server.use(async context => {
-        const pacContent = store.state.app.settings.pacContentText || defaultPac;
-        if (!/\/pac$/.test(context.path)) {
-            context.res.statusCode = 404;
-            return;
-        }
-        const mixedPort = store.getters.mixedPort;
-        if (mixedPort) {
-            context.set("content-type", "application/x-ns-proxy-autoconfig");
-            context.body = pacContent.replace(/%mixed-port%/g, mixedPort);
-        }
-    });
-    server.listen(port, "127.0.0.1");
-    store.commit("SET_INNER_SERVER_PORT", { port });
-}
-
 function createHomePageOptions(dependencies) {
     const {
         Vuex, lodash, components, cache, keys, connectionStatus, proxyStatus,
         runtimeProcess, electron, path, fs, moment, scheduler, logger, os, httpClient,
         yaml, sudoPrompt, validatePort, notify, showMessageBox, updateYaml, hash, sleep,
-        shouldReplaceWintun, detectInterface, store, defaultPac, Koa, getPort,
+        shouldReplaceWintun, detectInterface, store, defaultPac, getPort, startPacServer,
         downloadProfile, net, runMacCommand, uuid, firewallRuleExists, getWlanInterfaces,
         mousetrap, cron, serviceStatus, serviceActiveStatus, runtimeState, languageKey,
         getLanguage, refreshRendererProfile, createRendererConfiguration, persistSelection,
-        createClashServiceApi, createTunRuntime, createClashCoreRuntime,
+        createTunRuntime, createClashCoreRuntime,
         isMacOS, isWindows, isLinux, currentTarget, updateTargets
     } = dependencies;
     const { setDns, getDns } = createMacDnsHelpers({ runMacCommand, net });
 
-    configureLogger(logger);
 
     return {
         name: "landing-page",
@@ -354,7 +328,7 @@ function createHomePageOptions(dependencies) {
                 };
                 try {
                     this.setMatchedSSID({ ssid: "" });
-                    const connections = getWlanInterfaces() || [];
+                    const connections = await getWlanInterfaces() || [];
                     const strategy = yaml.parse(this.settings.ssidStrategyText).strategy;
                     logger.info(JSON.stringify({ conns: connections, ssidStrategy: strategy }, null, 2));
                     const connection = connections.find(item => item.SSID in strategy);
@@ -374,12 +348,12 @@ function createHomePageOptions(dependencies) {
                     logger.error(`failed to set ssid options: ${error}`);
                 }
             },
-            resetDNS() {
+            async resetDNS() {
                 if (!this.isUserDNSChanged || !isMacOS()) return;
                 try {
                     const { isUsingResetDNSServers = false, resetDNSServers = [] } = this.settings;
-                    if (isUsingResetDNSServers) setDns(resetDNSServers);
-                    else if (this.userDNS !== null) setDns(this.userDNS);
+                    if (isUsingResetDNSServers) await setDns(resetDNSServers);
+                    else if (this.userDNS !== null) await setDns(this.userDNS);
                 } catch (error) {
                     logger.info(`failed to reset dns with error: ${error}`);
                 }
@@ -445,7 +419,7 @@ function createHomePageOptions(dependencies) {
                             }).catch(() => null);
                             if (!result) return;
                             port = parsePort(result.port);
-                            if (port === null || !(await isTcpPortAvailable({ net, port }))) {
+                            if (port === null || !(await isTcpPortAvailable({ net, port, checkPort: dependencies.checkPort }))) {
                                 await showMessageBox({
                                     type: "error",
                                     title: labels.changeMixedPort(),
@@ -466,7 +440,7 @@ function createHomePageOptions(dependencies) {
                         } else {
                             try {
                                 port = await recoverWithRandomPort({
-                                    getPort, net, clashApi: this.clashApi, sleep
+                                    getPort, net, checkPort: dependencies.checkPort, clashApi: this.clashApi, sleep
                                 });
                             } catch (_error) {
                                 await showMessageBox({
@@ -517,7 +491,10 @@ function createHomePageOptions(dependencies) {
                     yaml,
                     platform: runtimeProcess.platform,
                     childProcess: dependencies.childProcess,
+                    profileNetworkEffects: dependencies.profileNetworkEffects,
                     compileMixin: dependencies.requireFromString,
+                    runMixin: dependencies.runMixin,
+                    readProfileSource: dependencies.profileFiles?.readProfile,
                     hash,
                     setDns,
                     getPort,
@@ -537,18 +514,11 @@ function createHomePageOptions(dependencies) {
             async switchMode(mode) { await this.setMode({ mode }); },
             showLogsFolder(openFolder = false) {
                 if (!this.clashPath || !/\.log$/.test(this.logFilePath)) return;
-                if (openFolder) electron.shell.openPath(path.join(this.logFilePath, ".."));
-                else electron.shell.showItemInFolder(this.logFilePath);
+                return dependencies.openCoreLog(openFolder);
             },
             open(url) { electron.shell.openExternal(url); },
             createClashCoreRuntime() {
-                return createClashCoreRuntime({
-                    childProcess: dependencies.childProcess,
-                    fs,
-                    path,
-                    serviceApi: createClashServiceApi({ client: httpClient }),
-                    logger
-                });
+                return createClashCoreRuntime();
             },
             async killClashCore() {
                 await this.createClashCoreRuntime().stop({
@@ -594,19 +564,8 @@ function createHomePageOptions(dependencies) {
                 }
             },
             createTunRuntime() {
-                return createTunRuntime({
-                    childProcess: dependencies.childProcess,
-                    sudoExec: sudoPrompt.exec,
-                    path,
-                    platform: runtimeProcess.platform,
-                    arch: runtimeProcess.arch,
-                    filesPath: this.filesPath,
-                    tapInfo: cache.get(keys.TAP_INFO),
-                    logger,
-                    sleep
-                });
+                return createTunRuntime();
             },
-            sudoRunBAT(command, callback = null) { return this.createTunRuntime().sudoRun(command, callback); },
             setupTapDevice(install = true) { return this.createTunRuntime().setupTapDevice(install); },
             async spawnTun2socks() {
                 const previousProcess = this.tun2socks;
@@ -614,7 +573,6 @@ function createHomePageOptions(dependencies) {
                 this.tun2socks = await this.createTunRuntime().spawnTun2socks({ currentProcess: previousProcess, mixedPort: this.mixedPort });
             },
             killSpawned(processHandle) { return this.createTunRuntime().killSpawned(processHandle); },
-            setRoutes() { return this.createTunRuntime().setRoutes(); },
             async getClashStatus() {
                 const result = await this.createClashCoreRuntime().getStatus(this.clashApi);
                 this.clashMixedPort = result.mixedPort;
@@ -627,7 +585,7 @@ function createHomePageOptions(dependencies) {
                 }
                 const currentVersion = await electron.ipcRenderer.invoke("app", "getVersion");
                 logger.info(`check for app update, current: ${currentVersion}`);
-                const response = await httpClient.get("https://raw.githubusercontent.com/Z-Siqi/Clash-for-Windows_Chinese/main/update");
+                const response = await dependencies.publicContent.getUpdate();
                 if (response.status !== 200) return;
                 const version = response.data.tag_name;
                 const versionNumber = value => value.split(".").reverse().reduce((total, part, index) => total + Number(part) * (1000 ** index), 0);
@@ -679,36 +637,18 @@ function createHomePageOptions(dependencies) {
             loadConfData() { return this.createConfigurationRuntime().load(); },
             initConfigFolder() { return this.createConfigurationRuntime().initialize(); },
             initProfilesFolder() { return this.createConfigurationRuntime().initializeProfiles(); },
-            startChild(processConfig) {
-                if (!processConfig || !Object.prototype.hasOwnProperty.call(processConfig, "command")) return null;
-                return dependencies.childProcess.spawn(processConfig.command, processConfig.args || [], {
-                    ...(processConfig.options || {}),
-                    windowsHide: true
-                });
-            },
-            spawnUserDefindExes() {
-                if (!this.confData) return;
-                let processes = [];
-                try { processes = yaml.parse(this.settings.childProcessText || "").processes || []; } catch (_error) {}
-                const processIds = [];
-                for (const processConfig of processes) {
-                    const { log, options = {} } = processConfig;
-                    const processHandle = this.startChild(processConfig);
-                    if (!processHandle) continue;
-                    if (log && options.cwd) {
-                        processHandle.stderr?.pipe(fs.createWriteStream(path.join(options.cwd, "cfw-child-process-err.log"), { flags: "a" }));
-                        processHandle.stdout?.pipe(fs.createWriteStream(path.join(options.cwd, "cfw-child-process-out.log"), { flags: "a" }));
-                    }
-                    processIds.push(processHandle.pid);
-                }
-                cache.put(keys.LAST_USER_EXE_PIDS, processIds);
+            async spawnUserDefindExes() {
+                if (this.confData) await dependencies.startUserProcesses();
             },
             async preDownloadAds() {
-                const response = await httpClient.get(runtimeState.adImages + Date.now());
+                if (!runtimeState.adImages) return;
+                const response = await dependencies.publicContent.getAds();
                 if (response.status === 200 && response.data.feedback) cache.put(keys.AD_IMAGES, response.data.feedback);
             },
             async profileUpdater() {
                 if (!this.profiles || this.isAppSuspend) return;
+                const modificationTimes = dependencies.profileFiles
+                    ? await dependencies.profileFiles.modificationTimes(this.profilesPath) : null;
                 const now = () => Date.now();
                 const profilesToUpdate = (this.profiles.files || []).filter(profile => {
                     const { interval, url, time, cron: cronExpression = "" } = profile;
@@ -717,7 +657,7 @@ function createHomePageOptions(dependencies) {
                         const currentTime = moment();
                         if (cronExpression && new cron(cronExpression).isMatchDate(currentTime)) return true;
                         if (interval > 0) {
-                            const modifiedAt = fs.statSync(path.join(this.profilesPath, time)).mtime;
+                            const modifiedAt = modificationTimes ? modificationTimes[time] : fs.statSync(path.join(this.profilesPath, time)).mtime;
                             if (!modifiedAt) return false;
                             const failedAt = this.profileUpdateFailed[url];
                             if (failedAt !== undefined) {
@@ -749,6 +689,10 @@ function createHomePageOptions(dependencies) {
                     }
                 }
                 const activeFiles = (this.profiles.files || []).map(profile => profile.time);
+                if (dependencies.profileFiles) {
+                    await dependencies.profileFiles.cleanupOrphans(this.profilesPath);
+                    return;
+                }
                 fs.readdir(this.profilesPath, (error, files) => {
                     if (error || files.length === 0) return;
                     files.forEach(file => {
@@ -783,14 +727,14 @@ function createHomePageOptions(dependencies) {
                     () => this.switchMode("script")
                 );
             },
-            detectInterfaceName() {
-                const interfaceName = detectInterface();
+            async detectInterfaceName() {
+                const interfaceName = await detectInterface();
                 if (interfaceName && interfaceName !== this.detectedInterfaceName) this.setDetectedInterfaceName({ interfaceName });
             },
             async quit() {
                 logger.info(getLanguage().appExiting());
                 await this.killClashCore();
-                this.resetDNS();
+                await this.resetDNS();
                 try {
                     if (this.isSystemProxyOn) await this.$setSystemProxy(false);
                 } finally {
@@ -799,9 +743,9 @@ function createHomePageOptions(dependencies) {
             }
         },
         mounted() {
-            window.addEventListener("online", () => {
+            window.addEventListener("online", async () => {
                 logger.info("network online");
-                this.detectInterfaceName();
+                await this.detectInterfaceName();
                 this.refreshProfile();
             });
             electron.ipcRenderer.on("wlan-status-changed", lodash.debounce((_event, payload) => {
@@ -831,9 +775,6 @@ function createHomePageOptions(dependencies) {
 
             const executablePath = this.devMode ? "" : await electron.ipcRenderer.invoke("app", "getPath", "exe");
             this.setExePath({ path: executablePath });
-            const previousCorePid = cache.get(keys.LAST_CLASH_PID);
-            if (previousCorePid) this.killSpawned({ pid: previousCorePid });
-            for (const processId of cache.get(keys.LAST_USER_EXE_PIDS) || []) this.killSpawned({ pid: processId });
 
             this.setShouldUseDarkTheme({
                 shouldUseDarkTheme: await electron.ipcRenderer.invoke("nativeTheme", "shouldUseDarkColors")
@@ -894,14 +835,15 @@ function createHomePageOptions(dependencies) {
             const homePath = await electron.ipcRenderer.invoke("app", "getPath", "home");
             const portableDataPath = path.join(executablePath, "../data");
             let clashPath = path.join(homePath, "/.config/clash");
-            if (fs.existsSync(portableDataPath)) {
+            const runtimeInfo = await electron.ipcRenderer.invoke("app", "getRuntimeInfo");
+            if (runtimeInfo.portableDataExists) {
                 clashPath = portableDataPath;
                 this.portableMode = true;
             }
             this.userPath = homePath;
             this.setClashPath({ path: clashPath });
             await this.initConfigFolder();
-            this.loadConfData();
+            await this.loadConfData();
             if (isMacOS()) {
                 getDns().then(dns => this.setUserDNS({ dns })).catch(error => logger.info(`faile to get user dns setting with error: ${error}`));
             }
@@ -909,7 +851,7 @@ function createHomePageOptions(dependencies) {
             electron.ipcRenderer.send("core-type-changed", this.settings.proxyCore);
             if (isWindows()) {
                 try {
-                    await startPacServer({ store, validatePort, getPort, Koa, defaultPac });
+                    await startPacServer(this.clashPath);
                     logger.info(`${getLanguage().httpStartAt()}${this.innerServerPort}`);
                 } catch (error) {
                     logger.info(`${getLanguage().httpFailStart()}${error}`);
@@ -958,7 +900,7 @@ function createHomePageOptions(dependencies) {
             cache.put(keys.IS_LIGHTWEIGHT_MODE_CLOSE, false);
             if (!this.showStartup) {
                 this.showStartup = true;
-                if (isWindows() && os.release().startsWith("6.")) {
+                if (isWindows() && runtimeInfo.release.startsWith("6.")) {
                     notify("Attention", "The support for Windows 7 will be dropped soon in 2023 due to upstream changes. Click to learn more.", { hideWindowOnClick: true }, () => {
                         electron.shell.openExternal("https://cloud.google.com/blog/products/chrome-enterprise/extending-chrome-on-windows-7-to-support-enterprise-customers");
                     });
@@ -966,7 +908,7 @@ function createHomePageOptions(dependencies) {
                     notify(getLanguage().cfwRunInBg(), getLanguage().enjoyFreedom());
                 }
             }
-            this.detectInterfaceName();
+            await this.detectInterfaceName();
             this.setSSIDOptions();
             this.spawnUserDefindExes();
             if (this.settings.checkForUpdates) this.checkForUpdate().catch(console.error);
@@ -1011,4 +953,4 @@ function createHomePageOptions(dependencies) {
     };
 }
 
-module.exports = { configureLogger, createMacDnsHelpers, startPacServer, createHomePageOptions };
+module.exports = { createMacDnsHelpers, createHomePageOptions };

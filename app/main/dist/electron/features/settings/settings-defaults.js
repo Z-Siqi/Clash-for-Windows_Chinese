@@ -18,7 +18,7 @@ function mergeSettings(settings = {}) {
         checkForUpdates: settings.checkForUpdates !== false,
         disableLoadingAdsLink: settings.disableLoadingAdsLink !== false,
         allowRemoteProfileParsers: settings.allowRemoteProfileParsers === true,
-        proxyCore: settings.proxyCore === "clash" ? "clash" : "mihomo"
+        proxyCore: settings.proxyCore === "mihomo" ? "mihomo" : "clash"
     };
 }
 

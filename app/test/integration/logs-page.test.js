@@ -19,7 +19,7 @@ function createPage(overrides = {}) {
         moment: () => ({ format: () => "12:34:56" }),
         flattenValues: value => JSON.stringify(value), notify() {}, uniqueId: (() => { let id = 0; return () => String(++id); })(),
         connectedStatus: "connected", clipboard: { writeText() {} },
-        readLastLines: { read: async () => "" }, cache: { get: () => null, put() {} },
+        readCoreLog: async () => "", cache: { get: () => null, put() {} },
         keys: { LOG_MOUDLE_LEVEL: "level", LOG_MODULE_STYLE: "style", LOG_MODULE_SEARCH_TEXT: "search" },
         SelectView, normalizeStructuredLog: value => value, parseCoreLogLine: () => null,
         ...overrides

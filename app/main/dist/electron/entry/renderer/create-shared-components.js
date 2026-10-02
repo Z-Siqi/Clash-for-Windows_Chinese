@@ -34,9 +34,8 @@ function createSharedComponents({
     preferenceKeys,
     cache,
     store,
-    axios,
-    fs,
-    path,
+    publicContent,
+    providerFiles,
     editorLanguagesOverride
 }) {
     const common = {
@@ -56,13 +55,10 @@ function createSharedComponents({
     const monaco = getMonacoRuntime(windowObject);
     const editorLanguages = editorLanguagesOverride || installEditorLanguage({
         monaco,
-        axios,
-        fs,
-        path,
-        store,
+        publicContent,
+        providerFiles,
         hashText: utilities.hashText,
         showMessageBox: utilities.showMessageBox,
-        shell: electron.shell,
         clipboard: electron.clipboard,
         labels: new Language(modifyState.language)
     });

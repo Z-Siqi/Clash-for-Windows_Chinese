@@ -4,12 +4,10 @@ function createRouterPage({
     defineComponent,
     Vuex,
     getLanguage,
-    electron,
     cache,
     keys,
-    dhcp,
-    getNetworkInterfaces,
-    getHijackAddresses
+    dhcpService,
+    getNetworkInterfaces
 }) {
     const ConfigView = defineComponent({
         name: "RouterConfigView",
@@ -25,6 +23,7 @@ function createRouterPage({
         },
         watch: {
             selectedInterface(value) {
+                if (!value) return;
                 this.localAddress = value.address;
                 this.computeFromLocalAddress(value.address);
             }
@@ -58,8 +57,8 @@ function createRouterPage({
                 });
             }
         },
-        mounted() {
-            this.interfaces = getNetworkInterfaces() || [];
+        async mounted() {
+            this.interfaces = await getNetworkInterfaces() || [];
             if (this.interfaces.length > 0) this.selectedName = this.interfaces[0].name;
         }
     }, function renderConfigView() {
@@ -171,7 +170,7 @@ function createRouterPage({
                 clients: [],
                 boundState: {},
                 isShowConfigView: false,
-                powersaveBlockerID: 0,
+                starting: false,
                 clientAlias: cache.get(keys.DHCP_MAC_ALIAS) || {}
             };
         },
@@ -182,6 +181,10 @@ function createRouterPage({
             }),
             serverRunning() { return this.server !== null; },
             buttonText() { return this.serverRunning ? getLanguage().pause() : getLanguage().start(); }
+        },
+        watch: {
+            routerHijackMacAddresses() { this.updateDhcpPolicy(); },
+            currentProfilePayload() { this.updateDhcpPolicy(); }
         },
         methods: {
             ...Vuex.mapMutations({ setRouterHijackMacAddresses: "SET_ROUTER_HIJACK_MAC_ADDRESSES" }),
@@ -196,59 +199,42 @@ function createRouterPage({
                     path: "/home/connection", query: { searchText: target }
                 }).catch(() => {});
             },
-            handleStartDHCPServer() {
+            async handleStartDHCPServer() {
+                if (this.starting) return;
                 if (!this.serverRunning) {
                     this.isShowConfigView = true;
                     return;
                 }
-                if (this.server) this.server.close();
+                await dhcpService.stop();
                 this.server = null;
                 this.clients = [];
                 this.boundState = {};
-                electron.ipcRenderer.invoke("powerSaveBlocker", "stop", this.powersaveBlockerID);
             },
-            handleConfigConfirm(config) {
+            dhcpPolicy() {
+                const hijackDns = (this.currentProfilePayload?.tun?.["dns-hijack"] || []).flatMap(value => {
+                    const [host, port] = String(value).split(":");
+                    return port === undefined || port === "53" ? [host === "any" ? "8.8.8.8" : host] : [];
+                }).slice(0, 2);
+                return { hijackAddresses: this.routerHijackMacAddresses || [], hijackDns };
+            },
+            updateDhcpPolicy() {
+                if (this.serverRunning) dhcpService.updatePolicy(this.dhcpPolicy()).catch(() => {});
+            },
+            async handleConfigConfirm(config) {
+                if (this.starting || this.server) return;
                 this.isShowConfigView = false;
-                const hijackDns = this.currentProfilePayload?.tun?.["dns-hijack"];
-                const {
-                    rangeFrom, rangeTo, netmask, defaultRouter, broadcast, localAddress,
-                    primaryDns, secondlyDns
-                } = config;
-                const server = dhcp.createServer({
-                    range: [rangeFrom, rangeTo],
-                    forceOptions: ["hostname"],
-                    randomIP: true,
-                    static: {},
-                    netmask,
-                    router: client => getHijackAddresses().includes(client.clientId) ? [localAddress] : [defaultRouter],
-                    dns: client => getHijackAddresses().includes(client.clientId)
-                        ? (hijackDns || []).slice(0, 2)
-                        : secondlyDns !== "" ? [primaryDns, secondlyDns] : [primaryDns],
-                    broadcast,
-                    server: localAddress,
-                    maxMessageSize: 1500,
-                    leaseTime: 86400,
-                    renewalTime: 60,
-                    rebindingTime: 120,
-                    bootFile: "",
-                    hostname: "cfw"
-                });
-                server.on("error", (error, details) => console.log(error, details));
-                server.listen();
-                server.on("message", client => {
-                    if (this.clients.find(item => item.chaddr === client.chaddr) === undefined) {
-                        this.clients = [...this.clients, client];
-                    }
-                });
-                server.on("bound", value => { this.boundState = value; });
-                server.on("listening", async () => {
-                    const address = server.address();
-                    console.log(`dhcp server listen at ${address.address}:${address.port}`);
-                    this.server = server;
-                    this.powersaveBlockerID = await electron.ipcRenderer.invoke(
-                        "powerSaveBlocker", "start", "prevent-app-suspension"
-                    );
-                });
+                this.starting = true;
+                try {
+                    await dhcpService.start({ config, ...this.dhcpPolicy() }, (type, value) => {
+                        if (type === "message" && !this.clients.some(item => item.chaddr === value.chaddr)) this.clients = [...this.clients, value];
+                        if (type === "bound") this.boundState = value;
+                        if (type === "close") { this.server = null; this.clients = []; this.boundState = {}; }
+                    });
+                    this.server = true;
+                } catch {
+                    this.server = null;
+                    await this.$alert({ title: "DHCP", message: "DHCP service is unavailable" });
+                } finally { this.starting = false; }
             },
             handleMacToHijack(address) {
                 this.setRouterHijackMacAddresses({

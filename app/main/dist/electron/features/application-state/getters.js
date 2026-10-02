@@ -4,15 +4,15 @@ const { parseControllerPort, createAxiosClient, createGotClient, createWebSocket
 const { createClashApi } = require("../../core/network/clash-api");
 const { resolveCoreBinaryPath } = require("../../core/clash-core/core-selection");
 
-function createAppGetters({ path, platform, arch, axios, got, WebSocket, cache, keys, trim }) {
+function createAppGetters({ path, platform, arch, axios, got, WebSocket, cache, keys, trim, controllerApi, controllerStreams }) {
     return {
         mixedPort: state => state.confData["mixed-port"] || 0,
         controllerPort: state => parseControllerPort(state.confData["external-controller"]),
         secret: state => state.confData.secret === undefined ? "" : state.confData.secret,
         clashAxiosClient: (state, getters) => createAxiosClient({ axios, controllerPort: getters.controllerPort, secret: getters.secret }),
-        clashGotClient: (state, getters) => createGotClient({ got, controllerPort: getters.controllerPort, secret: getters.secret }),
-        clashWSClient: (state, getters) => createWebSocketFactory({ WebSocket, controllerPort: getters.controllerPort, secret: getters.secret }),
-        clashApi: (state, getters) => createClashApi({ getClient: () => getters.clashAxiosClient }),
+        clashGotClient: (state, getters) => controllerApi || createGotClient({ got, controllerPort: getters.controllerPort, secret: getters.secret }),
+        clashWSClient: (state, getters) => controllerStreams || createWebSocketFactory({ WebSocket, controllerPort: getters.controllerPort, secret: getters.secret }),
+        clashApi: (state, getters) => controllerApi || createClashApi({ getClient: () => getters.clashAxiosClient }),
         resourcesPath: state => state.isDevMode || state.exePath === "" ? "" : path.join(path.dirname(state.exePath), platform === "darwin" ? "../Resources" : "./resources"),
         filesPath: (state, getters) => getters.resourcesPath !== "" ? path.join(getters.resourcesPath, "static/files") : "static/files",
         clashBinaryPath: (state, getters) => resolveCoreBinaryPath({ path, filesPath: getters.filesPath, platform, arch, coreType: state.settings.proxyCore }),

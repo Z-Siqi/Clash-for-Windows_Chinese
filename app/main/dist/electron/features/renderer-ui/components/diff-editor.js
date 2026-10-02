@@ -65,6 +65,8 @@ function createDiffEditor({
                         fontSize: 12,
                         automaticLayout: true,
                         renderSideBySide: this.renderSideBySide,
+                        // The explicit toolbar choice must also work in the default narrow window.
+                        useInlineViewWhenSpaceIsLimited: false,
                         minimap: { enabled: false },
                         links: false,
                         contextmenu: false,

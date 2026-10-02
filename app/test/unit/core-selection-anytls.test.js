@@ -23,7 +23,7 @@ const { mergeSettings } = require(path.join(
 
 assert.equal(normalizeCoreType("mihomo"), "mihomo");
 assert.equal(normalizeCoreType("invalid"), "clash");
-assert.equal(mergeSettings({}).proxyCore, "mihomo");
+assert.equal(mergeSettings({}).proxyCore, "clash");
 assert.equal(mergeSettings({ proxyCore: "mihomo" }).proxyCore, "mihomo");
 assert.equal(mergeSettings({ proxyCore: "clash" }).proxyCore, "clash");
 assert.equal(getCoreDisplayName("mihomo"), "Mihomo");

@@ -1,29 +1,21 @@
 "use strict";
 
 const { createValueTools } = require("../../core/runtime/value-tools");
-const { updateYamlValue } = require("../../core/storage/yaml-file");
 const { buildTunConfig } = require("../../features/tun/build-tun-config");
 const { createNativeActions } = require("../../features/renderer-ui/native-actions");
 
 function createRendererUtilities(deps) {
-    const { fs, path, yaml, store, cache, keys, ipcRenderer } = deps;
+    const { path, store, cache, keys, ipcRenderer } = deps;
     let previousVersion = null;
-    function removeDirectory(directory) {
-        if (!fs.existsSync(directory)) return;
-        for (const name of fs.readdirSync(directory)) {
-            const file = path.join(directory, name);
-            if (fs.lstatSync(file).isDirectory()) removeDirectory(file);
-            else fs.unlinkSync(file);
-        }
-        fs.rmdirSync(directory);
-    }
     const values = createValueTools(deps);
     return {
         ...values,
         ...createNativeActions({ ...deps, getSettings: () => store.state.app.settings }),
-        removeDirectory,
         buildTunConfig,
-        async updateYaml(file, key, value) { updateYamlValue({ fs, path, yaml, file, key, value }); },
+        async updateYaml(file, key, value) {
+            if (path.resolve(file) !== path.resolve(store.state.app.clashPath, "config.yaml")) throw new Error("Unsupported renderer configuration file");
+            return deps.updateConfig(key, value);
+        },
         async isNewVersion() {
             const current = await ipcRenderer.invoke("app", "getVersion");
             if (previousVersion === null) {

@@ -1,5 +1,7 @@
 "use strict";
 
+const { writeAtomic } = require("../../core/storage/atomic-file");
+
 const SET = Symbol("set");
 const INSERT = Symbol("insert");
 const DELETE = Symbol("delete");
@@ -166,11 +168,20 @@ function createProfileParser(dependencies) {
     }
 
     async function parseProfile(url, content, logToFile = false) {
+        let logStream;
+        let logFinished;
         try {
             const files = store.state.app.profiles.files || [];
             const profile = files.find(item => item.url === url) || { url };
             const logPath = await store.dispatch("getParserLogPath");
-            const logger = new Console(fs.createWriteStream(logPath));
+            logStream = fs.createWriteStream(logPath);
+            if (typeof logStream.once === "function") {
+                logFinished = new Promise(resolve => {
+                    logStream.once("finish", resolve);
+                    logStream.on("error", resolve);
+                });
+            }
+            const logger = new Console(logStream);
             const context = {
                 axios, yaml, homeDir: store.state.app.clashPath,
                 console: logToFile ? logger : console,
@@ -216,6 +227,9 @@ function createProfileParser(dependencies) {
             return result;
         } catch (error) {
             throw { ...error, message: `[Parser Error] ${error.message}` };
+        } finally {
+            logStream?.end?.();
+            if (logFinished) await logFinished;
         }
     }
 
@@ -230,7 +244,7 @@ function createProfileParser(dependencies) {
             const status = response.status;
             const headers = response.headers || {};
             let name = "config.yaml";
-            const time = `${Date.now()}.yml`;
+            const time = dependencies.createProfileTime ? dependencies.createProfileTime() : `${Date.now()}.yml`;
             try { name = path.basename(url); } catch (error) { console.error(error.stack); }
             if (/([^/]*?)(?:$|\?)/.test(url)) name = decodeURIComponent(RegExp.$1.trim());
             const interval = parseInt(headers["profile-update-interval"] || 0) || 0;
@@ -253,29 +267,30 @@ function createProfileParser(dependencies) {
             const profilesPath = store.state.app.profilesPath;
             let targetPath = path.join(profilesPath, time);
             let targetIndex;
+            let mutation;
             if (index > -1) {
                 const existing = profiles[index];
                 targetPath = path.join(profilesPath, existing.time);
-                store.commit("CHANGE_PROFILE", {
+                mutation = ["CHANGE_PROFILE", {
                     index,
                     profile: {
                         ...existing,
                         subInfo: parseSubscriptionInfo(subscription || parsed),
                         homeWeb
                     }
-                });
+                }];
                 targetIndex = index;
             } else {
-                store.commit("APPEND_PROFILE", {
+                mutation = ["APPEND_PROFILE", {
                     profile: {
                         time, name, url, selected: [], interval,
                         subInfo: parseSubscriptionInfo(subscription || parsed), homeWeb
                     }
-                });
+                }];
                 targetIndex = profiles.length;
             }
-            const basePath = `${targetPath.slice(0, -4)}.base.yml`;
-            const changePath = `${targetPath.slice(0, -4)}.change.yml`;
+            const basePath = targetPath.replace(/\.ya?ml$/, ".base.yml");
+            const changePath = targetPath.replace(/\.ya?ml$/, ".change.yml");
             let finalContent = parsed;
             if (fs.existsSync(basePath) && fs.existsSync(changePath)) {
                 const base = fs.readFileSync(basePath).toString();
@@ -284,12 +299,13 @@ function createProfileParser(dependencies) {
                     return { success: false, message: language.diffChangeContainConflict() };
                 }
                 const merged = diff3Merge(change, base, parsed, { stringSeparator: /\n|\r\n/ });
-                fs.writeFileSync(basePath, parsed);
-                fs.writeFileSync(changePath, merged.result.join("\n"));
+                writeAtomic({ fs, path, file: basePath, content: parsed });
+                writeAtomic({ fs, path, file: changePath, content: merged.result.join("\n") });
                 if (merged.conflict) return { success: false, message: language.failMergeProfile() };
                 finalContent = merged.result.join("\n");
             }
-            fs.writeFileSync(targetPath, finalContent || parsed);
+            writeAtomic({ fs, path, file: targetPath, content: finalContent || parsed });
+            store.commit(...mutation);
             return { success: true, targetIndex };
         } catch (error) {
             console.error(error);

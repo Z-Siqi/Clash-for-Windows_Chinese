@@ -90,8 +90,8 @@ for (const call of ["refreshRendererProfile(this,", "createRendererAppModule({",
     assert.equal(rendererDelegationSource.includes(call), true, `renderer composition must delegate via ${call}`);
 }
 for (const factory of [
-    "createProfileParser", "createUserScriptRunner", "createFeedbackPage",
-    "createIntervalScheduler", "createUpdateRuntime", "createServerPageWorkflow",
+    "createProfileDownloadClient", "createUserScriptClient", "createFeedbackPage",
+    "createIntervalScheduler", "createServerPageWorkflow",
     "createProfileEditor", "createRuleEditor", "createServerPage", "createProvidersPage",
     "createRouterPage", "createGeneralPageWorkflow", "createGeneralPage", "createHomePage",
     "createSettingsPage", "createProxiesPage", "createConnectionsPage", "createLogsPage"

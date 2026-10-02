@@ -9,11 +9,12 @@ function createGeneralPage({
     components,
     shell,
     fs,
+    readCoreLog,
     yaml,
     platform,
     utilities,
     scheduler,
-    os
+    getNetworkAddresses
 }) {
     const {
         SelectView,
@@ -55,12 +56,12 @@ function createGeneralPage({
             }
         },
         mounted() {
-            const refresh = () => {
+            const refresh = async () => {
                 const labels = getLanguage();
                 this.retries += 1;
                 if (this.clashPath && this.logFilePath) {
                     try {
-                        const content = fs.readFileSync(this.logFilePath);
+                        const content = readCoreLog ? await readCoreLog(1000) : fs.readFileSync(this.logFilePath);
                         const fatal = content.toString().split("\n")
                             .filter(line => /level=fatal/.test(line)).join("\n\n");
                         if (fatal) this.logs = fatal;
@@ -511,8 +512,8 @@ function createGeneralPage({
                 }, []);
             }
         },
-        mounted() {
-            this.interfaces = Object.entries(os.networkInterfaces()).map(([name, addrs]) => ({ name, addrs }));
+        async mounted() {
+            this.interfaces = Object.entries(await getNetworkAddresses()).map(([name, addrs]) => ({ name, addrs }));
         }
     }, function renderInterfacesView() {
         const viewModel = this;

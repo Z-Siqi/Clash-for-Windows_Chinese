@@ -7,7 +7,7 @@ function createServerPageWorkflow({
     getLanguage,
     moment,
     yaml,
-    fs,
+    profileFiles,
     path,
     electron,
     lodash,
@@ -35,7 +35,9 @@ function createServerPageWorkflow({
         qrcodeURL: "",
         intervalID: null,
         now: moment(),
-        loadingProfileIndex: []
+        loadingProfileIndex: [],
+        profileModificationTimes: {},
+        profileChangeCallback: null
     });
 
     const computed = {
@@ -71,7 +73,7 @@ function createServerPageWorkflow({
         handleOpenHomeWeb(url) { confirmOpenExternal(url); },
         isProifleExpired({ time, interval }) {
             if (interval > 0 && time) try {
-                const modified = fs.statSync(path.join(this.profilesPath, time)).mtime;
+                const modified = this.profileModificationTimes?.[time];
                 if (modified) return moment(modified).isBefore(moment().subtract(interval, "hours"));
             } catch (_error) {}
             return false;
@@ -122,7 +124,7 @@ function createServerPageWorkflow({
             }], event);
         },
         openProfileInFolder(profile) {
-            electron.shell.showItemInFolder(path.join(this.profilesPath, profile.time));
+            return profileFiles.revealProfile(this.profilesPath, profile.time);
         },
         async handleUpdateAllProfiles() {
             return Promise.all(this.profiles.map(profile =>
@@ -172,7 +174,7 @@ function createServerPageWorkflow({
                         placeholder: language.inputNewFileName(), required: true
                     }]
                 });
-                this.localCopy(filename, path.join(this.profilesPath, profile.time));
+                await this.localCopy(filename, profile.time);
             } catch (_error) {}
         },
         async handleEditItem(index) {
@@ -214,13 +216,15 @@ function createServerPageWorkflow({
             schedule(() => { this.btnType = 0; }, 3000);
         },
         async handleImport() {
-            const files = await electron.ipcRenderer.invoke("dialog", "showOpenDialogSync", { properties: ["openFile"] });
-            if (files?.length) this.localCopy(path.basename(files[0]), path.resolve(files[0]));
+            for (const profile of await profileFiles.importDialog(this.profilesPath)) this.appendProfile({ profile });
+            await this.refreshModificationTimes();
         },
-        dropProfile(event) {
+        async dropProfile(event) {
             event.preventDefault();
             event.stopPropagation();
-            for (const file of event.dataTransfer.files) this.localCopy(path.basename(file.path), path.resolve(file.path));
+            for (const file of event.dataTransfer.files) {
+                if (file.size <= 33554432) await this.localCopy(file.name, "", await file.text());
+            }
         },
         dragOverProfile(event) { event.preventDefault(); event.stopPropagation(); },
         editDone() {
@@ -229,24 +233,17 @@ function createServerPageWorkflow({
             this.editProfileName = "";
             this.editProfileType = -1;
         },
-        localCopy(name, source = "") {
+        async localCopy(name, sourceTime = "", source) {
             if (name === "") return;
-            const time = `${Date.now()}.yml`;
             const profiles = { ...this.pfs };
             const duplicate = profiles.files.findIndex(profile => profile.name === name && profile.url === "");
             if (duplicate > -1 && duplicate < profiles.files.length) {
                 this.$alert({ content: labels.localFileAlreadyExist(), title: labels.error() });
                 return;
             }
+            const time = await profileFiles.createLocal(this.profilesPath, sourceTime, source);
             this.appendProfile({ profile: { url: "", time, name, selected: [] } });
-            let copyFrom = path.join(this.clashPath, "config.yaml");
-            const selectedIndex = profiles.index ?? -1;
-            if (selectedIndex >= 0 && selectedIndex < profiles.files.length) {
-                const selected = path.join(this.profilesPath, profiles.files[selectedIndex].time);
-                if (fs.existsSync(selected)) copyFrom = selected;
-            }
-            if (source !== "") copyFrom = source;
-            fs.copyFileSync(copyFrom, path.join(this.profilesPath, time));
+            await this.refreshModificationTimes();
         },
         async handleDeleteProfile(index) {
             const language = getLanguage();
@@ -258,11 +255,7 @@ function createServerPageWorkflow({
             });
             if (response.response !== 1) return;
             try {
-                const base = profile.time.slice(0, -4);
-                for (const name of [profile.time, `${base}.base.yml`, `${base}.change.yml`]) {
-                    const target = path.join(this.profilesPath, name);
-                    if (fs.existsSync(target)) fs.unlinkSync(target);
-                }
+                await profileFiles.deleteProfile(this.profilesPath, profile.time);
             } catch (_error) {}
             this.deleteProfile({ index });
             const selected = this.pfs.index ?? -1;
@@ -270,17 +263,16 @@ function createServerPageWorkflow({
             else if (index < selected) this.changeProfilesIndex({ index: selected - 1 });
         },
         async openProfile(profile, externally = false) {
-            const target = path.join(this.profilesPath, profile.time);
             if (externally) {
-                electron.shell.openPath(target);
+                await profileFiles.openProfile(this.profilesPath, profile.time);
                 return;
             }
             try {
                 const { code = "" } = await this.$code({
-                    code: fs.readFileSync(target).toString(),
+                    code: await profileFiles.readProfile(this.profilesPath, profile.time),
                     fontSize: this.settings.editorFontSize
                 });
-                fs.writeFileSync(target, code);
+                await profileFiles.writeProfile(this.profilesPath, profile.time, code);
             } catch (_error) {}
         },
         async handleProfileClick(index) {
@@ -347,7 +339,8 @@ function createServerPageWorkflow({
         },
         parseTime({ time }) {
             try {
-                return moment(fs.statSync(path.join(this.profilesPath, time)).mtime).locale(labels.locale()).from(this.now);
+                const modified = this.profileModificationTimes?.[time];
+                return modified ? moment(modified).locale(labels.locale()).from(this.now) : "missing file";
             } catch (_error) { return "missing file"; }
         },
         async updateConfig({ url, headers = "", cancelToken = null, selectAfterUpdated = false }) {
@@ -388,10 +381,8 @@ function createServerPageWorkflow({
         },
         async makeDiff(profile) {
             const language = getLanguage();
-            const content = fs.readFileSync(path.join(this.profilesPath, profile.time), "utf8").toString();
-            const basePath = path.join(this.profilesPath, `${profile.time.slice(0, -4)}.base.yml`);
-            const changePath = path.join(this.profilesPath, `${profile.time.slice(0, -4)}.change.yml`);
-            const initialized = fs.existsSync(basePath) && fs.existsSync(changePath);
+            let snapshot = await profileFiles.readDiff(this.profilesPath, profile.time);
+            const initialized = snapshot.initialized;
             const items = initialized ? language.makeChangesAndDelete() : [language.initDiffFiles()];
             const itemStyles = initialized ? [{}, { color: "mc" }] : [];
             const [selection] = await this.$select({
@@ -401,47 +392,54 @@ function createServerPageWorkflow({
                 itemStyles
             });
             const edit = async () => {
-                const base = fs.readFileSync(basePath, "utf8").toString();
-                const change = fs.readFileSync(changePath, "utf8").toString();
-                fs.writeFileSync(changePath, await this.$diff({ base, change }));
+                await profileFiles.writeDiff(this.profilesPath, profile.time, await this.$diff({ base: snapshot.base, change: snapshot.change }));
                 const response = await showMessageBox({
                     message: language.requestRefresh(), buttons: language.requestRefreshOption(), defaultId: 0
                 });
                 if (response.response === 0) this.refreshProfile(profile, { ignoreSelectAfterUpdated: true });
             };
             if (initialized) {
-                if (selection === 0) edit();
+                if (selection === 0) await edit();
                 else if (selection === 1) {
                     const response = await showMessageBox({
                         type: "warning", message: `${language.askDelete()}${language.diffFiles()}?`,
                         buttons: [language.no(), language.yes()]
                     });
-                    if (response.response === 1) { fs.unlinkSync(basePath); fs.unlinkSync(changePath); }
+                    if (response.response === 1) await profileFiles.deleteDiff(this.profilesPath, profile.time);
                 }
             } else {
-                fs.writeFileSync(basePath, content);
-                fs.writeFileSync(changePath, content);
-                edit();
+                snapshot = await profileFiles.initializeDiff(this.profilesPath, profile.time);
+                await edit();
             }
         },
-        setupWatcher() {
-            const onChange = lodash.debounce((_event, filename) => {
-                if (!/^\d+(?:\.yml)$/.test(filename)) return;
-                const index = this.pfs.files.findIndex(profile => profile.time === filename);
-                if (index > -1 && index === this.pfs.index) this.switchProfile(index);
-            }, 0);
-            this.fileWatcher = fs.watch(path.join(this.profilesPath), {}, onChange);
+        async refreshModificationTimes() {
+            this.profileModificationTimes = await profileFiles.modificationTimes(this.profilesPath);
         },
-        removeWatcher() { if (this.fileWatcher) this.fileWatcher.close(); }
+        setupWatcher() {
+            const onChange = lodash.debounce(async filename => {
+                try {
+                    await this.refreshModificationTimes();
+                    const index = this.pfs.files.findIndex(profile => profile.time === filename);
+                    if (index > -1 && index === this.pfs.index) await this.switchProfile(index);
+                } catch (_error) {}
+            }, 50);
+            this.profileChangeCallback = onChange;
+            this.fileWatcher = profileFiles.watch(this.profilesPath, filename => onChange(filename));
+        },
+        removeWatcher() {
+            this.profileChangeCallback?.cancel?.();
+            if (this.fileWatcher) this.fileWatcher.close();
+        }
     };
 
     function beforeRouteEnter(_to, _from, next) {
         next(async vm => {
             vm.now = moment();
+            if (profileFiles) await vm.refreshModificationTimes();
             vm.intervalID = scheduler.add(() => { vm.now = moment(); }, 60000);
             vm.setupWatcher();
             if (vm.pfs.files?.length === 0) {
-                vm.localCopy("config.yaml");
+                await vm.localCopy("config.yaml");
                 await vm.switchProfile(0);
             }
         });

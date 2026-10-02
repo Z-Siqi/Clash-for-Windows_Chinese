@@ -2,6 +2,7 @@
 
 function createSystemProxyRuntime({
     platform,
+    arch = process.arch,
     childProcess,
     path,
     filesPath,
@@ -51,7 +52,7 @@ function createSystemProxyRuntime({
                 } else if (enabled && type === 1) {
                     args.splice(0, args.length, "pac", `http://${host}:${innerServerPort}/pac?t=${Date.now()}`);
                 }
-                const result = childProcess.spawnSync("sysproxy.exe", args, {
+                const result = childProcess.spawnSync(path.join(filesPath, "win", "common", "sysproxy.exe"), args, {
                     cwd: path.join(filesPath, "win", "common"),
                     windowsHide: true
                 });
@@ -65,15 +66,16 @@ function createSystemProxyRuntime({
 
     function getStatus() {
         if (platform === "darwin") {
-            const result = childProcess.spawnSync("./sysproxy", ["-show"], {
-                cwd: clashPath,
+            const binaryFolder = path.join(filesPath, "darwin", arch === "arm64" ? "arm64" : "x64");
+            const result = childProcess.spawnSync(path.join(binaryFolder, "sysproxy"), ["-show"], {
+                cwd: binaryFolder,
                 windowsHide: true
             });
             if (result.error) return false;
             return Boolean(result.output && /socks=/.test(result.output.toString()));
         }
         if (platform === "win32") {
-            const result = childProcess.spawnSync("sysproxy.exe", ["query"], {
+            const result = childProcess.spawnSync(path.join(filesPath, "win", "common", "sysproxy.exe"), ["query"], {
                 cwd: path.join(filesPath, "win", "common"),
                 windowsHide: true
             });

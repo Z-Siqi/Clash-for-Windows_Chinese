@@ -44,10 +44,10 @@ assert.deepEqual(linuxConfig.dns["default-nameserver"], ["1.1.1.1"]);
 const commands = [];
 const spawned = { pid: 42 };
 const childProcess = {
-    execSync(command) {
-        commands.push(["execSync", command]);
-        if (command === "net session") throw new Error("not elevated");
-        if (command.startsWith("route print")) {
+    execFileSync(command, args) {
+        commands.push(["execFileSync", command, args]);
+        if (command === "net" && args[0] === "session") throw new Error("not elevated");
+        if (command === "route" && args[0] === "print") {
             return Buffer.from("10.0.0.0  255.255.255.0  10.0.0.1");
         }
         return Buffer.from("");
@@ -100,12 +100,12 @@ async function run() {
     const result = await runtime.spawnTun2socks({ currentProcess: null, mixedPort: 7890 });
     assert.equal(result, spawned);
     const spawn = commands.find(call => call[0] === "spawn");
-    assert.equal(spawn[1], "go-tun2socks.exe");
+    assert.equal(spawn[1], path.join("C:\\files", "win", "x64", "go-tun2socks.exe"));
     assert.equal(spawn[2].includes("127.0.0.1:7890"), true);
-    assert.equal(commands.some(call => call[1] && call[1].startsWith("route add")), true);
+    assert.equal(commands.some(call => call[1] === "route" && call[2][0] === "add"), true);
 
     runtime.killSpawned(spawned);
-    assert.equal(commands.some(call => call[1] === "taskkill /F /PID 42"), true);
+    assert.equal(commands.some(call => call[1] === "taskkill" && call[2].join(" ") === "/F /PID 42"), true);
     await runtime.setRoutes();
     assert.equal(commands.some(call => call[0] === "sudo" && call[1].includes("set_routes.bat")), true);
 
@@ -117,7 +117,8 @@ assert.equal(/case 67:\s*const Lg = new Language/.test(rendererSource), false);
 assert.match(homePageOptionsSource, /return refreshRendererProfile\(this, \{/);
 assert.match(rendererSource, /require\("\.\/refresh-profile"\)/);
     assert.match(rendererSource, /features\/tun\/build-tun-config/);
-    assert.match(rendererSource, /features\/tun\/tun-runtime/);
+    assert.doesNotMatch(rendererSource, /features\/tun\/tun-runtime/);
+    assert.match(rendererSource, /createTunRuntime: \(\) => runtime\.tun/);
     assert.match(homePageOptionsSource, /this\.createTunRuntime\(\)\.spawnTun2socks/);
     assert.match(homePageOptionsSource, /const previousProcess = this\.tun2socks;\s+this\.tun2socks = null;/);
     assert.match(homePageOptionsSource, /currentProcess: previousProcess/);

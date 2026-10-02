@@ -33,6 +33,30 @@ function createPage(overrides = {}) {
     });
 }
 
+test("Settings navigator binds the scrolling action and default tray style exposes delay controls", () => {
+    Vue.use(Vuex);
+    const store = new Vuex.Store({ state: { app: { settings: {}, confData: {} } }, getters: { secret: () => "", clashAxiosClient: () => null } });
+    const vm = new (Vue.extend(createPage()))({ store });
+    vm.settings = {};
+    vm.isLinux = false;
+    vm.isMacOS = false;
+    vm.isWindows = true;
+    const nodes = [];
+    function visit(node) {
+        if (!node) return;
+        nodes.push(node);
+        for (const child of node.children || node.componentOptions?.children || []) visit(child);
+    }
+    visit(vm._render());
+    const navigator = nodes.find(node => node.componentOptions?.tag === "navigator");
+    assert.equal(navigator.componentOptions.listeners.select, vm.handleNavigateToGroup);
+    assert.ok(nodes.some(node => node.text?.includes("showTrayProxyDelayIndicator")));
+    const container = { children: [{ offsetTop: 150 }, { offsetTop: 950 }], scrollTop: 0 };
+    createPage().methods.handleNavigateToGroup.call({ $refs: { "mixin-scroll-content": container }, $nextTick: callback => callback() }, 1);
+    assert.equal(container.scrollTop, 840);
+    vm.$destroy();
+});
+
 test("Settings page: extracted owner includes its local controls and production scope", () => {
     const page = createPage();
     assert.equal(page._scopeId, "data-v-fc0cd1de");
@@ -89,6 +113,15 @@ test("Settings page: Enhanced Tray text asset is independent of routing Script m
     assert.ok(shownImage);
     assert.equal(shownImage.data.attrs.src, "static/imgs/tray-text.png");
     assert.equal(Object.hasOwn(page.components.TrayOrder.props, "proxyCore"), false);
+});
+
+test("Settings page opens only named native logs without renderer filesystem access", async () => {
+    const kinds = [];
+    const page = createPage({ openApplicationLog: async kind => kinds.push(kind) });
+    await page.methods.handleOpenActionScriptsConsoleFile();
+    await page.methods.handleOpenConsoleFile();
+    await page.methods.handleOpenGUILog();
+    assert.deepEqual(kinds, ["script", "parser", "gui"]);
 });
 
 test("Settings page: production entry delegates to the named factory", () => {

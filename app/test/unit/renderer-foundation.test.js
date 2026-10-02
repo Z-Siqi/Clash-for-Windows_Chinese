@@ -6,7 +6,7 @@ const path = require("node:path");
 const { Language, language } = require("../../main/dist/electron/core/i18n/language");
 const { removeEmoji } = require("../../main/dist/electron/core/text/remove-emoji");
 const { getRendererTrayIcon } = require("../../main/dist/electron/features/tray/renderer-tray-icon");
-const { createAutoLaunch } = require("../../main/dist/electron/features/application/set-auto-launch");
+const { createAutoLaunch, createLoginItemRuntime } = require("../../main/dist/electron/features/application/set-auto-launch");
 const { createRendererCapabilities } = require("../../main/dist/electron/entry/renderer/capabilities");
 const { createPlatform } = require("../../main/dist/electron/core/runtime/platform");
 
@@ -69,21 +69,24 @@ test("tray icons reflect every TUN/mixin/proxy combination and custom/mode prefe
     ]) assert.equal(require("node:fs").existsSync(path.join(assetRoot, name)), true, name);
 });
 
-test("auto launch uses only injected filesystem on Linux and native IPC elsewhere", async () => {
+test("auto launch client delegates all platforms and the host owns Linux desktop files", async () => {
     const calls = [], files = new Map();
     const deps = { path: path.posix, ipcRenderer: { invoke: async (...args) => {
         calls.push(args);
         return args[1] === "getVersion" ? "1.0" : args[2] === "exe" ? "/app/cfw" : "/home/user";
     } }, fs: {
         existsSync: file => files.has(file), mkdirSync: file => files.set(file, "directory"),
-        writeFileSync: (file, content) => files.set(file, content), unlinkSync: file => files.delete(file)
+        writeFileSync: (file, content) => files.set(file, content), unlinkSync: file => files.delete(file),
+        renameSync: (from, to) => { files.set(to, files.get(from)); files.delete(from); }
     } };
-    const launch = createAutoLaunch({ ...deps, platform: "linux" });
+    const launch = createLoginItemRuntime({ ...deps, platform: "linux", app: {
+        getVersion: () => "1.0", getPath: name => name === "exe" ? "/app/cfw" : "/home/user"
+    } });
     await launch(true);
     assert.match(files.get("/home/user/.config/autostart/cfw.desktop"), /Exec="\/app\/cfw"/);
     await launch(false);
     assert.equal(files.has("/home/user/.config/autostart/cfw.desktop"), false);
-    for (const platform of ["win32", "darwin"]) {
+    for (const platform of ["win32", "darwin", "linux"]) {
         await createAutoLaunch({ ...deps, platform })(false);
         assert.deepEqual(calls.at(-1), ["app", "setLoginItemSettings", { openAtLogin: false }]);
     }

@@ -9,6 +9,7 @@ const applicationRoot = path.join(repositoryRoot, "app");
 const sourceRoot = path.join(applicationRoot, "main");
 const buildRoot = path.join(applicationRoot, "build");
 const monacoRoot = path.join(buildRoot, "generated", "monaco");
+const rendererRoot = path.join(buildRoot, "generated", "renderer");
 const linuxDesktopId = "com.lbyczf.clashwin";
 
 const targets = Object.freeze({
@@ -112,6 +113,10 @@ function buildMonaco() {
         windowsHide: true
     });
     if (result.status !== 0) throw new Error("Failed to build Monaco assets");
+    const renderer = spawnSync(process.execPath, [path.join(__dirname, "build-renderer.js")], {
+        cwd: repositoryRoot, stdio: "inherit", windowsHide: true
+    });
+    if (renderer.status !== 0) throw new Error("Failed to build browser renderer");
 }
 
 function resolvePackagedResourcesRoot(outputPath, target) {
@@ -135,6 +140,7 @@ function preparePackagedSource(buildPath, target) {
     const destination = path.join(buildPath, "dist", "electron", "generated", "monaco");
     fs.mkdirSync(path.dirname(destination), { recursive: true });
     fs.cpSync(monacoRoot, destination, { recursive: true });
+    fs.cpSync(rendererRoot, path.join(buildPath, "dist", "electron", "generated", "renderer"), { recursive: true });
 
     if (target.platform !== "linux") return;
     const manifestPath = path.join(buildPath, "package.json");

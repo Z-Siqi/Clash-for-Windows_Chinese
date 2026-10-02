@@ -14,7 +14,8 @@ function createMainWindow({
     platform = process.platform,
     url,
     localize,
-    onRelaunch
+    onRelaunch,
+    initializeRenderer
 }) {
     const windowOptions = {
         height: 603,
@@ -28,18 +29,18 @@ function createMainWindow({
         frame: false,
         titleBarStyle: "hidden",
         webPreferences: {
-            // The CommonJS renderer runs inside the isolated preload world.
-            // No Node or generic IPC capability is exposed to the page main world.
+            // The browser renderer runs in the private world of a sandboxed preload.
             nodeIntegration: false,
             webSecurity: true,
             nodeIntegrationInWorker: false,
             contextIsolation: true,
-            sandbox: false,
+            sandbox: true,
             preload: path.resolve(path.join(dirname, "preload.js"))
         }
     };
     if (isLinux()) windowOptions.icon = path.join(staticRoot, "imgs", "icon_512.png");
     const mainWindow = new BrowserWindow(windowOptions);
+    initializeRenderer?.(mainWindow);
     mainWindow.setMenu(null);
     installEditShortcuts(mainWindow.webContents, platform);
     mainWindow.webContents.on("will-navigate", function(event) {

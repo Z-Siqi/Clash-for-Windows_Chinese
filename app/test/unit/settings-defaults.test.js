@@ -28,7 +28,7 @@ assert.deepEqual(defaults, {
     checkForUpdates: true,
     disableLoadingAdsLink: true,
     allowRemoteProfileParsers: false,
-    proxyCore: "mihomo"
+    proxyCore: "clash"
 });
 
 const customTrayOrders = [["text"]];
@@ -93,7 +93,10 @@ assert.match(
 );
 const mixinSource = fs.readFileSync(path.join(path.dirname(rendererPath), "entry/renderer/global-mixin.js"), "utf8");
 assert.match(mixinSource, /require\("..\/..\/features\/settings\/load-settings"\)/);
-assert.match(mixinSource, /const mergedSettings = loadSettingsFromDisk\(\{/);
+assert.match(mixinSource, /settingsRepository\.load\(this\.clashPath, onProfileLanguage\)/);
+assert.match(mixinSource, /loadSettingsFromDisk\(\{/);
+assert.equal(mergeSettings({ proxyCore: "mihomo" }).proxyCore, "mihomo");
+assert.equal(mergeSettings({ proxyCore: "unknown" }).proxyCore, "clash");
 assert.match(
     settingsPageComponentsSource,
     /viewModel\.\$slots\.default\?\.length/,

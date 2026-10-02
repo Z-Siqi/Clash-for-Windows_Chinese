@@ -42,6 +42,7 @@ async function run() {
     registerNativeAdminIpc({
         ipcMain: { handle: (channel, handler) => handlers.set(channel, handler) },
         app: {
+            once() {},
             isPackaged: true,
             getPath(name) {
                 if (name === "home") return "C:\\Users\\tester";

@@ -9,6 +9,33 @@ const getPort = require("../../main/node_modules/get-port");
 const { homePage } = require("../fixtures/home-page");
 const { assertRendererComposition } = require("../fixtures/assert-renderer-composition");
 
+test("Home traffic subscribes with injected paths and renders Enhanced Tray frames", () => {
+    let messageHandler;
+    let terminated = 0;
+    const sends = [];
+    const page = homePage({ electron: { ipcRenderer: { send: (...args) => sends.push(args) } } });
+    const traffic = page.components.MainMenu.components.ClashTrafficView;
+    const drawing = new Proxy({}, { get: (_target, key) => key === "measureText" ? () => ({ width: 10 }) : () => {} });
+    const model = {
+        ...traffic.methods, ...traffic.data(), isWindowShow: true, trayDisabled: false,
+        resourcesPath: "fixture", mode: "rule", colors: ["#000", "#fff"],
+        settings: { trayOrders: [["traffic"], []] },
+        canvas: { getContext: () => drawing, toDataURL: () => "data:image/png;base64,fixture", width: 10000, height: 69 },
+        iconImage: source => ({ source }),
+        clashWSClient: () => ({ on(_event, callback) { messageHandler = callback; }, terminate() { terminated++; } })
+    };
+    model.setupRequest();
+    assert.equal(model.trayIconImg.source, path.join("fixture", "static/imgs/logo_64_eyes.png"));
+    messageHandler('{"up":1024,"down":2048}');
+    assert.deepEqual(model.speed, { up: 1024, down: 2048 });
+    assert.equal(sends.at(-1)[0], "speed-update");
+    assert.equal(sends.at(-1)[2], 150);
+    model.stopRequest();
+    assert.equal(terminated, 1);
+    assert.equal(model.client, null);
+    assert.deepEqual(traffic.computed.colors.call({ theme: "mc" }), ["#2c2a38", "#ffffff"]);
+});
+
 test("Home page: extracted owner includes dashboard shell and local child components", () => {
     const page = homePage();
     assert.equal(page.name, "landing-page");
@@ -19,7 +46,7 @@ test("Home page: extracted owner includes dashboard shell and local child compon
     assert.equal(page.components.MainMenu.components.RunTimeView._scopeId, "data-v-05e7144a");
 });
 
-test("Home page: core runtime construction uses only injected operating-system boundaries", () => {
+test("Home page: core lifecycle uses the injected client without constructing native capabilities", () => {
     const calls = [];
     const page = homePage({
         createClashCoreRuntime: value => { calls.push(value); return { marker: true }; },
@@ -29,9 +56,7 @@ test("Home page: core runtime construction uses only injected operating-system b
     });
     const runtime = page.methods.createClashCoreRuntime();
     assert.equal(runtime.marker, true);
-    assert.equal(calls[0].fs.marker, "fs");
-    assert.equal(calls[0].path.marker, "path");
-    assert.equal(calls[0].serviceApi.serviceClient.marker, "axios");
+    assert.deepEqual(calls, [undefined]);
 });
 
 test("Home page: production entry delegates to the named factory", () => {

@@ -100,5 +100,5 @@ test("Renderer foundation: production bootstrap composes all dialog and capabili
     ]) assert.equal(source.includes(call), true, call);
     assert.match(source, /dialogs: components\.dialogs/);
     assert.match(source, /plugins: \[capabilities\]/);
-    assert.match(source, /electronPlugin: process\.env\.IS_WEB \? null : electronPlugin/);
+    assert.match(source, /electronPlugin: processObject\.env\?\.IS_WEB \? null : electronPlugin/);
 });

@@ -10,7 +10,7 @@ function createLogsPage({
     uniqueId,
     connectedStatus,
     clipboard,
-    readLastLines,
+    readCoreLog,
     cache,
     keys,
     SelectView,
@@ -186,7 +186,7 @@ function createLogsPage({
                 const lineCount = configuredCount >= 0 ? configuredCount : 30;
                 if (lineCount > 0) {
                     try {
-                        const contents = await readLastLines.read(vm.logFilePath, lineCount);
+                        const contents = await readCoreLog(lineCount);
                         contents.split("\n").forEach(line => {
                             const log = parseCoreLogLine(line);
                             if (log) vm.parseLog(log);

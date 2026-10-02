@@ -20,7 +20,7 @@ function createPage(overrides = {}) {
         electron: { ipcRenderer: { invoke: async () => 1 } },
         cache: { get: () => ({}), put() {} },
         keys: { DHCP_MAC_ALIAS: "aliases" },
-        dhcp: { createServer() { throw new Error("unexpected DHCP server"); } },
+        dhcpService: { async start() { throw new Error("unexpected DHCP server"); }, async stop() {} },
         getNetworkInterfaces: () => [],
         getHijackAddresses: () => [],
         ...overrides
@@ -44,51 +44,49 @@ test("Router page: extracted configuration computes the subnet and emits the DHC
     vm.$destroy();
 });
 
-test("Router page: DHCP callbacks preserve hijack routing and lifecycle behavior", async () => {
-    const handlers = {};
+test("Router page: named DHCP client preserves events and sends current hijack policy", async () => {
+    let onEvent;
     const requests = [];
-    const ipcCalls = [];
-    const server = {
-        on(name, callback) { handlers[name] = callback; return this; },
-        listen() { requests.push("listen"); },
-        close() { requests.push("close"); },
-        address: () => ({ address: "127.0.0.1", port: 67 })
-    };
     const page = createPage({
-        dhcp: { createServer(options) { requests.push(options); return server; } },
-        getHijackAddresses: () => ["client-hijacked"],
-        electron: { ipcRenderer: { async invoke(...args) { ipcCalls.push(args); return 42; } } }
+        dhcpService: {
+            async start(request, callback) { requests.push(request); onEvent = callback; },
+            async stop() { requests.push("stop"); },
+            async updatePolicy(request) { requests.push(request); }
+        }
     });
     const context = {
         isShowConfigView: true,
         server: null,
         clients: [],
         boundState: {},
-        powersaveBlockerID: 0,
+        routerHijackMacAddresses: ["client-hijacked"],
         currentProfilePayload: { tun: { "dns-hijack": ["10.0.0.53", "10.0.0.54"] } }
     };
+    context.dhcpPolicy = page.methods.dhcpPolicy.bind(context);
 
-    page.methods.handleConfigConfirm.call(context, {
+    await page.methods.handleConfigConfirm.call(context, {
         rangeFrom: "10.0.0.100", rangeTo: "10.0.0.200", netmask: "255.255.255.0",
-        defaultRouter: "10.0.0.1", broadcast: "10.0.0.255", localAddress: "10.0.0.2",
+        defaultRouter: "10.0.0.1", broadAddress: "10.0.0.255", localAddress: "10.0.0.2",
         primaryDns: "8.8.8.8", secondlyDns: "1.1.1.1"
     });
 
-    const options = requests[0];
-    assert.deepEqual(options.router({ clientId: "client-hijacked" }), ["10.0.0.2"]);
-    assert.deepEqual(options.dns({ clientId: "client-hijacked" }), ["10.0.0.53", "10.0.0.54"]);
-    assert.deepEqual(options.dns({ clientId: "normal" }), ["8.8.8.8", "1.1.1.1"]);
-    handlers.message({ chaddr: "mac", options: {} });
-    handlers.message({ chaddr: "mac", options: {} });
-    handlers.bound({ mac: { address: "10.0.0.101" } });
-    await handlers.listening();
+    assert.deepEqual(requests[0].hijackAddresses, ["client-hijacked"]);
+    assert.deepEqual(requests[0].hijackDns, ["10.0.0.53", "10.0.0.54"]);
+    onEvent("message", { chaddr: "mac", options: {} });
+    onEvent("message", { chaddr: "mac", options: {} });
+    onEvent("bound", { mac: { address: "10.0.0.101" } });
 
     assert.equal(context.isShowConfigView, false);
     assert.equal(context.clients.length, 1);
     assert.equal(context.boundState.mac.address, "10.0.0.101");
-    assert.equal(context.server, server);
-    assert.equal(context.powersaveBlockerID, 42);
-    assert.deepEqual(ipcCalls, [["powerSaveBlocker", "start", "prevent-app-suspension"]]);
+    assert.equal(context.server, true);
+    context.serverRunning = true;
+    context.routerHijackMacAddresses = [];
+    page.methods.updateDhcpPolicy.call(context);
+    assert.deepEqual(requests.at(-1).hijackAddresses, []);
+    await page.methods.handleStartDHCPServer.call(context);
+    assert.equal(requests.at(-1), "stop");
+    assert.equal(context.server, null);
 });
 
 test("Router page: production entry delegates to the named factory", () => {

@@ -10,8 +10,7 @@ function createHomePageComponents({
     connectedStatus,
     electron,
     path,
-    fs,
-    requireFromString,
+    runTrayScript,
     scheduler,
     Hint,
     getLanguage
@@ -33,7 +32,7 @@ function createHomePageComponents({
                 if (value === connectedStatus) {
                     this.setupRequest();
                     this.updateInterval();
-                }
+                } else this.stopRequest();
             },
             isWindowShow() { this.setupRequest(); },
             isAppSuspend(value) { if (!value) this.setupRequest(); },
@@ -44,9 +43,14 @@ function createHomePageComponents({
             "settings.trayOrders": {
                 deep: true,
                 handler(value, previousValue) {
-                    if (!lodash.isEqual(value, previousValue)) this.updateInterval();
+                    if (!lodash.isEqual(value, previousValue)) {
+                        this.renderedData = null;
+                        this.setupRequest();
+                        this.updateInterval();
+                    }
                 }
-            }
+            },
+            theme() { this.renderedData = null; }
         },
         computed: {
             ...Vuex.mapState({
@@ -73,12 +77,13 @@ function createHomePageComponents({
                     dark: ["#2c2a38", "rgb(255, 255, 255)"],
                     red: ["#303030", "#ffffff"],
                     2077: ["#136377", "#fcec0c"]
-                }[this.theme];
+                }[this.theme] || ["#2c2a38", "#ffffff"];
             }
         },
         methods: {
             iconImage(source) {
                 const image = new Image(69, 69);
+                image.onload = () => { this.renderedData = null; };
                 image.src = source;
                 return image;
             },
@@ -96,7 +101,7 @@ function createHomePageComponents({
                 return { speed: unitIndex === 0 ? value : value.toFixed(precision), unit: units[unitIndex] };
             },
             stopRequest() {
-                if (this.client && this.client.readyState !== WebSocket.CLOSED && this.client.readyState !== WebSocket.CONNECTING) {
+                if (this.client) {
                     this.client.terminate();
                     this.client = null;
                 }
@@ -216,9 +221,8 @@ function createHomePageComponents({
                 const { trayText = "", trayScriptInterval, trayScriptPath, trayOrders } = this.settings;
                 if (trayText !== "" || !trayScriptPath || !trayOrders[0].includes("text")) return null;
                 const runScript = async () => {
-                    const source = fs.readFileSync(trayScriptPath, "utf8");
-                    const script = requireFromString(`'use strict';\n${source}`, trayScriptPath);
-                    this.scriptResult = await script.run();
+                    try { this.scriptResult = await runTrayScript(); }
+                    catch (_error) { this.scriptResult = ""; }
                 };
                 runScript();
                 if (trayScriptInterval > 0) this.intervalID = setInterval(runScript, 1000 * trayScriptInterval);
@@ -230,6 +234,10 @@ function createHomePageComponents({
             this.canvas.width = 10000;
             this.setupRequest();
             this.updateInterval();
+        },
+        beforeDestroy() {
+            this.stopRequest();
+            if (this.intervalID) clearInterval(this.intervalID);
         }
     }, function renderClashTraffic() {
         const viewModel = this;
@@ -415,7 +423,9 @@ function createHomePageComponents({
         const showDesktopControls = (viewModel.isWindows || viewModel.isLinux) && !viewModel.isFullScreen;
         const control = (className, icon, handler, style = {}) => createElement("div", {
             staticClass: className, style, on: { click: handler }
-        }, [createElement("span", { staticClass: "icon text-sm" }, [viewModel._v(icon)])]);
+        }, [icon === "minimize"
+            ? createElement("span", { style: { display: "block", width: "10px", height: "1px", backgroundColor: "currentColor" }, attrs: { "aria-hidden": "true" } })
+            : createElement("span", { staticClass: "icon text-sm" }, [viewModel._v(icon)])]);
         return createElement("div", {
             staticClass: "main relative",
             style: { color: ["dark"].includes(viewModel.theme) ? "white" : "black" }

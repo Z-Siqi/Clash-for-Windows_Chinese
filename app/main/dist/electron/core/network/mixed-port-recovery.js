@@ -2,9 +2,10 @@
 
 const { parsePort } = require("./tcp-port");
 
-function isTcpPortAvailable({ net, port, host }) {
+function isTcpPortAvailable({ net, port, host, checkPort }) {
     const normalizedPort = parsePort(port);
     if (normalizedPort === null) return Promise.resolve(false);
+    if (checkPort) return checkPort(normalizedPort);
     return new Promise((resolve, reject) => {
         const server = net.createServer();
         const finish = value => {
@@ -20,11 +21,11 @@ function isTcpPortAvailable({ net, port, host }) {
     });
 }
 
-async function findAvailableTcpPort({ getPort, net, excluded = new Set(), attempts = 20 }) {
+async function findAvailableTcpPort({ getPort, net, checkPort, excluded = new Set(), attempts = 20 }) {
     for (let attempt = 0; attempt < attempts; attempt += 1) {
         const candidate = parsePort(await getPort());
         if (candidate === null || excluded.has(candidate)) continue;
-        if (await isTcpPortAvailable({ net, port: candidate })) return candidate;
+        if (await isTcpPortAvailable({ net, port: candidate, checkPort })) return candidate;
         excluded.add(candidate);
     }
     throw new Error("Could not find an available TCP port");
@@ -56,10 +57,10 @@ async function confirmMixedPortConflict({ clashApi, sleep, attempts = 3, delay =
     return true;
 }
 
-async function recoverWithRandomPort({ getPort, net, clashApi, sleep, attempts = 10 }) {
+async function recoverWithRandomPort({ getPort, net, checkPort, clashApi, sleep, attempts = 10 }) {
     const excluded = new Set();
     for (let attempt = 0; attempt < attempts; attempt += 1) {
-        const port = await findAvailableTcpPort({ getPort, net, excluded });
+        const port = await findAvailableTcpPort({ getPort, net, checkPort, excluded });
         if (await applyAndVerifyMixedPort({ clashApi, port, sleep })) return port;
         excluded.add(port);
     }

@@ -110,6 +110,22 @@ test("DNS hijacks preserve supported IPv4 and any forms", () => {
     assert.deepEqual(dnsHijackAddresses(["any:53", "1.1.1.1", "2.2.2.2:53", "3.3.3.3:54", "example:53"]), ["8.8.8.8", "1.1.1.1", "2.2.2.2"]);
 });
 
+test("async TAP absence cannot be mistaken for a present interface", async () => {
+    const h = harness({ platform: "win32", fs: { readFileSync: () => "dns:\n  enable: true\n  listen: 0.0.0.0:53" } });
+    h.deps.effects.hasTap = async () => false;
+    assert.equal((await h.apply(h.input)).success, true);
+    assert.equal(h.calls.at(-1)[0], "stopTap");
+    assert.equal(h.calls[0][1]["interface-name"], undefined);
+});
+
+test("async DNS failure is caught before reporting DNS ownership", async () => {
+    const h = harness();
+    h.input.tunConfig = { tun: { enable: true, "dns-hijack": ["any:53"] } };
+    h.deps.effects.setDns = async () => { throw new Error("DNS rejected"); };
+    assert.equal((await h.apply(h.input)).success, true);
+    assert.deepEqual(h.calls.find(call => call[0] === "setDnsChanged"), ["setDnsChanged", false]);
+});
+
 test("missing General configuration does not prevent applying a valid profile", async () => {
     const h = harness(); h.input.confData = null;
     assert.equal((await h.apply(h.input)).success, true);

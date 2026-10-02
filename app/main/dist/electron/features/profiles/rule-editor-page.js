@@ -7,6 +7,7 @@ function createRuleEditor({
     moment,
     yaml,
     fs,
+    profileFiles,
     path,
     lodash,
     notify,
@@ -39,9 +40,11 @@ function createRuleEditor({
             },
             handleMaskClick() { this.$emit("close"); }
         },
-        mounted() {
+        async mounted() {
             try {
-                const config = yaml.parse(fs.readFileSync(path.join(this.profilesPath, this.profileName)).toString());
+                const source = profileFiles ? await profileFiles.readProfile(this.profilesPath, this.profileName)
+                    : fs.readFileSync(path.join(this.profilesPath, this.profileName)).toString();
+                const config = yaml.parse(source);
                 const proxies = config.proxies || [];
                 const groups = config["proxy-groups"] || [];
                 this.proxyGroups = [
@@ -163,7 +166,7 @@ function createRuleEditor({
                 this.filterKeywords = event.target.value;
                 this.loadData();
             }, 500),
-            applyRules() {
+            async applyRules() {
                 const labels = getLanguage();
                 try {
                     const rules = cloneJson(this.memoryData).map(rule => {
@@ -172,9 +175,10 @@ function createRuleEditor({
                             : `${rule.type},${rule.proxy}`;
                     });
                     const target = path.join(this.profilesPath, this.profileName);
-                    const config = yaml.parse(fs.readFileSync(target, "utf8"));
+                    const config = yaml.parse(profileFiles ? await profileFiles.readProfile(this.profilesPath, this.profileName) : fs.readFileSync(target, "utf8"));
                     config.rules = rules;
-                    fs.writeFileSync(target, yaml.stringify(config));
+                    if (profileFiles) await profileFiles.writeProfile(this.profilesPath, this.profileName, yaml.stringify(config));
+                    else fs.writeFileSync(target, yaml.stringify(config));
                     this.$emit("done");
                     this.saveBtnText = "Done";
                 } catch (_error) {
@@ -193,7 +197,7 @@ function createRuleEditor({
             },
             async loadData() {
                 const target = path.join(this.profilesPath, this.profileName);
-                const source = fs.readFileSync(target, "utf8");
+                const source = profileFiles ? await profileFiles.readProfile(this.profilesPath, this.profileName) : fs.readFileSync(target, "utf8");
                 try {
                     const [rulesResponse, providerResponse] = await Promise.all([
                         this.clashApi.getRules(), this.clashApi.getRuleProviders()

@@ -185,6 +185,8 @@ function createCodeEditor({
             viewModel._v(" "),
             viewModel.isSelecting ? viewModel._e() : createElement("navigator", {
                 staticClass: "navigator",
+                // The editor stays dark even when the surrounding application uses a light theme.
+                style: { top: "0px", height: "100%", "--fgc": "#ffffff", "--bgc": "#1e1e1e" },
                 attrs: { list: viewModel.topKeyNames },
                 on: { select: viewModel.handleNavigate }
             }),

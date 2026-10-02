@@ -377,8 +377,8 @@ const clashClient = createClashClientRegistry({
         }
     }
 });
-registerClashClientInfo({ ipcMain, registry: clashClient });
-ipcListeners.get("clash-core-info")(null, { port: 9090, secret: "token" });
+registerClashClientInfo({ ipcMain, registry: clashClient, getMainWindow: () => mainWindow });
+ipcListeners.get("clash-core-info")({ sender: mainWindow.webContents, senderFrame: mainWindow.webContents.mainFrame }, { port: 9090, secret: "token" });
 assert.deepEqual(axiosConfig, {
     baseURL: "http://127.0.0.1:9090/",
     timeout: 5000,

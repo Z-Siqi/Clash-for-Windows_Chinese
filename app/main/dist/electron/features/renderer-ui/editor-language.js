@@ -1,6 +1,6 @@
 "use strict";
 
-function installEditorLanguage({ monaco, axios, fs, path, store, hashText, showMessageBox, shell, clipboard, labels }) {
+function installEditorLanguage({ monaco, publicContent, providerFiles, hashText, showMessageBox, clipboard, labels }) {
     const scrollPositions = new Map();
     const kinds = monaco.languages.CompletionItemKind;
     const insertTextRules = monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet;
@@ -11,7 +11,7 @@ function installEditorLanguage({ monaco, axios, fs, path, store, hashText, showM
                 if (match?.[1]) items.push(match[1]);
                 return items;
             }, ["DIRECT", "REJECT", "GLOBAL"]);
-            const fetch = name => axios.get(`https://raw.githubusercontent.com/Fndroid/clash-vscode/master/snippets/${name}.code-snippets`, { validateStatus: () => true });
+            const fetch = name => publicContent.getSnippets(name);
             let response = await fetch(section);
             if (response.status !== 200) response = await fetch("top");
             const snippets = response.status === 200 ? response.data : {};
@@ -46,19 +46,17 @@ function installEditorLanguage({ monaco, axios, fs, path, store, hashText, showM
                 if (!match) continue;
                 const url = match[1].replace(/^[" ']+|[" ']+$/g, "");
                 const hash = hashText(url);
-                const providerPath = type => path.join(store.state.app.clashPath, "providers", type, `${hash}.yaml`);
-                const proxy = providerPath("proxy"), rule = providerPath("rule");
-                const file = fs.existsSync(proxy) ? proxy : fs.existsSync(rule) ? rule : "";
+                const kind = await providerFiles.findCache(hash);
                 lenses.push({
                     range: { startLineNumber: line, endLineNumber: line, startColumn: 1, endColumn: 1 }, id: line,
-                    command: file ? { id: "openFile", title: labels.showActualFile(), arguments: [file] }
+                    command: kind ? { id: "openFile", title: labels.showActualFile(), arguments: [hash] }
                         : { id: "copyURLMD5", title: labels.copyURLAndMD5(), arguments: [hash] }
                 });
             }
             return { lenses, dispose() {} };
         }
     });
-    monaco.editor.registerCommand("openFile", async (_commandContext, file) => { shell.showItemInFolder(file); });
+    monaco.editor.registerCommand("openFile", async (_commandContext, hash) => { await providerFiles.revealCache(hash); });
     monaco.editor.registerCommand("copyURLMD5", async (_commandContext, hash) => {
         clipboard.writeText(`${hash}.yaml`);
         showMessageBox({ title: "MD5 Copied", message: `MD5: ${hash}` });

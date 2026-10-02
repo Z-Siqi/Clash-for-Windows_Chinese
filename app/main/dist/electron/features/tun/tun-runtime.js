@@ -15,6 +15,7 @@ function createTunRuntime({
     const ip = normalizedTapInfo.ip || "10.0.0.1";
     const subnet = normalizedTapInfo.subnet || "255.255.255.0";
     const gateway = normalizedTapInfo.gateway || "10.0.0.0";
+    if (![ip, subnet, gateway].every(require("net").isIPv4)) throw new Error("TAP addresses must be IPv4 literals");
 
     function sudoRun(command, callback = null) {
         return new Promise(resolve => {
@@ -34,7 +35,7 @@ function createTunRuntime({
 
     function isAdministrator() {
         try {
-            childProcess.execSync("net session", { windowsHide: true });
+            childProcess.execFileSync("net", ["session"], { windowsHide: true });
             return true;
         } catch (_error) {
             return false;
@@ -68,24 +69,25 @@ function createTunRuntime({
             "win",
             { x64: "x64", arm64: "arm64" }[arch]
         );
-        const processHandle = childProcess.spawn("go-tun2socks.exe", args, {
+        const processHandle = childProcess.spawn(path.join(binaryFolder, "go-tun2socks.exe"), args, {
             cwd: binaryFolder,
-            windowsHide: true
+            windowsHide: true,
+            shell: false
         });
 
         for (let remaining = 10; remaining > 0; remaining -= 1) {
             try {
-                const routes = childProcess.execSync(
-                    `route print ${gateway} mask ${subnet}`,
+                const routes = childProcess.execFileSync(
+                    "route", ["print", gateway, "mask", subnet],
                     { windowsHide: true }
                 ).toString();
-                const escapeDots = value => value.replace(/\./g, "\\.");
-                const routePattern = new RegExp(
-                    `${escapeDots(gateway)}\\s+?${escapeDots(subnet)}[\\s\\S]+${escapeDots(ip)}`
-                );
-                if (routePattern.test(routes)) {
-                    childProcess.execSync(
-                        `route add 0.0.0.0 mask 0.0.0.0 ${gateway} metric 1`,
+                const routeExists = routes.split(/\r?\n/).some(line => {
+                    const fields = line.trim().split(/\s+/);
+                    return fields[0] === gateway && fields[1] === subnet && fields.slice(2).includes(ip);
+                });
+                if (routeExists) {
+                    childProcess.execFileSync(
+                        "route", ["add", "0.0.0.0", "mask", "0.0.0.0", gateway, "metric", "1"],
                         { windowsHide: true }
                     );
                     break;
@@ -98,12 +100,10 @@ function createTunRuntime({
 
     function killSpawned(processHandle) {
         const pid = processHandle && processHandle.pid;
-        if (!pid) return;
+        if (!Number.isSafeInteger(pid) || pid <= 0) return;
         try {
-            const command = platform === "darwin" || platform === "linux"
-                ? `kill -9 ${pid}`
-                : `taskkill /F /PID ${pid}`;
-            childProcess.execSync(command, { windowsHide: true });
+            if (platform === "win32") childProcess.execFileSync("taskkill", ["/F", "/PID", String(pid)], { windowsHide: true });
+            else processHandle.kill("SIGKILL");
         } catch (_error) {}
     }
 

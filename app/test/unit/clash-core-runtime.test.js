@@ -31,8 +31,8 @@ const childProcess = {
         calls.push(["spawn", command, args, options]);
         return processHandle;
     },
-    execSync(command, options) {
-        calls.push(["execSync", command, options]);
+    execFileSync(command, args, options) {
+        calls.push(["execFileSync", command, args, options]);
     }
 };
 const fakeFs = {
@@ -144,7 +144,7 @@ async function run() {
     assert.equal(calls.some(call => call[0] === "mihomo-ready"), true);
 
     await runtime.stop({ processHandle, lightweightMode: false, platform: "win32" });
-    assert.equal(calls.some(call => call[1] === "taskkill /F /PID 123"), true);
+    assert.equal(calls.some(call => call[1] === "taskkill" && call[2].join(" ") === "/F /PID 123"), true);
     assert.equal(calls.some(call => call[0] === "service-stop"), true);
 
     const serviceLogs = [];
@@ -235,7 +235,8 @@ async function run() {
     const homePageOptionsSource = fs.readFileSync(path.join(
         root, "app/main/dist/electron/features/home/page-options.js"
     ), "utf8");
-    assert.match(rendererSource, /features\/clash-core\/clash-core-runtime/);
+    assert.doesNotMatch(rendererSource, /features\/clash-core\/clash-core-runtime/);
+    assert.match(rendererSource, /createClashCoreRuntime: \(\) => runtime\.coreLifecycle/);
     assert.match(homePageOptionsSource, /this\.createClashCoreRuntime\(\)\.start\(\{/);
     assert.match(homePageOptionsSource, /coreType: this\.settings\.proxyCore/);
     assert.match(rendererSource, /createRendererAppModule\(\{/);

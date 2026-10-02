@@ -19,7 +19,9 @@ const VERSION = "Opt-4";
 function startRenderer({
     windowObject = window,
     documentObject = document,
-    staticRoot = globalThis.__static
+    staticRoot = globalThis.__static,
+    processObject = process,
+    electronHost
 } = {}) {
     const modifyState = {
         languageInProfile: -1,
@@ -29,7 +31,7 @@ function startRenderer({
         adImages: ""
     };
     const runtime = createRendererRuntime({
-        Vue, Vuex, Language, modifyState, windowObject, staticRoot
+        Vue, Vuex, Language, modifyState, windowObject, staticRoot, processObject, electronHost
     });
     const components = createSharedComponents({
         Language, modifyState, windowObject, documentObject,
@@ -39,20 +41,20 @@ function startRenderer({
         preferenceKeys: runtime.keys,
         cache: runtime.cache,
         store: runtime.store,
-        axios: runtime.axios,
-        fs: runtime.fs,
-        path: runtime.path
+        publicContent: runtime.publicContent,
+        providerFiles: runtime.providerFiles
     });
     const pages = createRendererPages({
         Vuex, Language, modifyState, runtime, components, version: VERSION
     });
     const router = createRendererRouter({ Vue, Router, pages });
     const capabilities = createRendererCapabilities({
-        platform: process.platform,
+        platform: processObject.platform,
         ipcRenderer: runtime.electron.ipcRenderer,
         fs: runtime.fs,
         path: runtime.path,
         childProcess: runtime.childProcess,
+        systemProxy: runtime.systemProxy,
         runMacCommand: runtime.runMacSystemProxyCommand,
         parseBypass: runtime.yaml.parse,
         defaultBypass: runtime.defaultBypass,
@@ -65,12 +67,13 @@ function startRenderer({
     return mountRendererApplication({
         Vue, Vuex, store: runtime.store, router, document: documentObject,
         dialogs: components.dialogs, plugins: [capabilities],
-        electronPlugin: process.env.IS_WEB ? null : electronPlugin,
-        platform: process.platform,
+        electronPlugin: processObject.env?.IS_WEB ? null : electronPlugin,
+        platform: processObject.platform,
         ipcRenderer: runtime.electron.ipcRenderer,
         fs: runtime.fs,
         path: runtime.path,
         yaml: runtime.yaml,
+        settingsRepository: runtime.settingsRepository,
         cloneDeep: runtime.lodash.cloneDeep,
         modifyState
     });

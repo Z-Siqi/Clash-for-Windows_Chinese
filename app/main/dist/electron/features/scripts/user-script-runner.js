@@ -20,11 +20,12 @@ function createUserScriptRunner({
 
     async function run(payload, type) {
         const logPath = await store.dispatch("getScriptLogPath");
+        const stream = fs.createWriteStream(logPath);
         const context = {
             axios,
             yaml,
             homeDir: store.state.app.clashPath,
-            console: new Console(fs.createWriteStream(logPath)),
+            console: new Console(stream),
             notify,
             dialog: showMessageBox,
             resolveHost
@@ -32,8 +33,8 @@ function createUserScriptRunner({
         let scripts = {};
         const text = store.state.app.settings.scriptsText;
         if (text) try { scripts = yaml.parse(text).scripts || {}; } catch (_error) {}
-        if (type === PROXY_SCRIPT) loadScript(scripts.proxy)(payload, context);
-        else if (type === PROFILE_SCRIPT) loadScript(scripts.profile)(payload, context);
+        if (type === PROXY_SCRIPT) await loadScript(scripts.proxy)(payload, context);
+        else if (type === PROFILE_SCRIPT) await loadScript(scripts.profile)(payload, context);
     }
 
     return { run };

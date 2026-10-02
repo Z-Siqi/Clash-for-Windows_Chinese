@@ -80,6 +80,7 @@ async function main() {
     };
 
     const app = {
+        once() {},
         isQuiting: false,
         isPackaged: true,
         dock: {
@@ -152,7 +153,9 @@ async function main() {
             "globalShortcut",
             "native-admin",
             "nativeTheme",
+            "network-info",
             "powerSaveBlocker",
+            "profile-files",
             "start-download",
             "webContent",
             "window"
@@ -164,7 +167,7 @@ async function main() {
     assert.deepEqual(calls.at(-1), ["getPath", "temp"]);
     assert.equal(await invoke("app", "exit", 7), "exit-result");
     assert.deepEqual(calls.slice(-2), [["unmaximize"], ["exit", 7]]);
-    ipcListeners.get("cleanup-done")();
+    ipcListeners.get("cleanup-done")({ sender: mainWindow.webContents });
     assert.equal(app.isQuiting, true);
     assert.deepEqual(calls.at(-1), ["quit"]);
 
@@ -235,7 +238,7 @@ async function main() {
     }
 
     function invoke(channel, operationName, ...args) {
-        return handlers.get(channel)(null, operationName, ...args);
+        return handlers.get(channel)({ sender: mainWindow.webContents }, operationName, ...args);
     }
 }
 

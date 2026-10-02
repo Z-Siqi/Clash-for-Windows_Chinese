@@ -33,21 +33,15 @@ const DEFAULT_MIXIN_CODE = `module.exports.parse = ({ content, name, url }, { ya
 function createGeneralPageWorkflow({
     getLanguage,
     path,
-    fs,
     moment,
     yaml,
-    httpClient,
-    zlib,
-    tarStream,
-    childProcess,
-    sudoExec,
+    terminal,
+    coreConfigRepository,
     electron,
     cache,
     keys,
     getNetworkInterfaces,
     platform,
-    updateApplication,
-    logger,
     connectedStatus,
     service,
     firewall,
@@ -85,7 +79,7 @@ function createGeneralPageWorkflow({
         isWindowShow(value) { if (value) { this.setupComponent(); this.setupSwitches(); } },
         isLaunching(value) { if (!value) this.setupComponent(); },
         clashStatus(value) { if (value === connectedStatus) this.setupComponent(); },
-        clashPath() { this.serviceNeedUpdate = service.needUpdate(); }
+        async clashPath() { this.serviceNeedUpdate = await service.needUpdate(); }
     };
 
     const computed = {
@@ -213,11 +207,11 @@ function createGeneralPageWorkflow({
                 }
             } catch (_error) {}
         },
-        handleMixinSwitchClick() {
+        async handleMixinSwitchClick() {
             try {
                 if (!this.isMixinEnable) {
                     ensureMixinDefaults(this.settings);
-                    validateMixinSettings(this.settings, { parseYaml: yaml.parse });
+                    await validateMixinSettings(this.settings, { parseYaml: yaml.parse });
                 }
                 this.changeIsMixinEnable({ isMixin: !this.isMixinEnable });
             } catch (error) {
@@ -315,16 +309,7 @@ function createGeneralPageWorkflow({
                     });
                     if (selection === 3) this.handlePortClick();
                     else {
-                        const terminals = ["cmd", "powershell", "wt"];
-                        const exec = checks[0].value ? sudoExec : childProcess.exec;
-                        exec(`start ${terminals[selection]}`, {
-                            cwd: this.$parent.userPath,
-                            windowsHide: true,
-                            env: {
-                                http_proxy: `http://127.0.0.1:${this.port}`,
-                                https_proxy: `http://127.0.0.1:${this.port}`
-                            }
-                        });
+                        await terminal.open(selection, checks[0].value === true, this.port);
                     }
                 }
             } catch (_error) {}
@@ -370,7 +355,7 @@ function createGeneralPageWorkflow({
             electron.shell.openExternal(buildDashboardUrl({ controllerPort: this.controllerPort, secret: this.secret }));
         },
         spawnLoopback() {
-            if (platform.isWindows()) electron.shell.openPath(path.join(this.filesPath, "win", "common", "EnableLoopback.exe"));
+            if (platform.isWindows()) return terminal.loopback();
         },
         async openGithubRelease() {
             const labels = getLanguage();
@@ -399,7 +384,7 @@ function createGeneralPageWorkflow({
                 await electron.shell.openExternal(releasePage);
             } else if (selection === 1) electron.clipboard.writeText(releasePage);
         },
-        handleHomeDirectoryOpen() { electron.shell.openPath(path.resolve(this.clashPath)); },
+        handleHomeDirectoryOpen() { return electron.ipcRenderer.invoke("application-folder", "home", this.clashPath); },
         handleGeoipDatabaseUpdate() { this.updateGeoipDB(); },
         async handlePortClick() {
             const labels = getLanguage();
@@ -413,9 +398,10 @@ function createGeneralPageWorkflow({
                 if (!result) return "";
                 const command = result.command;
                 cache.put(keys.SYSTEM_PROXY_COMMAND, command || "");
+                const interfaces = await getNetworkInterfaces();
                 return (command || "")
                     .replace(/%mixedPort%/g, this.port)
-                    .replace(/%(.+?)%/g, token => (getNetworkInterfaces().find(item => item.name === token.slice(1, -1)) || {}).address || "");
+                    .replace(/%(.+?)%/g, token => (interfaces.find(item => item.name === token.slice(1, -1)) || {}).address || "");
             };
             let command;
             if (platform.isMacOS() || platform.isLinux()) {
@@ -437,8 +423,7 @@ function createGeneralPageWorkflow({
             }
         },
         async autoFix() {
-            try { fs.unlinkSync(path.join(this.clashPath, "config.yaml")); } catch (_error) {}
-            try { fs.unlinkSync(path.join(this.clashPath, "country.mmdb")); } catch (_error) {}
+            try { await coreConfigRepository.reset(this.clashPath); } catch (_error) {}
             await this.reloadElectron();
         },
         async updateGeoipDB() {
@@ -461,54 +446,16 @@ function createGeneralPageWorkflow({
                 cache.put(keys.GEOIP_TOKEN, token);
                 cache.put(keys.GEOIP_URL, url);
                 if (!this.clashPath) return;
-                const finish = (target, size) => {
-                    fs.ftruncateSync(fs.openSync(target, "r+"), size);
-                    this.$parent.handlerRestartClash();
-                };
-                if (token) {
-                    this.geoipUpdateTime = `${labels.updating()}... (0%)`;
-                    const temp = await electron.ipcRenderer.invoke("app", "getPath", "temp");
-                    const stream = httpClient.stream(`https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-Country&license_key=${token}&suffix=tar.gz`);
-                    stream.on("downloadProgress", progress => {
-                        this.geoipUpdateTime = progress.percent === 1 ? labels.restartingCore() : `${labels.updating()}... (${Math.round(100 * progress.percent)}%)`;
-                    });
-                    stream.on("error", error => {
-                        this.$alert({ content: `${labels.downloadDbErrGeoIP()}: ${error.name}` });
-                        this.geoipUpdateTime = originalTime;
-                    });
-                    path.join(temp, "cfw_geoip.tag.gz");
-                    const target = path.join(this.clashPath, "Country.mmdb");
-                    const archive = tarStream.extract();
-                    let size = 0;
-                    archive.on("entry", (header, entry, next) => {
-                        entry.on("end", next);
-                        if (/GeoLite2-Country\.mmdb$/.test(header.name)) {
-                            size = header.size;
-                            entry.pipe(fs.createWriteStream(target, { flags: "r+" }));
-                        } else entry.resume();
-                    });
-                    archive.on("finish", () => finish(target, size));
-                    stream.pipe(zlib.createGunzip()).pipe(archive);
-                } else if (url) {
-                    this.geoipUpdateTime = `${labels.updating()}... (0%)`;
-                    const stream = httpClient.stream(url);
-                    let size = 0;
-                    stream.on("downloadProgress", progress => {
-                        if (progress.percent === 1) {
-                            size = progress.total;
-                            this.geoipUpdateTime = labels.restartingCore();
-                        } else this.geoipUpdateTime = `Updating... (${Math.round(100 * progress.percent)}%)`;
-                    });
-                    stream.on("error", error => {
-                        this.$alert({ content: `${labels.downloadDbErrGeoIP()}: ${error.name}` });
-                        this.geoipUpdateTime = originalTime;
-                    });
-                    const target = path.join(this.clashPath, "Country.mmdb");
-                    const output = fs.createWriteStream(target, { flags: "r+" });
-                    output.on("finish", () => finish(target, size));
-                    stream.pipe(output);
-                }
-            } catch (_error) {}
+                if (!token && !url) return;
+                this.geoipUpdateTime = `${labels.updating()}... (0%)`;
+                await coreConfigRepository.updateGeoip(this.clashPath, { url, token }, percent => {
+                    this.geoipUpdateTime = percent === 1 ? labels.restartingCore() : `${labels.updating()}... (${Math.round(100 * percent)}%)`;
+                });
+                await this.$parent.handlerRestartClash();
+            } catch (_error) {
+                this.geoipUpdateTime = originalTime;
+                this.$alert({ content: labels.downloadDbErrGeoIP() });
+            }
         },
         setupSwitches() { this.autoLaunchLoading = false; this.systemProxyLoading = false; },
         async setupComponent() {
@@ -521,7 +468,7 @@ function createGeneralPageWorkflow({
                     this.bindAddress = data["bind-address"];
                     this.logLevel = data["log-level"];
                     this.isIPV6 = data.ipv6;
-                    this.geoipUpdateTime = moment(fs.statSync(path.join(this.clashPath, "Country.mmdb")).mtimeMs).format("YYYY-MM-DD HH:mm");
+                    this.geoipUpdateTime = moment((await coreConfigRepository.metadata(this.clashPath)).geoipModifiedAt).format("YYYY-MM-DD HH:mm");
                 }
             } catch (error) { console.error(error.stack); }
         },
@@ -537,7 +484,7 @@ function createGeneralPageWorkflow({
     function beforeRouteEnter(_to, _from, next) {
         next(async vm => {
             vm.version = `v${await electron.ipcRenderer.invoke("app", "getVersion")}`;
-            vm.serviceNeedUpdate = service.needUpdate();
+            vm.serviceNeedUpdate = await service.needUpdate();
             vm.setupComponent();
             schedule(vm.setupSwitches, 1);
         });

@@ -24,7 +24,7 @@ function secureProviderPaths(config, hash) {
 }
 
 async function prepareProfile({ source, profile, settings, tunConfig, mixinEnabled }, {
-    yaml, compileMixin, mixinHelpers, hash
+    yaml, compileMixin, mixinHelpers, hash, runMixin
 }) {
     let config = yaml.parse(source, { prettyErrors: true, strict: false });
     if (!config || typeof config !== "object" || Array.isArray(config)) {
@@ -36,9 +36,8 @@ async function prepareProfile({ source, profile, settings, tunConfig, mixinEnabl
             // Preserve the legacy policy: an invalid optional YAML mixin is ignored.
             try { config = { ...config, ...yaml.parse(settings.mixinText).mixin }; } catch (_error) {}
         } else if (Number(settings.mixinType) === 1 && settings.mixinCode) {
-            config = await compileMixin(settings.mixinCode).parse({
-                content: config, url: profile.url || "", name: profile.name
-            }, mixinHelpers);
+            const payload = { content: config, url: profile.url || "", name: profile.name };
+            config = runMixin ? await runMixin(payload) : await compileMixin(settings.mixinCode).parse(payload, mixinHelpers);
         }
     }
     if (!config || typeof config !== "object" || Array.isArray(config)) {

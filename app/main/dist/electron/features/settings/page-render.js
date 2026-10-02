@@ -455,7 +455,7 @@ function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, 
                             },
                             expression: "settings.trayProxiesStyle"
                         }
-                    })], 1), viewModel._v(" "), !viewModel.isLinux && [0, 1].includes(viewModel.settings.trayProxiesStyle) ? createElement("div", {
+                    })], 1), viewModel._v(" "), !viewModel.isLinux && [0, 1].includes(viewModel.settings.trayProxiesStyle ?? 0) ? createElement("div", {
                         staticClass: "item"
                     }, [createElement("div", {
                         staticClass: "flex items-center"
@@ -1363,7 +1363,7 @@ function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, 
                             list: viewModel.sections
                         },
                         on: {
-                            select: viewModel.handleNavigatToGroup
+                            select: viewModel.handleNavigateToGroup
                         }
                     }), viewModel._v(" "), viewModel.isEditingExternal ? createElement("div", {
                         staticClass: "edit-hint"

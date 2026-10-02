@@ -10,7 +10,7 @@ function createRendererCapabilities(deps) {
     return {
         install(Vue, { store }) {
             const { status, modifyState, staticRoot, path } = deps;
-            const runtime = () => createSystemProxyRuntime({
+            const runtime = () => deps.systemProxy || createSystemProxyRuntime({
                 ...deps, filesPath: store.getters.filesPath, clashPath: store.state.app.clashPath
             });
             const publish = enabled => store.commit("CHANGE_STATUS", { status: enabled ? status.SYSTEM_PROXY : status.DEFAULT });
@@ -30,8 +30,8 @@ function createRendererCapabilities(deps) {
                 await cleanup(success);
                 return success;
             };
-            Vue.prototype.$getSystemProxyStatus = () => {
-                const enabled = runtime().getStatus();
+            Vue.prototype.$getSystemProxyStatus = async () => {
+                const enabled = await runtime().getStatus();
                 publish(enabled);
                 return enabled;
             };

@@ -74,7 +74,7 @@ test("invalid settings document shapes fall back to defaults", () => {
     for (const source of ["null", "3", "- item", "[broken"]) {
         const repo = createSettingsRepository({ fs: { readFileSync: () => source }, path, yaml });
         const settings = repo.load("temporary");
-        assert.equal(settings.proxyCore, "mihomo");
+        assert.equal(settings.proxyCore, "clash");
         assert.equal(settings.randomControllerPort, true);
         assert.equal(settings[0], undefined);
     }

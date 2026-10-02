@@ -30,7 +30,7 @@ function createWebSocketFactory({ WebSocket, controllerPort, secret = "" }) {
         const normalizedEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
         const querySuffix = query.length > 0 ? `&${query.join("&")}` : "";
         return new WebSocket(
-            `ws://127.0.0.1:${controllerPort}${normalizedEndpoint}?token=${secret}${querySuffix}`
+            `ws://127.0.0.1:${controllerPort}${normalizedEndpoint}?token=${encodeURIComponent(secret)}${querySuffix}`
         );
     };
 }

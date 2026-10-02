@@ -13,6 +13,28 @@ function instantiate(component, propsData = {}) {
     return new (Vue.extend(component))({ store, propsData });
 }
 
+test("Diff editor honors the explicit side-by-side toggle at narrow widths", async () => {
+    let createdOptions;
+    const updates = [];
+    const editor = { addAction() {}, setModel() {}, dispose() {}, updateOptions: value => updates.push(value) };
+    const monaco = {
+        editor: { create() {}, createModel: code => ({ getValue: () => code }), createDiffEditor(_element, options) { createdOptions = options; return editor; } },
+        languages: { registerCompletionItemProvider() {} }, KeyMod: { CtrlCmd: 1 }, KeyCode: { KeyS: 2 }
+    };
+    const components = rendererComponents({ monaco });
+    const component = Object.values(components).find(value => value.name === "DiffView");
+    const vm = instantiate(component);
+    const pending = vm.show({ base: "mode: rule", change: "mode: direct" });
+    await Vue.nextTick();
+    assert.equal(createdOptions.useInlineViewWhenSpaceIsLimited, false);
+    vm.handleChangeStyle();
+    await Vue.nextTick();
+    assert.deepEqual(updates.at(-1), { renderSideBySide: true });
+    vm.handleSave();
+    assert.equal(await pending, "mode: direct");
+    vm.$destroy();
+});
+
 test("Shared UI: every production component bridge constructs and renders with the shipped Vue runtime", () => {
     const components = rendererComponents();
     // Node/browser globals must not be mistaken for Vue component dependencies.

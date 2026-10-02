@@ -2,49 +2,25 @@
 
 const { supportsScriptMode } = require("../../core/clash-core/core-capabilities");
 
-function createExternalEditor({ electron, fs, path, childProcess }) {
-    let rejectCurrentEdit = null;
-
-    return {
-        cancel() {
-            if (rejectCurrentEdit) rejectCurrentEdit();
-        },
-        async edit(extension, content = "", command = "code --wait") {
-            return new Promise((resolve, reject) => {
-                rejectCurrentEdit = reject;
-                electron.ipcRenderer.invoke("app", "getPath", "temp").then(tempDirectory => {
-                    const target = path.join(tempDirectory, `close-to-save.${extension}`);
-                    fs.writeFileSync(target, content);
-                    childProcess.exec(`${command} ${target}`, { windowsHide: true }, error => {
-                        if (error) reject(error);
-                    }).on("exit", () => resolve(fs.readFileSync(target).toString()));
-                }).catch(reject);
-            });
-        }
-    };
-}
-
 function createSettingsPageOptions({
     Vuex,
     components,
     yaml,
-    fs,
     defaultBypass,
     defaultPac,
     getNetworkInterfaces,
     electron,
     path,
-    childProcess,
+    externalEditor,
+    openApplicationLog,
     uuid,
     isMacOS,
     isWindows,
-    logger,
     showMessageBox,
     updateYaml,
     getWlanInterfaces,
     getLanguage
 }) {
-    const externalEditor = createExternalEditor({ electron, fs, path, childProcess });
 
     return {
         components,
@@ -112,8 +88,7 @@ function createSettingsPageOptions({
                         } catch (_error) {}
                     } else {
                         this.isEditingExternal = true;
-                        const command = editor === 1 ? "code --wait" : this.settings.editorCustomCommand || "subl --wait";
-                        const value = await externalEditor.edit(language, currentValue, command);
+                        const value = await externalEditor.edit(language, currentValue);
                         this.settings[settingName] = value;
                         changed = value !== currentValue;
                     }
@@ -149,7 +124,7 @@ function createSettingsPageOptions({
             async handleSelectInterface() {
                 const labels = getLanguage();
                 try {
-                    const interfaces = getNetworkInterfaces().map(networkInterface => networkInterface.name);
+                    const interfaces = (await getNetworkInterfaces()).map(networkInterface => networkInterface.name);
                     const [selectedIndex] = await this.$select({
                         title: labels.chooseOutboundInterface(),
                         message: labels.chooseOutboundInterfaceDescribe(),
@@ -167,7 +142,7 @@ function createSettingsPageOptions({
             },
             async handleFetchCurrentSSID() {
                 const labels = getLanguage();
-                const ssids = getWlanInterfaces().map(networkInterface => networkInterface.SSID).filter(Boolean);
+                const ssids = (await getWlanInterfaces()).map(networkInterface => networkInterface.SSID).filter(Boolean);
                 const [selectedIndex] = await this.$select({
                     title: labels.currentSSID(),
                     message: labels.currentSSIDDescribe(),
@@ -176,17 +151,13 @@ function createSettingsPageOptions({
                 if (selectedIndex !== ssids.length) electron.clipboard.writeText(ssids[selectedIndex]);
             },
             async handleOpenActionScriptsConsoleFile() {
-                const logPath = await this.getScriptLogPath();
-                if (!fs.existsSync(logPath)) fs.writeFileSync(logPath, "");
-                electron.shell.openPath(logPath);
+                await openApplicationLog("script");
             },
             async handleEditProfileParsers() {
                 await this.edit("profileParsersText", "parsers: # array\n");
             },
             async handleOpenConsoleFile() {
-                const logPath = await this.getParserLogPath();
-                if (!fs.existsSync(logPath)) fs.writeFileSync(logPath, "");
-                electron.shell.openPath(logPath);
+                await openApplicationLog("parser");
             },
             async handleChooseDefaultIcon() {
                 const selectedPath = await this.chooseFileOrPath();
@@ -226,11 +197,10 @@ function createSettingsPageOptions({
                 } catch (_error) {}
             },
             handleOpenGUILog() {
-                electron.shell.openPath(path.dirname(logger.transports.file.getFile().path));
+                return openApplicationLog("gui");
             },
             async handleOpenGUIDataFolder() {
-                const userDataPath = await electron.ipcRenderer.invoke("app", "getPath", "userData");
-                electron.shell.showItemInFolder(userDataPath);
+                await electron.ipcRenderer.invoke("application-folder", "gui");
             },
             async handleQuit(cleanupDone = false) {
                 const labels = getLanguage();
@@ -271,4 +241,4 @@ function createSettingsPageOptions({
     };
 }
 
-module.exports = { createExternalEditor, createSettingsPageOptions };
+module.exports = { createSettingsPageOptions };
