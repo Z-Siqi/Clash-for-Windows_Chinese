@@ -19,6 +19,14 @@ test("CodeQL gate rejects findings even when the analyzer exited successfully", 
     assert.throws(() => inspectCodeqlReport(report({ results: [{ ruleId: "security-query", level: "warning" }] })), /findings remain/);
 });
 
+test("CodeQL gate accepts the Action's query-pack extension format", () => {
+    const actionReport = report({ tool: {
+        driver: { name: "CodeQL", rules: [] },
+        extensions: [{ name: "codeql/javascript-queries", rules: [{ id: "security-query" }] }]
+    } });
+    assert.deepEqual(inspectCodeqlReport(actionReport), { runs: 1, rules: 1 });
+});
+
 test("CodeQL gate rejects incomplete extraction even with zero findings", () => {
     assert.throws(() => inspectCodeqlReport(report({ invocations: [{
         executionSuccessful: true,

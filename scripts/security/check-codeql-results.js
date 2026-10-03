@@ -12,8 +12,11 @@ function inspectCodeqlReport(report) {
         if (run.tool?.driver?.name !== "CodeQL" || !Array.isArray(run.results)) {
             throw new Error("Invalid CodeQL report");
         }
-        const queries = run.tool.driver.rules;
-        if (!Array.isArray(queries) || queries.length === 0) throw new Error("No CodeQL queries ran");
+        // The CLI puts rules on the driver; the Action groups them by query
+        // pack in SARIF extensions. Both are valid CodeQL report formats.
+        const queries = [run.tool.driver, ...(run.tool.extensions || [])]
+            .flatMap(component => Array.isArray(component.rules) ? component.rules : []);
+        if (queries.length === 0) throw new Error("No CodeQL queries ran");
         rules += queries.length;
         if (!Array.isArray(run.invocations) || run.invocations.length === 0) {
             throw new Error("Missing CodeQL invocation status");

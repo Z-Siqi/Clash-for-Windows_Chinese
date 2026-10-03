@@ -12,6 +12,7 @@ const { spawn } = require("node:child_process");
 const { test } = require("node:test");
 const { bundledRefresh } = require("../fixtures/bundled-refresh");
 const { verifyDisconnect } = require("../fixtures/core-disconnect");
+const { waitForInitialConfig } = require("../fixtures/core-startup-readiness");
 const { createClashApi } = require("../../main/dist/electron/core/network/clash-api");
 const { buildStore } = require("../fixtures/renderer-store");
 const { homePage } = require("../fixtures/home-page");
@@ -170,6 +171,15 @@ async function verifyCore(coreName, relativeBinary) {
             return { status: response.status, data: response.data ? JSON.parse(response.data) : "" };
         }]));
         const api = createClashApi({ getClient: () => client });
+        // /version responds before the initial YAML finishes applying. A mode
+        // PATCH sent in that window can be overwritten by startup's Direct mode.
+        await waitForInitialConfig({ request: () => request(controllerPort, "GET", "/configs"), child, mixedPort: initialMixedPort });
+        // Confirm forwarding is running before changing any configuration.
+        try { await verifyDisconnect(api, initialMixedPort); }
+        catch (error) {
+            const listenerLogs = output.value.split(/\r?\n/).filter(line => /listen|bind|mixed|warn|error/i.test(line) && !/secret|authorization|bearer/i.test(line));
+            throw new Error(`${error.message}\n${listenerLogs.join("\n")}`);
+        }
         const scriptModeResponse = await request(controllerPort, "PATCH", "/configs", { mode: "script" });
         const modeAfterScriptRequest = JSON.parse((await request(controllerPort, "GET", "/configs")).data).mode;
         if (coreName === "clash") {
@@ -181,13 +191,6 @@ async function verifyCore(coreName, relativeBinary) {
         }
         const restoreMode = await request(controllerPort, "PATCH", "/configs", { mode: "direct" });
         assert.equal(restoreMode.status, 204, restoreMode.data || output.value);
-        // Exercise connections on the initial listener before changing ports or profile files.
-        // A responding controller alone does not mean core startup has finished applying config.
-        try { await verifyDisconnect(api, initialMixedPort); }
-        catch (error) {
-            const listenerLogs = output.value.split(/\r?\n/).filter(line => /listen|bind|mixed|warn|error/i.test(line) && !/secret|authorization|bearer/i.test(line));
-            throw new Error(`${error.message}\n${listenerLogs.join("\n")}`);
-        }
         const patch = await request(controllerPort, "PATCH", "/configs", {
             "mixed-port": updatedMixedPort
         });
