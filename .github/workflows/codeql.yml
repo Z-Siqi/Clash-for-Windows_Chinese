@@ -15,9 +15,6 @@ jobs:
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    permissions:
-      contents: read
-      security-events: write
     strategy:
       fail-fast: false
       matrix:
@@ -50,6 +47,11 @@ jobs:
         with:
           category: /language:${{ matrix.language }}
           output: codeql-results
+          # The repository's default setup owns code-scanning uploads. Keep
+          # this extended scan independent until advanced setup replaces it.
+          upload: false
+      - name: Require clean analysis
+        run: node scripts/security/check-codeql-results.js codeql-results
       - name: Preserve SARIF report
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
