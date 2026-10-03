@@ -1,6 +1,7 @@
 "use strict";
 
 const { createSettingsRepository } = require("./settings-repository");
+const { readBoundedText } = require("../../core/storage/read-bounded-text");
 
 function splitEditorCommand(source) {
     if (typeof source !== "string" || !source.trim() || source.length > 4096 || /[\r\n\0]/.test(source)) throw new Error("Invalid external editor command");
@@ -76,8 +77,8 @@ function registerExternalEditorIpc({ ipcMain, app, getMainWindow, fs, path, yaml
                 settled = true; jobs.delete(event.sender);
                 try {
                     if (error) throw error;
-                    if (normalize(path.dirname(fs.realpathSync(target))) !== normalize(fs.realpathSync(directory)) || fs.statSync(target).size > 33554432) throw new Error("Invalid editor output");
-                    resolve(fs.readFileSync(target, "utf8"));
+                    if (normalize(path.dirname(fs.realpathSync(target))) !== normalize(fs.realpathSync(directory))) throw new Error("Invalid editor output");
+                    resolve(readBoundedText({ fs, file: target }));
                 } catch (_error) { reject(new Error("External editor failed or was cancelled")); }
                 finally {
                     try { child?.kill(); } catch (_error) {}

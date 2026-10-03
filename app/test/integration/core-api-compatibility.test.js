@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const http = require("node:http");
 const net = require("node:net");
 const dgram = require("node:dgram");
+const { randomInt } = require("node:crypto");
 const os = require("node:os");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
@@ -53,8 +54,11 @@ async function freePort(excluded = []) {
         const port = await new Promise((resolve, reject) => {
             const server = net.createServer();
             server.unref();
-            server.on("error", reject);
-            server.listen(0, "127.0.0.1", () => {
+            server.once("error", error => ["EACCES", "EADDRINUSE"].includes(error.code) ? resolve(0) : reject(error));
+            // Windows may allocate successive TCP ports inside a UDP-excluded
+            // range. Escape that range instead of repeating ephemeral picks.
+            const candidate = attempt < 8 ? 0 : randomInt(1024, 65536);
+            server.listen(candidate, "127.0.0.1", () => {
                 const { port } = server.address();
                 if (excluded.includes(port)) return server.close(() => resolve(0));
                 const udp = dgram.createSocket("udp4");
@@ -181,7 +185,7 @@ async function verifyCore(coreName, relativeBinary) {
         // A responding controller alone does not mean core startup has finished applying config.
         try { await verifyDisconnect(api, initialMixedPort); }
         catch (error) {
-            const listenerLogs = output.value.split(/\r?\n/).filter(line => /listen|bind|mixed/i.test(line) && !/secret|authorization|bearer/i.test(line));
+            const listenerLogs = output.value.split(/\r?\n/).filter(line => /listen|bind|mixed|warn|error/i.test(line) && !/secret|authorization|bearer/i.test(line));
             throw new Error(`${error.message}\n${listenerLogs.join("\n")}`);
         }
         const patch = await request(controllerPort, "PATCH", "/configs", {

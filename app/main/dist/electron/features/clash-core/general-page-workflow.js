@@ -352,7 +352,7 @@ function createGeneralPageWorkflow({
             this.setupComponent();
         },
         handleCopyControllerURL() {
-            electron.shell.openExternal(buildDashboardUrl({ controllerPort: this.controllerPort, secret: this.secret }));
+            return electron.shell.openExternal(buildDashboardUrl({ controllerPort: this.controllerPort, secret: this.secret }));
         },
         spawnLoopback() {
             if (platform.isWindows()) return terminal.loopback();

@@ -160,8 +160,9 @@ Promise.all([
     ]);
     const serviceRequests = [];
     const serviceApi = createClashServiceApi({
+        getCredentials: () => ({ dataDirectory: "/clash", token: "a".repeat(64) }),
         client: {
-            get: (...args) => { serviceRequests.push(["get", ...args]); return Promise.resolve({}); },
+            get: (...args) => { serviceRequests.push(["get", ...args]); return Promise.resolve({ headers: { "x-cfw-service-protocol": "2" } }); },
             post: (...args) => { serviceRequests.push(["post", ...args]); return Promise.resolve({}); }
         }
     });
@@ -175,16 +176,18 @@ Promise.all([
         assert.deepEqual(serviceRequests.map(request => request.slice(0, 2)), [
             ["get", "http://127.0.0.1:53000/ping"],
             ["post", "http://127.0.0.1:53000/start"],
-            ["get", "http://127.0.0.1:53000/stop"],
-            ["get", "http://127.0.0.1:53000/shutdown"],
+            ["post", "http://127.0.0.1:53000/stop"],
+            ["post", "http://127.0.0.1:53000/shutdown"],
             ["post", "http://127.0.0.1:53000/system-proxy"]
         ]);
-        assert.deepEqual(serviceRequests[0][2], { timeout: 275 });
+        assert.equal(serviceRequests[0][2].timeout, 275);
+        assert.equal(serviceRequests[0][2].proxy, false);
+        assert.ok(serviceRequests.every(request => /^Bearer /.test(request.at(-1).headers.Authorization)));
         assert.equal(serviceRequests[1][3].timeout, 4000);
         assert.equal(serviceRequests[1][3].validateStatus(), true);
-        assert.deepEqual(serviceRequests[2][2], { timeout: 2500 });
-        assert.deepEqual(serviceRequests[3][2], { timeout: 2500 });
-        assert.deepEqual(serviceRequests[4][2], { path: "sysproxy", args: ["-show"] });
+        assert.equal(serviceRequests[2][3].timeout, 2500);
+        assert.equal(serviceRequests[3][3].timeout, 2500);
+        assert.deepEqual(serviceRequests[4][2], { args: ["-show"] });
         assert.equal(serviceRequests[4][3].timeout, 16000);
         assert.equal(serviceRequests[4][3].validateStatus(), true);
         console.log("renderer clients smoke: PASS");

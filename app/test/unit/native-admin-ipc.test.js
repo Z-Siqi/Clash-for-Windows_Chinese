@@ -15,6 +15,8 @@ const { registerNativeAdminIpc } = require(path.join(
 
 async function run() {
     const invokes = [];
+    const memoryFiles = new Map();
+    let protocol = "2";
     const client = createNativeAdminClient({
         ipcRenderer: {
             invoke(...args) {
@@ -54,12 +56,16 @@ async function run() {
         getMainWindow: () => mainWindow,
         fs: {
             realpathSync: value => path.win32.resolve(value),
-            existsSync: () => false,
-            readFileSync: () => Buffer.from("fixture")
+            existsSync: file => memoryFiles.has(file),
+            readFileSync: file => memoryFiles.has(file) ? Buffer.from(memoryFiles.get(file)) : Buffer.from(file.endsWith("core-hashes.json") ? JSON.stringify({ cores: [{ name: "clash-win64.exe", sha256: "fixture" }] }) : "fixture"),
+            writeFileSync: (file, content) => memoryFiles.set(file, content),
+            renameSync(from, to) { memoryFiles.set(to, memoryFiles.get(from)); memoryFiles.delete(from); },
+            unlinkSync: file => memoryFiles.delete(file)
         },
         path: path.win32,
         crypto: require("node:crypto"),
         childProcess: {
+            execFileSync: () => Buffer.from("S-1-5-21-123-456-789-1001"),
             exec(command, options, callback) {
                 ordinary.push([command, options]);
                 callback(null, "False", "");
@@ -72,7 +78,7 @@ async function run() {
             }
         },
         axios: {
-            get: async () => ({ status: 200 }),
+            get: async () => ({ status: 200, headers: { "x-cfw-service-protocol": protocol } }),
             post: async () => ({ status: 200 })
         },
         platform: "win32",
@@ -107,6 +113,14 @@ async function run() {
     assert.equal(elevated.length, 2);
     assert.match(elevated[1][0], /schtasks \/create/);
     assert.match(elevated[1][0], /Clash Core Service/);
+    assert.equal(await handler(event, "service", "install", base), true);
+    assert.match(elevated[2][0], /schtasks \/create/);
+    const installed = "C:\\Program Files\\Clash for Windows Service";
+    for (const name of ["clash-core-service.ps1", "clash-core-service.cmd", "core-hashes.json", "service-config.json"]) memoryFiles.set(path.win32.join(installed, name), "fixture");
+    protocol = undefined;
+    assert.equal(await handler(event, "service", "need-update", base), true);
+    protocol = "2";
+    assert.equal(await handler(event, "service", "need-update", base), false);
 
     await assert.rejects(
         handler(event, "firewall", "add", {

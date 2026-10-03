@@ -136,7 +136,8 @@ function createClashCoreRuntime({
         fs.readdir(logDirectory, (error, files) => {
             if (error || !files) return;
             for (const file of files) {
-                const match = file.match(/^(\d{4}-\d{2}-\d{2}-\d{6})\.log$/);
+                // Service helpers append a unique suffix to avoid log collisions.
+                const match = file.match(/^(\d{4}-\d{2}-\d{2}-\d{6})(?:-[a-fA-F0-9-]{1,64})?\.log$/);
                 if (!match) continue;
                 const timestamp = parseLogTimestamp(match[1]);
                 if (timestamp && Date.now() - timestamp > 7 * 24 * 60 * 60 * 1000) {

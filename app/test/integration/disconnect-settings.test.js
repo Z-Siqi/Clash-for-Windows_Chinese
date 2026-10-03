@@ -25,7 +25,7 @@ function fixture() {
         spawnTun2socks() { this.tun2socks = {}; }
     };
     const deps = { platform: "win32", fs: { readFileSync: () => control.source }, path, yaml,
-        childProcess: { execSync: () => "cfw-tap" }, setDns() {}, getPort() {}, messages: {} };
+        profileNetworkEffects: { hasTap: async () => true, renewDhcp() {} }, setDns() {}, getPort() {}, messages: {} };
     return { vm, events, control, refresh: () => refreshProfile(vm, deps) };
 }
 

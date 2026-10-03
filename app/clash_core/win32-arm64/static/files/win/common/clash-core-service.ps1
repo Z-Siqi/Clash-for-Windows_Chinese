@@ -1,6 +1,8 @@
 param(
     [int] $Port = 53000,
-    [string] $ManifestPath = (Join-Path $PSScriptRoot 'core-hashes.json')
+    [string] $ManifestPath = (Join-Path $PSScriptRoot 'core-hashes.json'),
+    [string] $ConfigPath = (Join-Path $PSScriptRoot 'service-config.json'),
+    [string] $CoreDirectory = (Join-Path $PSScriptRoot 'cores')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -13,6 +15,11 @@ foreach ($entry in $manifest.cores) {
     $trustedHashes[$entry.name.ToLowerInvariant()] = $entry.sha256.ToUpperInvariant()
 }
 
+$policy = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
+if ($policy.token -cnotmatch '^[a-f0-9]{64}$') { throw 'Invalid service credentials' }
+$script:dataDirectory = [IO.Path]::GetFullPath([string]$policy.dataDirectory)
+if (-not (Test-Path -LiteralPath $script:dataDirectory -PathType Container)) { throw 'Invalid service data directory' }
+$script:coreDirectory = [IO.Path]::GetFullPath($CoreDirectory)
 $pidFile = Join-Path $PSScriptRoot 'core.pid'
 $script:coreProcess = $null
 
@@ -26,7 +33,7 @@ function Write-HttpResponse {
         404 { 'Not Found' }
         default { 'Internal Server Error' }
     }
-    $headers = "HTTP/1.1 $StatusCode $reason`r`nContent-Type: text/plain; charset=utf-8`r`n" +
+    $headers = "HTTP/1.1 $StatusCode $reason`r`nX-CFW-Service-Protocol: 2`r`nContent-Type: text/plain; charset=utf-8`r`n" +
         "Content-Length: $($payload.Length)`r`nConnection: close`r`n`r`n"
     $headerBytes = [Text.Encoding]::ASCII.GetBytes($headers)
     $Stream.Write($headerBytes, 0, $headerBytes.Length)
@@ -72,8 +79,14 @@ function Read-HttpRequest {
     if ($requestParts.Length -lt 2) { throw [IO.InvalidDataException]::new('Invalid HTTP request line') }
 
     $contentLength = 0
+    $headers = @{}
     foreach ($line in $lines | Select-Object -Skip 1) {
         $separator = $line.IndexOf(':')
+        if ($separator -gt 0) {
+            $name = $line.Substring(0, $separator).Trim()
+            if ($headers.ContainsKey($name)) { throw 'Duplicate HTTP header' }
+            $headers[$name] = $line.Substring($separator + 1).Trim()
+        }
         if ($separator -gt 0 -and $line.Substring(0, $separator).Trim() -ieq 'Content-Length') {
             $contentLength = [int]$line.Substring($separator + 1).Trim()
         }
@@ -91,6 +104,7 @@ function Read-HttpRequest {
     }
 
     return [pscustomobject]@{
+        Headers = $headers
         Method = $requestParts[0].ToUpperInvariant()
         Path = $requestParts[1].Split('?')[0].ToLowerInvariant()
         Body = [Text.Encoding]::UTF8.GetString($bodyBytes)
@@ -111,21 +125,17 @@ function Get-FileSha256 {
 }
 
 function Resolve-TrustedCore {
-    param([string] $RequestedPath)
+    param([string] $RequestedName)
 
-    if ([string]::IsNullOrWhiteSpace($RequestedPath)) {
-        throw [UnauthorizedAccessException]::new('Missing core path')
-    }
-
-    $fullPath = [IO.Path]::GetFullPath($RequestedPath)
-    if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
-        throw [UnauthorizedAccessException]::new('Core file does not exist')
-    }
-
-    $name = [IO.Path]::GetFileName($fullPath).ToLowerInvariant()
-    if (-not $trustedHashes.ContainsKey($name)) {
+    if ([string]::IsNullOrWhiteSpace($RequestedName) -or -not $trustedHashes.ContainsKey($RequestedName.ToLowerInvariant())) {
         throw [UnauthorizedAccessException]::new('Core is not allow-listed')
     }
+    # Network requests select a manifest identity, never an executable path.
+    $name = $RequestedName.ToLowerInvariant()
+    if ([IO.Path]::GetFileName($name) -cne $name -or $name -match '[\\/:]') { throw [UnauthorizedAccessException]::new('Invalid core identity') }
+    $fullPath = Join-Path $script:coreDirectory $name
+    $item = Get-Item -LiteralPath $fullPath
+    if ($item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw [UnauthorizedAccessException]::new('Core is redirected') }
 
     $actualHash = (Get-FileSha256 $fullPath).ToUpperInvariant()
     if ($actualHash -ne $trustedHashes[$name]) {
@@ -150,7 +160,8 @@ function Stop-CoreProcess {
         if (-not [string]::IsNullOrWhiteSpace($candidatePath)) {
             # The in-memory process was already hash-checked before launch.
             # Revalidate only a PID recovered after the helper restarted.
-            if ($validateRecoveredProcess) { Resolve-TrustedCore $candidatePath | Out-Null }
+            if ($validateRecoveredProcess) { Resolve-TrustedCore ([IO.Path]::GetFileName($candidatePath)) | Out-Null
+                if ([IO.Path]::GetFullPath($candidatePath) -ine (Join-Path $script:coreDirectory ([IO.Path]::GetFileName($candidatePath)))) { throw 'Recovered core is outside the service installation' } }
             $candidate.Kill()
             if (-not $candidate.WaitForExit(2000)) {
                 $candidate.Kill()
@@ -173,8 +184,9 @@ function Read-JsonBody {
 function Start-CoreProcess {
     param($Payload)
 
-    $corePath = Resolve-TrustedCore ([string]$Payload.path)
-    $workingDirectory = [IO.Path]::GetFullPath([string]$Payload.cwd)
+    if (@($Payload.PSObject.Properties.Name | Where-Object { $_ -notin @('core', 'silent') }).Count -gt 0) { throw 'Unsupported start request' }
+    $corePath = Resolve-TrustedCore ([string]$Payload.core)
+    $workingDirectory = $script:dataDirectory
     if (-not (Test-Path -LiteralPath $workingDirectory -PathType Container)) {
         throw [IO.DirectoryNotFoundException]::new('Core working directory does not exist')
     }
@@ -195,8 +207,10 @@ function Start-CoreProcess {
     if (-not [bool]$Payload.silent) {
         $logDirectory = Join-Path $workingDirectory 'logs'
         [IO.Directory]::CreateDirectory($logDirectory) | Out-Null
-        $logPath = Join-Path $logDirectory ((Get-Date -Format 'yyyy-MM-dd-HHmmss') + '.log')
-        [IO.File]::WriteAllText($logPath, '')
+        if ((Get-Item -LiteralPath $logDirectory).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Core log directory is redirected' }
+        $logPath = Join-Path $logDirectory ((Get-Date -Format 'yyyy-MM-dd-HHmmss') + '-' + [Guid]::NewGuid().ToString() + '.log')
+        $logFile = [IO.File]::Open($logPath, [IO.FileMode]::CreateNew)
+        $logFile.Dispose()
     }
 
     $process = [Diagnostics.Process]::new()
@@ -222,17 +236,22 @@ try {
             $client.SendTimeout = 1000
             $stream = $client.GetStream()
             $request = Read-HttpRequest $stream
+            if ($request.Headers['Authorization'] -cne ('Bearer ' + $policy.token) -or
+                $request.Headers['Host'] -cne ("127.0.0.1:" + $Port) -or $request.Headers.ContainsKey('Origin')) {
+                Write-HttpResponse $stream 403 'unauthorized service request'
+                continue
+            }
 
             if ($request.Method -eq 'GET' -and $request.Path -eq '/ping') {
                 Write-HttpResponse $stream 200 'pong'
                 continue
             }
-            if ($request.Method -eq 'GET' -and $request.Path -eq '/stop') {
+            if ($request.Method -eq 'POST' -and $request.Path -eq '/stop') {
                 Stop-CoreProcess
                 Write-HttpResponse $stream 200 'stopped'
                 continue
             }
-            if ($request.Method -eq 'GET' -and $request.Path -eq '/shutdown') {
+            if ($request.Method -eq 'POST' -and $request.Path -eq '/shutdown') {
                 Stop-CoreProcess
                 Write-HttpResponse $stream 200 'stopped'
                 break

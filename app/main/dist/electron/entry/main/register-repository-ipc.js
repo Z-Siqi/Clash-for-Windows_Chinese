@@ -6,6 +6,7 @@ const { createCoreConfigRepository } = require("../../features/settings/core-con
 const { createPacServerRuntime } = require("../../features/network/pac-server-runtime");
 const { defaultPac } = require("../../features/network/proxy-defaults");
 const { writeAtomic } = require("../../core/storage/atomic-file");
+const { readBoundedText } = require("../../core/storage/read-bounded-text");
 const { updateYamlValue } = require("../../core/storage/yaml-file");
 const { parsePort } = require("../../core/network/tcp-port");
 const { createGeoipRuntime } = require("../../features/clash-core/geoip-runtime");
@@ -135,8 +136,7 @@ function registerRepositoryIpc({ ipcMain, app, getMainWindow, fs, path, yaml, fi
                 if (!result.canceled) for (const file of result.filePaths) {
                     const name = path.basename(file);
                     if (list.some(profile => profile.url === "" && profile.name === name)) continue;
-                    if (fs.statSync(file).size > 33554432) throw new Error("Profile import is too large");
-                    value.push({ time: createLocal(fs.readFileSync(file, "utf8")), name, url: "", selected: [] });
+                    value.push({ time: createLocal(readBoundedText({ fs, file })), name, url: "", selected: [] });
                 }
             } else if (["delete-profile", "open-profile", "reveal-profile", "read-diff", "initialize-diff", "write-diff", "delete-diff"].includes(operation)) {
                 if (!list.some(profile => profile.time === request.time)) throw new Error("Unknown profile");

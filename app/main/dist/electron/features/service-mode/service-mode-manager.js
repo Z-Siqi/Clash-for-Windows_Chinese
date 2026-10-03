@@ -1,5 +1,7 @@
 "use strict";
 
+const { posixServiceDirectory, buildPosixServiceInstall } = require("./install-posix-service");
+
 const SERVICE_STATUS = Object.freeze({
     Active: Symbol("Active"),
     Inactive: Symbol("Inactive"),
@@ -52,7 +54,9 @@ function createServiceModeManager(dependencies) {
         getTempPath = async () => "",
         hashFile,
         adminActions,
+        prepareCredentials,
         programFiles = "C:\\Program Files",
+        now = Date.now,
         sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
     } = dependencies;
 
@@ -66,7 +70,7 @@ function createServiceModeManager(dependencies) {
 
     async function statusService() {
         const clashPath = getClashPath() || "";
-        if (platform !== "win32" && clashPath && !fs.existsSync(path.join(clashPath, "service"))) {
+        if (platform !== "win32" && !fs.existsSync(installedBinary())) {
             return SERVICE_STATUS.Inactive;
         }
         // Avoid blocking renderer startup on loopback retries when Service Mode
@@ -109,83 +113,56 @@ function createServiceModeManager(dependencies) {
     }
 
     function installedBinary() {
-        return path.join(getClashPath(), "service", "clash-core-service");
+        return path.join(posixServiceDirectory(platform), "clash-core-service");
     }
 
     function commonNeedUpdate() {
         const target = installedBinary();
-        if (!fs.existsSync(target)) return false;
+        if (!fs.existsSync(target)) return fs.existsSync(path.join(getClashPath(), "service"));
+        if (!fs.existsSync(path.join(posixServiceDirectory(platform), "service-config.json"))) return true;
         const names = platform === "linux" || platform === "darwin"
             ? ["clash-core-service", "core-hashes.json"]
             : ["clash-core-service"];
         return names.some(name => {
-            const installed = path.join(getClashPath(), "service", name);
+            const installed = path.join(posixServiceDirectory(platform), name);
             const source = path.join(sourceDirectory(), name);
             return !fs.existsSync(installed) || (fs.existsSync(source) && hashFile(installed) !== hashFile(source));
         });
     }
 
+    function posixInstallCommand(serviceFile, serviceContent) {
+        const source = sourceDirectory();
+        const destination = posixServiceDirectory(platform);
+        const { file } = prepareCredentials();
+        const manifest = JSON.parse(fs.readFileSync(path.join(source, "core-hashes.json"), "utf8"));
+        return buildPosixServiceInstall({ platform, path, source, destination, credentialFile: file, manifest, serviceFile, serviceContent });
+    }
+
     function createDarwinManager() {
         const plist = "/Library/LaunchDaemons/com.lbyczf.cfw.helper.plist";
-        const install = async mode => {
-            ensureDirectory(path.dirname(installedBinary()));
-            const installedManifest = path.join(path.dirname(installedBinary()), "core-hashes.json");
-            const unload = mode === "update" ? `launchctl unload ${plist} ; ` : "";
-            await elevated(
-                `cp "${path.join(sourceDirectory(), "clash-core-service")}" "${installedBinary()}" ; `
-                + `cp "${path.join(sourceDirectory(), "core-hashes.json")}" "${installedManifest}" ; `
-                + `chmod 755 "${installedBinary()}" ; chmod 644 "${installedManifest}" ; `
-                + `chown root:wheel "${installedBinary()}" "${installedManifest}" ; `
-                + `${unload}echo "${DARWIN_PLIST.replace("helperPath", installedBinary())}" > ${plist} ; `
-                + `launchctl load -w ${plist}`
-            );
+        const install = async () => {
+            const command = posixInstallCommand(plist, DARWIN_PLIST.replace("helperPath", installedBinary()));
+            await elevated(`launchctl unload ${plist} 2>/dev/null || true; ${command}; launchctl load -w ${plist}`);
         };
         return {
-            installService: () => install("install"),
-            uninstallService: () => elevated(
-                `launchctl unload ${plist} ; rm ${plist}`
-                + (fs.existsSync(path.dirname(installedBinary()))
-                    ? ` ; rm -rf ${path.dirname(installedBinary())}` : "")
-            ),
+            installService: install,
+            uninstallService: () => elevated(`launchctl unload ${plist}; rm -f ${plist}`),
             needUpdate: commonNeedUpdate,
-            updateService: () => install("update")
+            updateService: install
         };
     }
 
     function createLinuxManager() {
         const unit = "/usr/lib/systemd/system/clash-core-service.service";
         const installService = async () => {
-            ensureDirectory(path.dirname(installedBinary()));
-            const installedManifest = path.join(path.dirname(installedBinary()), "core-hashes.json");
-            await elevated(
-                `cp "${path.join(sourceDirectory(), "clash-core-service")}" "${installedBinary()}" ; `
-                + `cp "${path.join(sourceDirectory(), "core-hashes.json")}" "${installedManifest}" ; `
-                + `chmod 755 "${installedBinary()}" ; chmod 644 "${installedManifest}" ; `
-                + `chown root:root "${installedBinary()}" "${installedManifest}" ; `
-                + `echo "${LINUX_SERVICE.replace("helperPath", installedBinary())}" > ${unit} ; `
-                + "systemctl enable clash-core-service; systemctl start clash-core-service"
-            );
-        };
-        const uninstallService = async () => {
-            try {
-                const legacy = path.join(await getTempPath(), "cfw-clash-service-installer");
-                if (fs.existsSync(legacy)) {
-                    await elevated(`${legacy}/installer.sh uninstall`);
-                    removeDirectory(legacy);
-                }
-            } catch (_error) {}
-            await elevated(
-                "systemctl stop clash-core-service; systemctl disable clash-core-service; "
-                + `rm -rf ${unit}`
-                + (fs.existsSync(path.dirname(installedBinary()))
-                    ? ` ; rm -rf ${path.dirname(installedBinary())}` : "")
-            );
+            const command = posixInstallCommand(unit, LINUX_SERVICE.replace("helperPath", installedBinary()));
+            await elevated(`systemctl stop clash-core-service 2>/dev/null || true; ${command}; systemctl daemon-reload; systemctl enable clash-core-service; systemctl start clash-core-service`);
         };
         return {
             installService,
-            uninstallService,
+            uninstallService: () => elevated(`systemctl stop clash-core-service; systemctl disable clash-core-service; rm -f ${unit}; systemctl daemon-reload`),
             needUpdate: commonNeedUpdate,
-            updateService: async () => { await uninstallService(); await installService(); }
+            updateService: installService
         };
     }
 
@@ -202,8 +179,8 @@ function createServiceModeManager(dependencies) {
         const runCommands = (base, commands, { runBefore = "", runAfter = "" } = {}) => {
             const body = commands.map(({ cmd, options = [] }) =>
                 `"${path.join(base, "service.exe")}" ${cmd} ${options.join(" ")}`
-            ).join(" & ");
-            return elevated([runBefore, body, runAfter].filter(Boolean).join(" & "));
+            ).join(" && ");
+            return elevated([runBefore, body, runAfter].filter(Boolean).join(" && "));
         };
         const runScheduledTasks = (commands, options = {}) => {
             const body = commands.map(command =>
@@ -214,6 +191,8 @@ function createServiceModeManager(dependencies) {
         };
         const installService = async (method = 0, { replace = false } = {}) => {
             const source = sourceDirectory();
+            const { file: credentialFile } = prepareCredentials();
+            const manifest = JSON.parse(fs.readFileSync(path.join(source, "core-hashes.json"), "utf8"));
             const common = path.join(source, "../../common");
             const replaceScheduledTask = replace
                 ? `schtasks /end /tn "Clash Core Service" >nul 2>&1 & `
@@ -223,11 +202,20 @@ function createServiceModeManager(dependencies) {
             // sudo-prompt writes this value as one batch line. An inline `if`
             // would condition the entire command chain and make clean installs
             // silently do nothing when the destination does not exist.
+            const coreDir = path.join(installedDir, "cores");
+            const coreCopies = manifest.cores.map(entry => {
+                if (!/^[\w.-]+$/.test(entry.name) || entry.name === "." || entry.name === "..") throw new Error("Invalid service manifest");
+                return `copy "${path.join(source, "..", entry.name)}" "${coreDir}" /Y >nul`;
+            }).join(" && ");
             const copyHelper = `del /F /Q "${installedDir}" >nul 2>&1 & `
                 + `mkdir "${installedDir}" >nul 2>&1 & `
+                + `mkdir "${coreDir}" >nul 2>&1 & `
                 + `copy "${path.join(common, "clash-core-service.ps1")}" "${installedDir}" /Y >nul && `
                 + `copy "${path.join(common, "clash-core-service.cmd")}" "${installedDir}" /Y >nul && `
-                + `copy "${path.join(source, "core-hashes.json")}" "${installedDir}" /Y >nul `;
+                + `copy "${path.join(source, "core-hashes.json")}" "${installedDir}" /Y >nul && `
+                + `type nul > "${path.join(installedDir, "service-config.json")}" && `
+                + `icacls "${path.join(installedDir, "service-config.json")}" /inheritance:r /grant:r *S-1-5-18:F *S-1-5-32-544:F >nul && `
+                + `copy "${credentialFile}" "${path.join(installedDir, "service-config.json")}" /Y >nul && ${coreCopies} `;
             if (method === 0) {
                 await runScheduledTasks([
                     { cmd: "create", options: [`/xml "${scheduledTaskConfig}"`, "/F"] },
@@ -241,9 +229,10 @@ function createServiceModeManager(dependencies) {
             }
             await runCommands(installedDir, [{ cmd: "install" }, { cmd: "start" }], {
                 runBefore: copyHelper
-                    + `& copy "${path.join(source, "service.exe")}" "${installedDir}" /Y `
-                    + `& copy "${path.join(common, "service.yml")}" "${installedDir}" /Y `
+                    + `&& copy "${path.join(source, "service.exe")}" "${installedDir}" /Y `
+                    + `&& copy "${path.join(common, "service.yml")}" "${installedDir}" /Y `
             });
+            await waitForWindowsHelper();
         };
         const legacyExists = () => {
             const legacyDir = legacyDirectory();
@@ -261,15 +250,21 @@ function createServiceModeManager(dependencies) {
             }
             // Older helpers do not expose /shutdown. Stop their managed core
             // before removing the service so it cannot survive the app reload.
+            if (!helperStopped && serviceApi.shutdownLegacy) {
+                try { helperStopped = await serviceApi.shutdownLegacy(); } catch (_error) {}
+            }
             if (!helperStopped && serviceApi.stop) await serviceApi.stop().catch(() => {});
         };
         const uninstallService = async () => {
             if (legacyExists() || fs.existsSync(installedDir)) await stopWindowsHelper();
             if (legacyExists()) {
                 const legacyDir = legacyDirectory();
-                await runCommands(legacyDir, [{ cmd: "stop" }, { cmd: "uninstall" }], {
-                    runAfter: `icacls.exe "${legacyDir}" /remove:d Everyone & rmdir /s /q "${legacyDir}"`
-                });
+                // Never elevate a WinSW executable from a user-writable profile.
+                // Service identity is fixed; retire only its marker as the user.
+                await elevated('sc.exe stop "Clash Core Service" >nul 2>&1 & sc.exe delete "Clash Core Service"');
+                const home = fs.realpathSync(getClashPath());
+                if (fs.realpathSync(legacyDir) !== path.join(home, "service")) throw new Error("Legacy service directory is redirected");
+                fs.unlinkSync(path.join(legacyDir, "service.yml"));
                 return;
             }
             if (fs.existsSync(installedDir) && !installedPathIsDirectory()) {
@@ -305,7 +300,7 @@ function createServiceModeManager(dependencies) {
             const currentManifest = path.join(source, "core-hashes.json");
             const currentTask = path.join(source, "../../common/schtasks.xml");
             if (!fs.existsSync(installedScript) || !fs.existsSync(installedManifest)
-                || !fs.existsSync(installedLauncher)) {
+                || !fs.existsSync(installedLauncher) || !fs.existsSync(path.join(installedDir, "service-config.json"))) {
                 return fs.existsSync(installedDir);
             }
             return (fs.existsSync(currentScript) && hashFile(installedScript) !== hashFile(currentScript))
@@ -317,11 +312,21 @@ function createServiceModeManager(dependencies) {
             || (fs.existsSync(installedScript) && fs.existsSync(installedManifest)
                 && fs.existsSync(installedLauncher));
         return {
-            installService,
+            installService: async (method = 0) => {
+                // Reinstall from an inactive old protocol must retire the old
+                // task/service before rotating credentials and starting v2.
+                if (isInstalled()) await uninstallService();
+                await installService(method);
+            },
             uninstallService,
             needUpdate,
             isInstalled,
             updateService: async () => {
+                if (legacyExists()) {
+                    await uninstallService();
+                    await installService(0);
+                    return;
+                }
                 const method = fs.existsSync(scheduledTaskConfig) || !fs.existsSync(winswBinary) ? 0 : 1;
                 if (method === 0) {
                     await stopWindowsHelper();
@@ -334,11 +339,12 @@ function createServiceModeManager(dependencies) {
         };
 
         async function waitForWindowsHelper() {
-            for (let attempt = 0; attempt < 30; attempt += 1) {
+            const deadline = now() + 30000;
+            while (now() < deadline) {
                 try {
                     if ((await serviceApi.ping(250)).status === 200) return;
                 } catch (_error) {}
-                if (attempt < 29) await sleep(100);
+                await sleep(100);
             }
             throw new Error("Windows Service Mode helper did not become reachable after installation");
         }

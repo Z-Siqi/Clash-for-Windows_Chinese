@@ -86,6 +86,7 @@ function registerSpeedIndicator({
             // Preserve the packaged app's best-effort indicator behavior.
         }
     });
+    return { getWindow: () => indicatorWindow };
 }
 
 function createIndicatorHtml(imageUrl, backgroundColor) {

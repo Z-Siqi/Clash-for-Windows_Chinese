@@ -46,7 +46,7 @@ for (const variant of variants) {
     assert.match(script, /\$client\.ReceiveTimeout = 1000/);
     assert.match(script, /function Try-WriteHttpResponse/);
     assert.match(script, /\$request\.Path -eq '\/shutdown'/);
-    assert.match(script, /if \(\$validateRecoveredProcess\) \{ Resolve-TrustedCore \$candidatePath/);
+    assert.match(script, /if \(\$validateRecoveredProcess\) \{ Resolve-TrustedCore/);
     assert.match(script, /Managed core did not exit after termination/);
     assert.match(script, /LingerOption\]::new\(\$true, 1\)/);
     assert.equal(script.includes("-like 'mihomo-*'"), false);

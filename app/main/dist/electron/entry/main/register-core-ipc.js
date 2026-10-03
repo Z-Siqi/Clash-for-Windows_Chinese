@@ -32,6 +32,7 @@ const { registerApplicationLogIpc } = require("../../features/logs/register-appl
 const { registerPortIpc } = require("../../features/network/register-port-ipc");
 const { registerProviderFileIpc } = require("../../features/providers/register-provider-file-ipc");
 const { registerPublicContentIpc } = require("../../features/network/register-public-content-ipc");
+const { readServiceCredentials } = require("../../core/network/service-credentials");
 const { registerNavigationIpc } = require("../../features/navigation/register-navigation-ipc");
 
 function registerCoreIpc({
@@ -49,7 +50,7 @@ function registerCoreIpc({
     staticRoot
 }) {
     registerApplicationIpc({ ipcMain, app, getMainWindow, fs: require("fs"), path: require("path"), os: require("os") });
-    registerWindowIpc({ ipcMain, getMainWindow });
+    registerWindowIpc({ ipcMain, getMainWindow, app });
     registerDialogIpc({ ipcMain, dialog, getMainWindow });
     registerGlobalShortcutIpc({ ipcMain, globalShortcut, getMainWindow });
     registerNativeThemeIpc({ ipcMain, nativeTheme, getMainWindow });
@@ -106,7 +107,10 @@ function registerCoreIpc({
             platform: process.platform, arch: process.arch,
             runtime: createClashCoreRuntime({
                 childProcess: require("child_process"), fs, path,
-                serviceApi: createClashServiceApi({ client: require("axios") }),
+                serviceApi: createClashServiceApi({ client: require("axios"), getCredentials: home => {
+                    const portable = path.resolve(app.getPath("exe"), "..", "data");
+                    return readServiceCredentials({ fs, path, home: home || (fs.existsSync(portable) ? portable : path.resolve(app.getPath("home"), ".config", "clash")) });
+                } }),
                 logger: require("electron-log")
             })
         });

@@ -90,6 +90,16 @@ const nullTapInfoRuntime = createTunRuntime({
 });
 
 async function run() {
+    const unsupportedCommands = [];
+    const unsupportedTap = createTunRuntime({
+        childProcess: { execFileSync: () => unsupportedCommands.push("exec") },
+        sudoExec: () => unsupportedCommands.push("sudo"), path,
+        platform: "win32", arch: "arm64", filesPath: "C:\\files"
+    });
+    assert.throws(() => unsupportedTap.setupTapDevice(), /packaged TAP driver is unavailable/);
+    assert.deepEqual(unsupportedCommands, []);
+    const linuxTap = createTunRuntime({ childProcess: {}, path, platform: "linux", arch: "x64", filesPath: "/files" });
+    assert.equal(await linuxTap.setupTapDevice(), false);
     assert.equal(await nullTapInfoRuntime.setupTapDevice(true), true);
     assert.equal(commands.some(call => call[0] === "sudo"
         && call[1].endsWith("amd64 10.0.0.1 255.255.255.0 10.0.0.0")), true);

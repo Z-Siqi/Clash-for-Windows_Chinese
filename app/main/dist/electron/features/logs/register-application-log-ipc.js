@@ -22,8 +22,9 @@ function registerApplicationLogIpc({ ipcMain, getMainWindow, app, fs, path, shel
         if (!["parser", "script"].includes(kind)) throw new Error("Unsupported application log");
         const root = fs.realpathSync(app.getPath("temp"));
         const target = path.join(root, `cfw-${kind}.log`);
-        if (fs.existsSync(target) && (fs.lstatSync(target).isSymbolicLink() || fs.realpathSync(target) !== target || !fs.statSync(target).isFile())) throw new Error("Invalid application log file");
-        if (!fs.existsSync(target)) fs.writeFileSync(target, "", { flag: "wx", mode: 0o600 });
+        try { fs.writeFileSync(target, "", { flag: "wx", mode: 0o600 }); }
+        catch (error) { if (error.code !== "EEXIST") throw error; }
+        if (fs.lstatSync(target).isSymbolicLink() || fs.realpathSync(target) !== target || !fs.statSync(target).isFile()) throw new Error("Invalid application log file");
         return shell.openPath(target);
     });
 }

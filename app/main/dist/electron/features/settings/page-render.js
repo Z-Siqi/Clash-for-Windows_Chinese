@@ -477,7 +477,7 @@ function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, 
                         staticClass: "item"
                     }, [createElement("div", {
                         staticClass: "flex items-center"
-                    }, [createElement("div", [viewModel._v(labels.enhancedTray())]), viewModel._v(" "), createElement("Info", [viewModel._v(labels.enhancedTrayDescribeFirst()), createElement("br"), createElement("br"), createElement("b", [viewModel._v("")]), viewModel._v(labels.enhancedTrayDescribeSecond() + ' \n           \n            '), createElement("a", {
+                    }, [createElement("div", [viewModel._v(labels.enhancedTray())]), viewModel._v(" "), createElement("Info", { props: { rounded: true } }, [viewModel._v(labels.enhancedTrayDescribeFirst()), createElement("br"), createElement("br"), createElement("b", [viewModel._v("")]), viewModel._v(labels.enhancedTrayDescribeSecond() + ' \n           \n            '), createElement("a", {
                         attrs: {
                             href: "https://web.archive.org/web/20230304232259/docs.cfw.lbyczf.com/contents/tray.html"
                         }

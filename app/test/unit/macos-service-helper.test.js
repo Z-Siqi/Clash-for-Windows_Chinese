@@ -7,7 +7,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.resolve(__dirname, "../../..");
-const source = fs.readFileSync(path.join(root, "scripts/native/linux-service-helper/main.go"), "utf8");
+const source = ["main.go", "policy.go"].map(name => fs.readFileSync(path.join(root, "scripts/native/linux-service-helper", name), "utf8")).join("\n");
 const updater = fs.readFileSync(path.join(root, "app/update_mihomo_cores.ps1"), "utf8");
 const targets = [
     {

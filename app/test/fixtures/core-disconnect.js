@@ -23,7 +23,7 @@ async function verifyDisconnect(api, proxyPort) {
         socket.on("data", data => socket.write(data));
     });
     await new Promise((resolve, reject) => { server.once("error", reject); server.listen(0, "127.0.0.1", resolve); });
-    async function connect() {
+    async function connectOnce() {
         let socket;
         // The controller can respond before the mixed-port is listening.
         await until(async () => {
@@ -51,12 +51,40 @@ async function verifyDisconnect(api, proxyPort) {
             socket.on("data", read);
             socket.write(`CONNECT 127.0.0.1:${server.address().port} HTTP/1.1\r\nHost: 127.0.0.1:${server.address().port}\r\n\r\n`);
         });
+        // CONNECT can succeed before the outbound stream is activated. Send
+        // loopback traffic before asserting that the core tracks the tunnel.
+        await new Promise((resolve, reject) => {
+            const closed = () => {
+                clearTimeout(timer);
+                socket.off("data", read);
+                reject(Object.assign(Error("Loopback tunnel closed during startup"), { code: "CFW_CORE_STARTING" }));
+            };
+            const timer = setTimeout(() => { socket.off("close", closed); reject(Error("Loopback tunnel activation timeout")); }, 3000);
+            const read = data => {
+                clearTimeout(timer); socket.off("close", closed);
+                try { assert.equal(data.toString(), "activate-tunnel"); resolve(); } catch (error) { reject(error); }
+            };
+            socket.once("data", read); socket.once("close", closed);
+            if (socket.destroyed || socket.readableEnded) return closed();
+            socket.write("activate-tunnel");
+        });
         // Cores can respond with null until the new tunnel is registered.
         await until(
             async () => ((await api.getConnections()).data.connections || []).some(c => Number(c.metadata.sourcePort) === socket.localPort),
             "core connection registration"
         );
         return socket;
+    }
+    async function connect() {
+        let ready;
+        // Mihomo exposes HTTP CONNECT before its tunnel switches from loading
+        // to running. Retry only that early closed stream, within the startup
+        // window; forwarding failures on an open stream remain test failures.
+        await until(async () => {
+            try { ready = await connectOnce(); return true; }
+            catch (error) { if (error.code === "CFW_CORE_STARTING") return false; throw error; }
+        }, "core forwarding readiness");
+        return ready;
     }
     try {
         const old = await connect();

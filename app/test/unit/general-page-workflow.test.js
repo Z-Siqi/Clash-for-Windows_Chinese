@@ -34,6 +34,15 @@ function createWorkflow(overrides = {}) {
     return { workflow: createGeneralPageWorkflow(dependencies), calls, cacheValues };
 }
 
+test("the Mihomo version action opens an HTTPS dashboard accepted by navigation policy", async () => {
+    let opened;
+    const { workflow } = createWorkflow({ electron: { shell: { openExternal: async url => { opened = url; } } } });
+    await workflow.methods.handleCopyControllerURL.call({ controllerPort: 9090, secret: "", settings: { proxyCore: "mihomo" } });
+    const { normalizeExternalUrl } = require("../../main/dist/electron/core/network/external-url-policy");
+    assert.ok(normalizeExternalUrl(opened, { allowLoopbackHttp: true }));
+    assert.equal(new URL(opened).searchParams.get("port"), "9090");
+});
+
 test("general page mixed-port edit validates, patches and persists one integer value", async () => {
     const patches = [], commits = [];
     const { workflow, calls } = createWorkflow();

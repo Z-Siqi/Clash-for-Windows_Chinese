@@ -7,7 +7,8 @@ function createProfilesRepository({ fs, path, yaml }) {
         initialize(profilesPath) {
             fs.mkdirSync(profilesPath, { recursive: true });
             const file = path.join(profilesPath, "list.yml");
-            if (!fs.existsSync(file)) fs.writeFileSync(file, "files: []\nindex: -1", { flag: "wx" });
+            try { fs.writeFileSync(file, "files: []\nindex: -1", { flag: "wx" }); }
+            catch (error) { if (error.code !== "EEXIST") throw error; }
         },
         load(profilesPath) {
             const profiles = yaml.parse(fs.readFileSync(path.join(profilesPath, "list.yml"), "utf8"), { merge: true, schema: "yaml-1.1" });

@@ -35,6 +35,13 @@ async function verifyUiRegressions() {
     settings.settings.trayOrders = [["traffic"], []];
     await wait(350);
     const trayDelayVisible = /Show Tray Proxy Delay Indicator|在托盘代理中显示节点可用性/.test(settingsElement.innerText);
+    const enhancedInfo = findComponent(component => component.$options.name === "info-icon" && component.rounded);
+    if (!enhancedInfo) throw Error("Rounded Enhanced Tray info component was not rendered");
+    enhancedInfo.$el.dispatchEvent(new MouseEvent("mouseenter"));
+    await wait(600);
+    const popupStyle = getComputedStyle(enhancedInfo.$refs.content);
+    const enhancedTrayRounded = enhancedInfo.isShowContent && ["borderTopLeftRadius", "borderTopRightRadius", "borderBottomLeftRadius", "borderBottomRightRadius"].every(key => popupStyle[key] === "8px");
+    enhancedInfo.$el.dispatchEvent(new MouseEvent("mouseleave"));
     const codeResult = root.$code({ code: "mode: rule\nproxies: []\nproxy-groups: []\nrules: []\n", language: "yaml" }).catch(() => {});
     await wait(500);
     const codeElement = document.querySelector(".main-code-view");
@@ -89,11 +96,30 @@ async function verifyUiRegressions() {
     const diffSideBySide = diff.renderSideBySide && originalBounds.width > 100 && modifiedBounds.left > originalBounds.left + 100;
     diffElement.querySelector(".save-btn").click();
     await wait(350);
-    const minimize = document.querySelectorAll(".close[data-v-65878d23]")[1];
+    const statusBar = findComponent(component => component.$options._scopeId === "data-v-65878d23");
+    const pinIcon = Array.from(statusBar.$el.querySelectorAll(".icon")).find(icon => icon.textContent === "push_pin");
+    let pinControl = !pinIcon && !statusBar.pinSupported;
+    if (statusBar.pinSupported && pinIcon) {
+        const initialPin = statusBar.isPinned;
+        await statusBar.pinApp();
+        const toggled = statusBar.isPinned !== initialPin;
+        await statusBar.pinApp();
+        pinControl = toggled && statusBar.isPinned === initialPin;
+    }
+    const minimize = document.querySelector(".close[data-v-65878d23] span[aria-hidden=true]").parentElement;
     const buttonBounds = minimize.getBoundingClientRect();
     const lineBounds = minimize.querySelector("span").getBoundingClientRect();
     const minimizeCentered = Math.abs(lineBounds.top + lineBounds.height / 2 - buttonBounds.top - buttonBounds.height / 2) < 1 && lineBounds.height === 1;
-    return { connections, trafficUpdates, settingsNavigation, trayDelayVisible, editorNavigationHeight, editorNavigationColor, editorNavigationExpandedContrast, diffSideBySide, minimizeCentered };
+    settings.settings.proxyCore = "mihomo";
+    await navigate(/General|主页/i);
+    await wait(700);
+    const general = findComponent(component => typeof component.handleCopyControllerURL === "function");
+    if (!general) throw Error("General page component was not rendered");
+    const version = Array.from(general.$el.querySelectorAll(".clickable")).find(element => element.textContent.includes(general.clashCoreVersion) && /Mihomo/i.test(element.textContent));
+    if (!version) throw Error("Mihomo version action was not rendered");
+    version.click();
+    await wait(100);
+    return { connections, trafficUpdates, settingsNavigation, trayDelayVisible, enhancedTrayRounded, editorNavigationHeight, editorNavigationColor, editorNavigationExpandedContrast, diffSideBySide, minimizeCentered, pinControl };
 }
 
 module.exports = { verifyUiRegressions };

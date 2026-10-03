@@ -10,10 +10,15 @@
 
 ## Service Mode
 
-- Windows and Linux helpers may start only packaged core files pinned by SHA-256 in their root-owned manifests. Linux helper updates deploy the executable and manifest together.
-- The helper listens only on loopback, exposes no arbitrary command endpoint, and must hide console windows.
+- All helpers may start only packaged core files pinned by SHA-256 in protected manifests. Installed cores and helpers reside under Program Files on Windows, `/usr/lib/clash-for-windows-service` on Linux, and `/Library/PrivilegedHelperTools/com.lbyczf.cfw` on macOS. Unix installations and every executable ancestor must be root-owned, non-symlink and unwritable by other users.
+- A protected installation policy fixes the shared CFW data directory. Start requests select only an installed core name; they cannot supply an executable path, working directory or proxy-helper path.
+- The helper listens only on loopback and requires an installation-specific bearer credential for every request. It rejects browser Origin headers and non-loopback Host headers; stop/shutdown are POST operations. Main-process clients disable environment proxy routing and read credentials from a private file bound to the configured data directory. Credentials never enter renderer IPC or logs.
+- Windows migrations stop the fixed service identity through the system service manager and never elevate a legacy helper from the writable profile directory.
+- The helper exposes no arbitrary command endpoint and must hide console windows.
 - Installation and update must repair partial installations. The application may fall back to local mode after a failure, but it must not silently broaden privileges.
 - A successful Windows installation is not reported until the helper responds to its loopback health check.
+- Health checks require service protocol version 2; an old helper's unauthenticated successful ping must not enable Service Mode. Installation permits up to 30 seconds for a cold helper startup.
+- Native TUN uses the selected core and does not require the legacy TAP adapter. Packaged TAP installation supports Windows x64; Windows ARM64 must not fall back to an i386 kernel driver.
 
 ## Ports and controller access
 
@@ -31,8 +36,11 @@
 
 ## Bundles and platform assets
 
+- The title-bar pin is available with Linux X11/Xwayland and hidden on native Wayland, where Electron cannot set always-on-top. Explicit `--ozone-platform=x11` takes precedence over the desktop session. The renderer persists only the native pin state confirmed by the main process.
+
 - `main.js` and `renderer.js` are runtime inputs, not disposable generated files.
 - Dashboard and auxiliary page main worlds must use `nodeIntegration: false`, `contextIsolation: true`, and `webSecurity: true`. The legacy renderer may execute only in its isolated preload world; do not expose `require`, `process`, generic IPC, filesystem, or module-loader capabilities through `contextBridge`.
+- Privileged application IPC accepts only the main window's main frame. The tray indicator may send only its fixed Show action. Download targets are private host-selected temporary files for trusted HTTPS release assets; renderers cannot select paths. Certificate exceptions are exact HTTPS URLs and apply only to the authorized main window.
 - The dashboard HTML must not load the privileged renderer or Monaco JavaScript directly. Its content-security policy restricts scripts and active content; the isolated preload loader owns runtime order and asset bases.
 - Renderer Axios traffic uses the Node HTTP adapter. Do not allow DOM-global adapter detection to move core API or profile download requests onto XHR, where the isolated origin, CORS, and CSP change legacy behavior.
 - Auxiliary windows use dedicated channel-specific preload code. The speed indicator preload binds its DOM and two fixed IPC channels without exposing a page-world bridge.

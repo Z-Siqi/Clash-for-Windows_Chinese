@@ -22,7 +22,8 @@ const dashboard = new URL(buildDashboardUrl({
     controllerPort: 9090,
     secret: "token + / 中文"
 }));
-assert.equal(dashboard.protocol, "http:");
+assert.equal(dashboard.protocol, "https:");
+assert.equal(require(path.join(electronRoot, "core/network/external-url-policy")).normalizeExternalUrl(dashboard.href, { allowLoopbackHttp: true }), dashboard.href);
 assert.equal(dashboard.hostname, "yacd.haishan.me");
 assert.equal(dashboard.searchParams.get("hostname"), "127.0.0.1");
 assert.equal(dashboard.searchParams.get("port"), "9090");

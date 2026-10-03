@@ -43,8 +43,12 @@ function createTunRuntime({
     }
 
     function setupTapDevice(install = true) {
+        if (platform !== "win32") return Promise.resolve(false);
+        // Packaged TAP kernel drivers are x86/x64 only; user-mode emulation
+        // cannot make the i386 driver work on Windows ARM64.
+        if (arch !== "x64") throw new Error("The packaged TAP driver is unavailable for this architecture; use native TUN Mode");
         const folder = path.join(filesPath, "win", "common", "tun2socks");
-        const tapArch = { x64: "amd64", arm64: "i386" }[arch];
+        const tapArch = "amd64";
         const script = path.join(folder, `${install ? "add" : "remove"}_tap_device.bat`);
         return sudoRun(`"${script}" ${tapArch} ${ip} ${subnet} ${gateway}`);
     }

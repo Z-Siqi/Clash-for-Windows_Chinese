@@ -3,8 +3,10 @@
 function createProfileNetworkEffects({ childProcess, getPort, setInterval: schedule = setInterval, clearInterval: cancel = clearInterval }) {
     return {
         hasTap() {
-            try { return childProcess.execFileSync("netsh", ["interface", "show", "interface"], { windowsHide: true }).toString().includes("cfw-tap"); }
-            catch (_error) { return true; }
+            try {
+                childProcess.execFileSync("netsh", ["interface", "show", "interface", "name=cfw-tap"], { windowsHide: true });
+                return true;
+            } catch (_error) { return false; }
         },
         renewDhcp() {
             let attempts = 0;

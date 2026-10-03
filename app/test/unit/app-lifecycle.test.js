@@ -41,7 +41,7 @@ async function main() {
         showMainWindow: () => calls.push(["show-window"]),
         initializeLogging: () => calls.push(["logging"]),
         registerShutdown: () => calls.push(["shutdown"]),
-        unsafeUrlPolicy: { includes: url => url === "https://allowed.test" }
+        unsafeUrlPolicy: { allowsCertificate: url => url === "https://allowed.test" }
     });
 
     assert.deepEqual(calls.slice(0, 4), [
@@ -116,7 +116,7 @@ async function main() {
         showMainWindow() {},
         initializeLogging() {},
         registerShutdown() {},
-        unsafeUrlPolicy: { includes: () => false }
+        unsafeUrlPolicy: { allowsCertificate: () => false }
     });
     assert.deepEqual(deniedCalls.at(-1), ["quit"]);
 

@@ -29,7 +29,7 @@ for (const target of manifest.targets) {
     assert.match(target.source, /^https:\/\/github\.com\/MetaCubeX\/mihomo\/releases\/download\//);
     const filesRoot = target.output.slice(0, target.output.indexOf("/static/files/") + "/static/files/".length);
     const notice = fs.readFileSync(path.join(appRoot, filesRoot, "MIHOMO_NOTICE.txt"), "utf8");
-    assert.match(notice, new RegExp(`Version: ${manifest.version.replace(/\./g, "\\.")}`));
+    assert.ok(notice.split(/\r?\n/).includes(`Version: ${manifest.version}`));
     assert.match(notice, /GNU General Public License v3\.0/);
 }
 

@@ -1,6 +1,10 @@
 "use strict";
 
-function registerWindowIpc({ ipcMain, getMainWindow }) {
+const { supportsWindowPin } = require("./pin-policy");
+
+function registerWindowIpc({ ipcMain, getMainWindow, app, platform = process.platform, env = process.env }) {
+    const pinSupported = supportsWindowPin({ platform, env,
+        ozonePlatform: app?.commandLine?.getSwitchValue("ozone-platform") || "" });
     ipcMain.handle("window", function(_event, operation, ...args) {
         const mainWindow = getMainWindow();
 
@@ -14,7 +18,12 @@ function registerWindowIpc({ ipcMain, getMainWindow }) {
             case "unmaximize":
                 return mainWindow.unmaximize();
             case "setAlwaysOnTop":
-                return mainWindow.setAlwaysOnTop(...args);
+                if (typeof args[0] !== "boolean" || args.length !== 1) throw new Error("Invalid window pin request");
+                if (!pinSupported) return false;
+                mainWindow.setAlwaysOnTop(args[0]);
+                return mainWindow.isAlwaysOnTop();
+            case "getPinState":
+                return { supported: pinSupported, pinned: pinSupported && mainWindow.isAlwaysOnTop() };
             case "isVisible":
                 return mainWindow.isVisible();
             case "isMaximized":

@@ -35,6 +35,7 @@ const { createClashClientRegistry } = require("./core/network/clash-client-regis
 const { registerClashClientInfo } = require("./entry/main/register-clash-client-info");
 const { registerCoreIpc } = require("./entry/main/register-core-ipc");
 const { installSandboxedRenderer } = require("./entry/main/load-sandboxed-renderer");
+const { createAuthorizedIpcMain } = require("./core/native/authorized-ipc");
 
 function selectLanguage(language, chinese, english) {
     return language === 0 ? chinese : english;
@@ -44,6 +45,12 @@ function startApplication() {
     let mainWindow;
     let tray;
     let trayState;
+    let speedIndicator;
+    const authorizedIpcMain = createAuthorizedIpcMain({
+        ipcMain: electron.ipcMain,
+        getMainWindow: () => mainWindow,
+        getIndicatorWindow: () => speedIndicator?.getWindow()
+    });
 
     const packagedStaticRoot = path.join(process.resourcesPath, "static");
     const staticRoot = (fs.existsSync(packagedStaticRoot)
@@ -57,7 +64,7 @@ function startApplication() {
     electron.app.disableHardwareAcceleration();
     if (process.platform === "darwin") electron.app.dock.hide();
 
-    const unsafeUrlPolicy = createUnsafeUrlPolicy({ ipcMain: electron.ipcMain });
+    const unsafeUrlPolicy = createUnsafeUrlPolicy({ ipcMain: authorizedIpcMain, getMainWindow: () => mainWindow });
     const clashClientRegistry = createClashClientRegistry({ axios });
     const clashApi = createClashApi({ getClient: clashClientRegistry.getClient });
     const showMainWindow = createShowMainWindow({ getMainWindow: () => mainWindow });
@@ -67,12 +74,12 @@ function startApplication() {
     });
 
     registerClashClientInfo({
-        ipcMain: electron.ipcMain,
+        ipcMain: authorizedIpcMain,
         registry: clashClientRegistry,
         getMainWindow: () => mainWindow
     });
     const stopNetworkChangeMonitor = registerWlanStatus({
-        ipcMain: electron.ipcMain,
+        ipcMain: authorizedIpcMain,
         networkChangeMonitor: createNetworkChangeMonitor({
             networkInterfaces: os.networkInterfaces
         }),
@@ -110,11 +117,12 @@ function startApplication() {
         });
 
         registerDownloadIpc({
-            ipcMain: electron.ipcMain,
-            getMainWindow: () => mainWindow
+            ipcMain: authorizedIpcMain,
+            getMainWindow: () => mainWindow,
+            app: electron.app, fs, path
         });
         registerCoreIpc({
-            ipcMain: electron.ipcMain,
+            ipcMain: authorizedIpcMain,
             app: electron.app,
             dialog: electron.dialog,
             globalShortcut: electron.globalShortcut,
@@ -143,17 +151,17 @@ function startApplication() {
             getMainWindow: () => mainWindow
         });
         registerWindowControlIpc({
-            ipcMain: electron.ipcMain,
+            ipcMain: authorizedIpcMain,
             app: electron.app,
             getMainWindow: () => mainWindow,
             showMainWindow
         });
         registerTrayStatusIpc({
-            ipcMain: electron.ipcMain,
+            ipcMain: authorizedIpcMain,
             trayIconController
         });
         registerNotificationIpc({
-            ipcMain: electron.ipcMain,
+            ipcMain: authorizedIpcMain,
             Notification: electron.Notification,
             nativeImage: electron.nativeImage,
             shell: electron.shell,
@@ -198,7 +206,7 @@ function startApplication() {
             actions: trayActions
         });
         const trayLifecycle = createTrayLifecycle({
-            ipcMain: electron.ipcMain,
+            ipcMain: authorizedIpcMain,
             Tray: electron.Tray,
             Menu: electron.Menu,
             nativeImage: electron.nativeImage,
@@ -231,7 +239,7 @@ function startApplication() {
 
         refreshLinuxTrayMenu();
         registerTrayStateIpc({
-            ipcMain: electron.ipcMain,
+            ipcMain: authorizedIpcMain,
             state: trayState,
             isLinux,
             getLocalizedMenu: () => localize(englishTrayMenu, chineseTrayMenu),
@@ -239,8 +247,8 @@ function startApplication() {
             refreshMenu: refreshLinuxTrayMenu,
             showMainWindow
         });
-        registerSpeedIndicator({
-            ipcMain: electron.ipcMain,
+        speedIndicator = registerSpeedIndicator({
+            ipcMain: authorizedIpcMain,
             BrowserWindow: electron.BrowserWindow,
             nativeImage: electron.nativeImage,
             app: electron.app,

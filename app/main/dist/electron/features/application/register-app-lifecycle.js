@@ -44,13 +44,13 @@ function registerAppLifecycle({
 
     app.on("certificate-error", async function(
         event,
-        _webContents,
+        webContents,
         url,
         _error,
         certificate,
         callback
     ) {
-        if (unsafeUrlPolicy.includes(url)) {
+        if (unsafeUrlPolicy.allowsCertificate(url, webContents)) {
             event.preventDefault();
             callback(true);
             return;

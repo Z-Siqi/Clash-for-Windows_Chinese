@@ -7,6 +7,7 @@ const { createSystemProxyRuntime } = require("../../features/network/system-prox
 const { createMacSystemProxyCommand } = require("../../features/network/mac-system-proxy-command");
 const { getDefaultBypass } = require("../../features/network/proxy-defaults");
 const { createSettingsRepository } = require("../../features/settings/settings-repository");
+const { readServiceCredentials, createServiceCredentials } = require("../../core/network/service-credentials");
 const { parsePort } = require("../../core/network/tcp-port");
 const { createTunRuntime } = require("../../features/tun/tun-runtime");
 const { createProfileNetworkEffects } = require("../../features/network/profile-network-effects");
@@ -78,7 +79,7 @@ function registerNativeAdminIpc({
             return true;
         }
         const runMacCommand = createMacSystemProxyCommand({
-            platform, arch, path, serviceApi: createClashServiceApi({ client: axios }),
+            platform, arch, path, serviceApi: createClashServiceApi({ client: axios, getCredentials: () => readServiceCredentials({ fs, path, home: clashPath }) }),
             isDevelopmentMode: () => !app.isPackaged, getFilesPath: () => filesPath
         });
         if (scope === "tun") {
@@ -149,25 +150,39 @@ function registerNativeAdminIpc({
         }
 
         if (scope === "service") {
+            const serviceApi = createClashServiceApi({ client: axios, getCredentials: () => readServiceCredentials({ fs, path, home: clashPath }) });
             const manager = createServiceModeManager({
                 platform,
                 arch,
                 fs,
                 path,
                 sudoExec: sudoPrompt.exec,
-                serviceApi: createClashServiceApi({ client: axios }),
+                serviceApi,
                 getFilesPath: () => filesPath,
                 getClashPath: () => clashPath,
                 getTempPath: () => app.getPath("temp"),
-                hashFile
+                hashFile,
+                prepareCredentials: () => createServiceCredentials({ fs, path, crypto, home: clashPath,
+                    protectFile: platform === "win32" ? file => {
+                        const identity = childProcess.execFileSync("whoami", ["/user", "/fo", "csv", "/nh"], { windowsHide: true }).toString();
+                        const sid = identity.match(/S-1-5-[\d-]+/)?.[0];
+                        if (!sid) throw new Error("Cannot secure Service Mode credentials");
+                        childProcess.execFileSync("icacls", [file, "/inheritance:r", "/grant:r", `*${sid}:(F)`, "*S-1-5-18:(F)", "*S-1-5-32-544:(F)"], { windowsHide: true });
+                    } : undefined
+                })
             });
             if (action === "status") {
                 const status = await manager.statusService();
                 return Object.keys(SERVICE_STATUS).find(name => SERVICE_STATUS[name] === status) || "Unknown";
             }
-            if (action === "need-update") return manager.needUpdate();
+            if (action === "need-update") {
+                if (manager.needUpdate()) return true;
+                try { await serviceApi.ping(400); }
+                catch (error) { return error.code === "CFW_SERVICE_UPDATE_REQUIRED" || error.response?.status === 403; }
+                return false;
+            }
             if (action === "install") {
-                const method = Number(payload.method);
+                const method = payload.method === undefined ? 0 : Number(payload.method);
                 if (platform === "win32" && ![0, 1].includes(method)) {
                     throw new Error("Unsupported Windows Service Mode install method");
                 }

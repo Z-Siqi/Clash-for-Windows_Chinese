@@ -8,8 +8,24 @@ const os = require("node:os");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 const { test } = require("node:test");
+const { createClashServiceApi, SERVICE_BASE_URL } = require("../../main/dist/electron/core/network/clash-service-api");
+const { createServiceCredentials, readServiceCredentials } = require("../../main/dist/electron/core/network/service-credentials");
+const axios = require("../../main/node_modules/axios");
 
 const root = path.resolve(__dirname, "../../..");
+const serviceTokens = new Map();
+function prepareHelper(home, port) {
+    const service = path.join(home, "service");
+    const cores = path.join(service, "cores");
+    fs.mkdirSync(cores, { recursive: true });
+    const { file, credentials } = createServiceCredentials({ fs, path, crypto: require("node:crypto"), home });
+    serviceTokens.set(port, credentials.token);
+    fs.copyFileSync(file, path.join(service, "service-config.json"));
+    fs.copyFileSync(path.join(root, "app/clash_core/win_x64/static/files/win/common/clash-core-service.ps1"), path.join(service, "clash-core-service.ps1"));
+    fs.copyFileSync(path.join(root, "app/clash_core/win_x64/static/files/win/x64/service/core-hashes.json"), path.join(service, "core-hashes.json"));
+    for (const name of ["clash-win64.exe", "mihomo-windows-amd64.exe"]) fs.copyFileSync(path.join(root, "app/clash_core/win_x64/static/files/win/x64", name), path.join(cores, name));
+    return path.join(service, "clash-core-service.ps1");
+}
 
 function freePort() {
     return new Promise((resolve, reject) => {
@@ -23,7 +39,7 @@ function freePort() {
     });
 }
 
-function request(port, method, pathname, payload, authorize = false) {
+function request(port, method, pathname, payload, authorize = false, serviceAuth = true) {
     const body = payload === undefined ? "" : JSON.stringify(payload);
     return new Promise((resolve, reject) => {
         const req = http.request({
@@ -32,6 +48,7 @@ function request(port, method, pathname, payload, authorize = false) {
             path: pathname,
             method,
             headers: {
+                ...(serviceAuth && serviceTokens.has(port) ? { Authorization: `Bearer ${serviceTokens.get(port)}` } : {}),
                 ...(authorize ? { Authorization: "Bearer service-helper-test" } : {}),
                 ...(body ? {
                     "Content-Type": "application/json",
@@ -115,8 +132,12 @@ test("Windows Service helper starts Clash and shuts down a managed Mihomo", {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), "cfw-service-helper-"));
     const core = path.join(root, "app/clash_core/win_x64/static/files/win/x64/clash-win64.exe");
     const mihomo = path.join(root, "app/clash_core/win_x64/static/files/win/x64/mihomo-windows-amd64.exe");
-    const helper = path.join(root, "app/clash_core/win_x64/static/files/win/common/clash-core-service.ps1");
-    const manifest = path.join(root, "app/clash_core/win_x64/static/files/win/x64/service/core-hashes.json");
+    const helper = prepareHelper(home, servicePort);
+    const serviceApi = createClashServiceApi({
+        getCredentials: () => readServiceCredentials({ fs, path, home }),
+        client: Object.fromEntries(["get", "post"].map(method => [method, (url, ...args) => axios[method](url.replace(SERVICE_BASE_URL, `http://127.0.0.1:${servicePort}`), ...args)]))
+    });
+    const manifest = path.join(path.dirname(helper), "core-hashes.json");
     fs.copyFileSync(
         path.join(root, "app/clash_core/win_x64/static/files/default/Country.mmdb"),
         path.join(home, "Country.mmdb")
@@ -147,13 +168,16 @@ test("Windows Service helper starts Clash and shuts down a managed Mihomo", {
     let stage = "helper ping";
     try {
         await waitFor(servicePort, "/ping", false, helperProcess, output);
+        assert.equal((await request(servicePort, "POST", "/stop", undefined, false, false)).status, 403);
+        assert.equal((await request(servicePort, "POST", "/start", { core: "cmd.exe" })).status, 403);
+        assert.equal((await request(servicePort, "GET", "/stop")).status, 404);
+        assert.equal((await request(servicePort, "GET", "/ping")).status, 200);
         stage = "service start";
-        const start = await request(servicePort, "POST", "/start", {
-            path: core,
-            cwd: home,
-            silent: true
-        });
+        assert.equal((await serviceApi.ping()).status, 200);
+        const start = await serviceApi.start({ path: core, cwd: home, silent: false });
         assert.equal(start.status, 200, `${start.data}\n${output.value}`);
+        assert.equal(path.dirname(start.data), path.join(home, "logs"));
+        assert.ok(fs.statSync(start.data).isFile());
         stage = "core version";
         const version = await waitFor(controllerPort, "/version", true, helperProcess, output);
         assert.match(version.data, /version/i);
@@ -162,15 +186,14 @@ test("Windows Service helper starts Clash and shuts down a managed Mihomo", {
         assert.equal(config["mixed-port"], mixedPort);
         stage = "service stop";
         try {
-            assert.equal((await request(servicePort, "GET", "/stop")).status, 200);
+            assert.equal((await serviceApi.stop()).status, 200);
         } catch (error) {
             if (error.code !== "ECONNRESET") throw error;
         }
         await waitForUnavailable(controllerPort, "/version", true);
         stage = "Mihomo service start";
         const mihomoStart = await request(servicePort, "POST", "/start", {
-            path: mihomo,
-            cwd: home,
+            core: path.basename(mihomo),
             silent: true
         });
         assert.equal(mihomoStart.status, 200, `${mihomoStart.data}\n${output.value}`);
@@ -183,14 +206,14 @@ test("Windows Service helper starts Clash and shuts down a managed Mihomo", {
         }
         stage = "Mihomo shutdown";
         const helperExited = new Promise(resolve => helperProcess.once("exit", resolve));
-        assert.equal((await request(servicePort, "GET", "/shutdown")).status, 200);
+        assert.equal((await serviceApi.shutdown()).status, 200);
         await Promise.race([helperExited, new Promise(resolve => setTimeout(resolve, 3000))]);
         assert.equal(helperProcess.exitCode, 0, `helper did not exit after shutdown\n${output.value}`);
         await waitForUnavailable(controllerPort, "/version", true);
     } catch (error) {
         throw new Error(`${stage}: ${error.message}\n${output.value}`, { cause: error });
     } finally {
-        try { await request(servicePort, "GET", "/stop"); } catch (_) {}
+        try { await request(servicePort, "POST", "/stop"); } catch (_) {}
         await stopChild(helperProcess);
         fs.rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
@@ -201,8 +224,9 @@ test("Windows Service helper recovers after a client stops sending HTTP headers"
 }, async () => {
     let servicePort = await freePort();
     while (servicePort === 53000) servicePort = await freePort();
-    const helper = path.join(root, "app/clash_core/win_x64/static/files/win/common/clash-core-service.ps1");
-    const manifest = path.join(root, "app/clash_core/win_x64/static/files/win/x64/service/core-hashes.json");
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "cfw-service-stalled-"));
+    const helper = prepareHelper(home, servicePort);
+    const manifest = path.join(path.dirname(helper), "core-hashes.json");
     const output = { value: "" };
     const helperProcess = spawn("powershell.exe", [
         "-NoProfile",
@@ -228,11 +252,13 @@ test("Windows Service helper recovers after a client stops sending HTTP headers"
         stalledClient.destroy();
         stalledClient = null;
         const exited = new Promise(resolve => helperProcess.once("exit", resolve));
-        assert.equal((await request(servicePort, "GET", "/shutdown")).status, 200);
+        assert.equal((await request(servicePort, "POST", "/shutdown")).status, 200);
         await Promise.race([exited, new Promise(resolve => setTimeout(resolve, 3000))]);
         assert.equal(helperProcess.exitCode, 0, `helper did not shut down cleanly\n${output.value}`);
     } finally {
         if (stalledClient) stalledClient.destroy();
         await stopChild(helperProcess);
+        serviceTokens.delete(servicePort);
+        fs.rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
 });

@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const http = require("node:http");
 const os = require("node:os");
 const path = require("node:path");
-const { app, utilityProcess, ipcMain, BrowserWindow } = require("electron");
+const { app, utilityProcess, ipcMain, BrowserWindow, shell } = require("electron");
 require("./native-boundaries");
 
 const root = path.resolve(__dirname, "../../../..");
@@ -56,6 +56,13 @@ const controllerRequests = [];
 const consoleMessages = [];
 let enhancedTrayFrames = 0;
 let enhancedTrayRendered = false;
+let dashboardOpened = false;
+// Exercise the real navigation IPC without opening a browser or recording a secret.
+shell.openExternal = async value => {
+    const url = new URL(value);
+    dashboardOpened = url.protocol === "https:" && url.hostname === "yacd.haishan.me"
+        && url.searchParams.get("hostname") === "127.0.0.1" && Number(url.searchParams.get("port")) > 0;
+};
 ipcMain.on("speed-update", (_event, image) => {
     if (typeof image === "string" && image.startsWith("data:image/png;")) {
         enhancedTrayFrames++;
@@ -292,6 +299,7 @@ app.on("browser-window-created", (_event, window) => {
             );
             const { verifyUiRegressions } = require("./ui-regressions");
             const uiRegressions = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: `(${verifyUiRegressions.toString()})()` }]);
+            uiRegressions.mihomoVersionNavigation = dashboardOpened;
             const indicatorWindow = BrowserWindow.getAllWindows().find(candidate => candidate.webContents.getURL().endsWith("/cfw-sub.html"));
             let indicatorUpdates = false;
             if (indicatorWindow) {

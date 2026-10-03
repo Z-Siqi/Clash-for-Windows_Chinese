@@ -61,7 +61,10 @@ test("external editor completes a real portable child process using only a tempo
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
     const home = path.join(root, ".config", "clash");
     fs.mkdirSync(home, { recursive: true });
-    const quote = value => `"${value.replace(/"/g, '\\"')}"`;
+    const quote = value => {
+        assert.ok(!value.includes('"'), "fixture paths must not contain quotes");
+        return `"${value}"`;
+    };
     const command = `${quote(process.execPath)} ${quote(path.resolve(__dirname, "../fixtures/external-editor-cli.js"))}`;
     fs.writeFileSync(path.join(home, "cfw-settings.yaml"), yaml.stringify({ editor: 2, editorCustomCommand: command }));
     const mainFrame = {};

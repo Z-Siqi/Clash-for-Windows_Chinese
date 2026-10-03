@@ -7,9 +7,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.resolve(__dirname, "../../..");
-const source = fs.readFileSync(path.join(
+const mainSource = fs.readFileSync(path.join(
     root, "scripts/native/linux-service-helper/main.go"
 ), "utf8");
+const source = mainSource + fs.readFileSync(path.join(root, "scripts/native/linux-service-helper/policy.go"), "utf8");
 
 const targets = [
     {
@@ -29,8 +30,8 @@ const sha256 = file => crypto.createHash("sha256").update(fs.readFileSync(file))
 test("Linux Service Mode helper is loopback-only and starts only hash-allow-listed cores", () => {
     assert.match(source, /defaultListenAddress = "127\.0\.0\.1:53000"/);
     assert.match(source, /subtle\.ConstantTimeCompare/);
-    assert.match(source, /allowed\[filepath\.Base\(path\)\]/);
-    assert.match(source, /exec\.Command\(corePath, "-d", workingDirectory\)/);
+    assert.match(source, /requireProtectedPath/);
+    assert.match(source, /exec\.Command\(corePath, "-d", policy\.DataDirectory\)/);
     assert.match(source, /http\.MaxBytesReader/);
     assert.match(source, /operation\s+sync\.Mutex/);
     assert.doesNotMatch(source, /HandleFunc\("\/command"/);

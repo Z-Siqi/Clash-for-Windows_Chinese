@@ -38,7 +38,8 @@ const childProcess = {
 const fakeFs = {
     readdir(directory, callback) {
         calls.push(["readdir", directory]);
-        callback(null, ["2000-01-01-000000.log", "keep.txt"]);
+        callback(null, ["2000-01-01-000000.log", "2000-01-01-000000-1234567890.log",
+            "2000-01-01-000000-12345678-1234-1234-1234-123456789abc.log", "keep.txt", "2000-01-01-000000-custom.txt"]);
     },
     unlink(file, callback) {
         calls.push(["unlink", file]);
@@ -107,6 +108,10 @@ async function run() {
         "C:\\files\\clash.exe", ["-d", "C:\\clash"]
     ]);
     assert.equal(logFiles.length, 1);
+    assert.deepEqual(calls.filter(call => call[0] === "unlink").map(call => path.win32.basename(call[1])), [
+        "2000-01-01-000000.log", "2000-01-01-000000-1234567890.log",
+        "2000-01-01-000000-12345678-1234-1234-1234-123456789abc.log"
+    ]);
     await stdoutListeners.get("data")(Buffer.from("INF [API] listening addr=127.0.0.1"));
     assert.equal(calls.some(call => call[0] === "ready"), true);
     await stdoutListeners.get("data")(Buffer.from('time="now" level=info msg="[API] listening addr=127.0.0.1:9090"'));

@@ -367,7 +367,7 @@ function createHomePageComponents({
     }, "149ea1bd");
 
     const StatusBar = defineComponent({
-        data() { return { isWinMax: false, isPinned: false, isFullScreen: false }; },
+        data() { return { isWinMax: false, isPinned: false, isFullScreen: false, pinSupported: false, pinPending: false }; },
         computed: {
             ...Vuex.mapState({
                 mode: state => state.app.mode,
@@ -398,10 +398,15 @@ function createHomePageComponents({
                 if (this.isFullScreen) electron.ipcRenderer.invoke("window", "setFullScreen", false);
                 else electron.ipcRenderer.invoke("window", this.isWinMax ? "unmaximize" : "maximize");
             },
-            pinApp() {
-                this.isPinned = !this.isPinned;
-                electron.ipcRenderer.invoke("window", "setAlwaysOnTop", this.isPinned);
-                cache.put(keys.IS_PIN_ENABLED, this.isPinned);
+            async pinApp() {
+                if (!this.pinSupported || this.pinPending) return;
+                this.pinPending = true;
+                try {
+                    this.isPinned = await electron.ipcRenderer.invoke("window", "setAlwaysOnTop", !this.isPinned) === true;
+                    cache.put(keys.IS_PIN_ENABLED, this.isPinned);
+                } catch (_error) {
+                    // Keep the last confirmed state if the window is closing.
+                } finally { this.pinPending = false; }
             }
         },
         async mounted() {
@@ -413,8 +418,13 @@ function createHomePageComponents({
                 else if (name === "leave-full-screen") this.isFullScreen = false;
                 if (name === "show") await updateMaximized();
             });
-            this.isPinned = cache.get(keys.IS_PIN_ENABLED) || false;
-            electron.ipcRenderer.invoke("window", "setAlwaysOnTop", this.isPinned);
+            try {
+                const pinState = await electron.ipcRenderer.invoke("window", "getPinState");
+                this.pinSupported = pinState?.supported === true;
+                if (this.pinSupported) {
+                    this.isPinned = await electron.ipcRenderer.invoke("window", "setAlwaysOnTop", cache.get(keys.IS_PIN_ENABLED) === true) === true;
+                }
+            } catch (_error) { this.pinSupported = false; }
             await updateMaximized();
         }
     }, function renderStatusBar() {
@@ -440,7 +450,7 @@ function createHomePageComponents({
             viewModel._v(" "),
             createElement("span", { staticClass: "fixed left-1/2 -translate-x-1/2 text-xs whitespace-pre" }, [viewModel._v(`\n    ${viewModel._s(viewModel.titleText)}\n  `)]),
             viewModel._v(" "),
-            showDesktopControls ? control("clickable close hover:bg-[color:var(--status-close-hover)]", "push_pin", viewModel.pinApp, { color: viewModel.isPinned ? "#0C7D9D" : "" }) : viewModel._e(),
+            showDesktopControls && viewModel.pinSupported ? control("clickable close hover:bg-[color:var(--status-close-hover)]", "push_pin", viewModel.pinApp, { color: viewModel.isPinned ? "#0C7D9D" : "" }) : viewModel._e(),
             viewModel._v(" "),
             showDesktopControls ? control("clickable close hover:bg-[color:var(--status-close-hover)]", "minimize", viewModel.miniApp) : viewModel._e(),
             viewModel._v(" "),

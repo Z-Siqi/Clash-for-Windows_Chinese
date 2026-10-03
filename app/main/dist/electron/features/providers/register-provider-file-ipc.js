@@ -1,6 +1,7 @@
 "use strict";
 
 const { writeAtomic } = require("../../core/storage/atomic-file");
+const { readBoundedText } = require("../../core/storage/read-bounded-text");
 
 function registerProviderFileIpc({ ipcMain, app, getMainWindow, fs, path, dialog, shell, getProviders, platform = process.platform }) {
     const normalize = value => platform === "win32" ? value.toLowerCase() : value;
@@ -53,8 +54,7 @@ function registerProviderFileIpc({ ipcMain, app, getMainWindow, fs, path, dialog
             }
             let value;
             if (operation === "read") {
-                if (fs.statSync(target).size > 33554432) throw new Error("Provider file is too large");
-                value = fs.readFileSync(target, "utf8");
+                value = readBoundedText({ fs, file: target });
             } else if (operation === "write") {
                 if (typeof request.source !== "string" || Buffer.byteLength(request.source) > 33554432) throw new Error("Provider source is too large");
                 writeAtomic({ fs, path, file: target, content: request.source });

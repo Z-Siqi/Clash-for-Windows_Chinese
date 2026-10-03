@@ -6,17 +6,26 @@ const path = require("node:path");
 
 const root = path.resolve(__dirname, "../../..");
 const { readRendererCompositionSource } = require("../fixtures/renderer-composition-source");
-const { SERVICE_STATUS, createServiceModeManager } = require(path.join(
+const { SERVICE_STATUS, createServiceModeManager: createManager } = require(path.join(
     root,
     "app/main/dist/electron/features/service-mode/service-mode-manager"
 ));
 
+function createServiceModeManager(options) {
+    return createManager({ ...options, prepareCredentials: () => ({ file: options.path.join(options.getClashPath(), ".cfw-service-client.json") }) });
+}
+
 function fakeFileSystem(existing = []) {
     const files = new Set(existing);
+    if (files.has("/clash/service")) {
+        files.add("/Library/PrivilegedHelperTools/com.lbyczf.cfw/clash-core-service");
+        files.add("/usr/lib/clash-for-windows-service/clash-core-service");
+    }
     return {
         existsSync: value => files.has(value),
         mkdirSync: value => files.add(value),
-        readFileSync: value => Buffer.from(value),
+        realpathSync: value => value,
+        readFileSync: value => Buffer.from(value.endsWith("core-hashes.json") ? JSON.stringify({ cores: [{ name: "clash-linux", sha256: "fixture" }] }) : value),
         readdirSync: () => [],
         lstatSync: () => ({ isDirectory: () => false }),
         unlinkSync: value => files.delete(value),
@@ -56,8 +65,8 @@ async function run() {
     assert.match(darwinCalls[0][0], /launchctl load -w/);
     assert.match(darwinCalls[0][0], /com\.lbyczf\.cfw\.helper\.plist/);
     assert.match(darwinCalls[0][0], /core-hashes\.json/);
-    assert.match(darwinCalls[0][0], /chmod 755/);
-    assert.match(darwinCalls[0][0], /chmod 644/);
+    assert.match(darwinCalls[0][0], /-m 755/);
+    assert.match(darwinCalls[0][0], /-m 644/);
 
     const linuxCalls = [];
     const linux = createServiceModeManager({
@@ -77,7 +86,7 @@ async function run() {
     assert.match(linuxCalls[0][0], /systemctl enable clash-core-service/);
     assert.match(linuxCalls[0][0], /linux\/arm64\/service/);
     assert.match(linuxCalls[0][0], /core-hashes\.json/);
-    assert.match(linuxCalls[0][0], /chmod 755/);
+    assert.match(linuxCalls[0][0], /-m 755/);
     assert.match(linuxCalls[0][0], /chown root:root/);
 
     const linuxInstalledHelper = "/clash/service/clash-core-service";
@@ -138,6 +147,18 @@ async function run() {
     assert.deepEqual(cleanInstallPingTimeouts, [250]);
 
     const installedWindowsService = "C:\\Program Files\\Clash for Windows Service\\clash-core-service.exe";
+    const legacyCalls = [];
+    const legacyFiles = fakeFileSystem(["C:\\clash\\service", "C:\\clash\\service\\service.yml", "C:\\clash\\service\\service.exe"]);
+    const legacyWindows = createServiceModeManager({
+        platform: "win32", arch: "x64", fs: legacyFiles, path: path.win32,
+        sudoExec: elevatedRecorder(legacyCalls), serviceApi: { shutdown: async () => ({ status: 200 }) },
+        getFilesPath: () => "C:\\files", getClashPath: () => "C:\\clash", programFiles: "C:\\Program Files"
+    });
+    await legacyWindows.uninstallService();
+    assert.match(legacyCalls[0][0], /sc\.exe delete "Clash Core Service"/);
+    assert.doesNotMatch(legacyCalls[0][0], /service\.exe|rmdir/i);
+    assert.equal(legacyFiles.existsSync("C:\\clash\\service\\service.yml"), false);
+    assert.equal(legacyFiles.existsSync("C:\\clash\\service\\service.exe"), true);
     const missingSourceWindows = createServiceModeManager({
         platform: "win32",
         arch: "x64",
