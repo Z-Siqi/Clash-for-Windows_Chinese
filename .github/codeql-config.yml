@@ -1,0 +1,14 @@
+name: Maintained application security
+
+queries:
+  - uses: security-extended
+
+# dist/electron is maintained executable source in this unpacked application.
+paths:
+  - app/main/dist/electron
+  - scripts
+  - .github
+paths-ignore:
+  - app/build/**
+  - app/main/node_modules/**
+  - node_modules/**

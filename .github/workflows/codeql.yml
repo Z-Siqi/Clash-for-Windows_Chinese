@@ -1,0 +1,59 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main, test]
+  pull_request:
+    branches: [main, test]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: javascript-typescript
+            build-mode: none
+          - language: actions
+            build-mode: none
+          - language: go
+            build-mode: manual
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        if: matrix.language == 'go'
+        with:
+          go-version-file: scripts/native/linux-service-helper/go.mod
+          cache: false
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          config-file: ./.github/codeql-config.yml
+      - name: Build service helper
+        if: matrix.language == 'go'
+        working-directory: scripts/native/linux-service-helper
+        run: go build -o "$RUNNER_TEMP/clash-core-service" ./...
+      - name: Analyze
+        uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4
+        with:
+          category: /language:${{ matrix.language }}
+          output: codeql-results
+      - name: Preserve SARIF report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: codeql-${{ matrix.language }}
+          path: codeql-results/*.sarif
+          if-no-files-found: warn

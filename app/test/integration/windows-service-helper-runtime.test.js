@@ -6,7 +6,7 @@ const http = require("node:http");
 const net = require("node:net");
 const os = require("node:os");
 const path = require("node:path");
-const { spawn } = require("node:child_process");
+const { spawn, execFileSync } = require("node:child_process");
 const { test } = require("node:test");
 const { createClashServiceApi, SERVICE_BASE_URL } = require("../../main/dist/electron/core/network/clash-service-api");
 const { createServiceCredentials, readServiceCredentials } = require("../../main/dist/electron/core/network/service-credentials");
@@ -129,7 +129,13 @@ test("Windows Service helper starts Clash and shuts down a managed Mihomo", {
     while (servicePort === 53000) servicePort = await freePort();
     const controllerPort = await freePort();
     const mixedPort = await freePort();
-    const home = fs.mkdtempSync(path.join(os.tmpdir(), "cfw-service-helper-"));
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "cfw-service-helper-"));
+    // Hosted Windows runners use 8.3 TEMP aliases. Exercise that spelling even
+    // on machines whose TEMP uses long names; native cores return long paths.
+    const home = execFileSync("cmd.exe", ["/d", "/c", 'for %I in ("%CFW_HELPER_TEST_TEMP%") do @echo %~sI'], {
+        env: { ...process.env, CFW_HELPER_TEST_TEMP: temporary }, windowsHide: true, windowsVerbatimArguments: true, encoding: "utf8"
+    }).trim();
+    assert.equal(fs.realpathSync.native(home), fs.realpathSync.native(temporary));
     const core = path.join(root, "app/clash_core/win_x64/static/files/win/x64/clash-win64.exe");
     const mihomo = path.join(root, "app/clash_core/win_x64/static/files/win/x64/mihomo-windows-amd64.exe");
     const helper = prepareHelper(home, servicePort);
@@ -176,7 +182,7 @@ test("Windows Service helper starts Clash and shuts down a managed Mihomo", {
         assert.equal((await serviceApi.ping()).status, 200);
         const start = await serviceApi.start({ path: core, cwd: home, silent: false });
         assert.equal(start.status, 200, `${start.data}\n${output.value}`);
-        assert.equal(path.dirname(start.data), path.join(home, "logs"));
+        assert.equal(fs.realpathSync.native(path.dirname(start.data)), fs.realpathSync.native(path.join(home, "logs")));
         assert.ok(fs.statSync(start.data).isFile());
         stage = "core version";
         const version = await waitFor(controllerPort, "/version", true, helperProcess, output);
