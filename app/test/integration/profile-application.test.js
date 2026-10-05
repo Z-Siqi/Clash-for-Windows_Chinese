@@ -27,7 +27,7 @@ test("Application: production refresh adapter reads disk, applies config, update
         };
         const refresh = bundledRefresh("linux");
         assert.equal((await refresh.call(model)).success, true);
-        assert.deepEqual(events, ["apply", "resetDNS", "select", "direct", "stopTAP"]);
+        assert.deepEqual(events, ["apply", "select", "direct", "resetDNS", "stopTAP"]);
         assert.equal(model.menuItems.length, 0); assert.deepEqual(model.payload.rules, []);
         fs.writeFileSync(path.join(home, "profile.yaml"), "[broken");
         const previous = events.length;

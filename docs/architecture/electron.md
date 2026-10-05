@@ -102,7 +102,8 @@ are validated by the host before opening.
 - `entry/renderer/`: composes profile/TUN/network behavior and Vuex with settings/profile repositories. Existing page mutation/action names remain compatible.
 - `core/i18n/language.js`: the shared translation catalog and legacy language-selection semantics.
 - `core/runtime/`: platform identities, value formatting, module interoperability, and the page interval scheduler without Vue or Electron dependencies.
-- `features/application/update-runtime.js`: self-update download progress, listener cleanup, and platform installation mechanics. Page code owns only the user-facing update decision flow.
+- `core/release/`: single release configuration, asset naming, version comparison and trusted update asset selection. See `docs/development/releases.md` for release synchronization and update delivery.
+- `features/application/update-runtime.js`: dormant download/install helper with listener-order regression coverage. The current General page opens the release page; automatic installation has no production entry point.
 - `features/renderer-ui/`: routing policy, the application shell, shared component factories, dialog registration, native UI actions, and Monaco YAML language integration.
 - `features/feedback/page.js`: the Feedback/About page, its external-link policy, advertisement cache refresh, and lazy-image state.
 - `entry/renderer/mount-application.js`: installs the shared dialogs, capability plugin, global mixin, and root Vue instance. The root uses a render function and does not require template compilation.

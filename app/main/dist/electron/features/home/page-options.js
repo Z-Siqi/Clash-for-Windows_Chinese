@@ -1,5 +1,8 @@
 "use strict";
 
+const { compareVersions, releasePage, releasesUrl } = require("../../core/release/release-info");
+const { selectReleaseAsset } = require("../../core/release/update-policy");
+
 const { shouldCloseWindowForShortcut } = require("./window-shortcut-policy");
 const { supportsScriptMode } = require("../../core/clash-core/core-capabilities");
 const { parsePort } = require("../../core/network/tcp-port");
@@ -34,7 +37,7 @@ function createHomePageOptions(dependencies) {
         mousetrap, cron, serviceStatus, serviceActiveStatus, runtimeState, languageKey,
         getLanguage, refreshRendererProfile, createRendererConfiguration, persistSelection,
         createTunRuntime, createClashCoreRuntime,
-        isMacOS, isWindows, isLinux, currentTarget, updateTargets
+        isMacOS, isWindows, isLinux
     } = dependencies;
     const { setDns, getDns } = createMacDnsHelpers({ runMacCommand, net });
 
@@ -588,38 +591,21 @@ function createHomePageOptions(dependencies) {
                 const response = await dependencies.publicContent.getUpdate();
                 if (response.status !== 200) return;
                 const version = response.data.tag_name;
-                const versionNumber = value => value.split(".").reverse().reduce((total, part, index) => total + Number(part) * (1000 ** index), 0);
-                if (versionNumber(version) <= versionNumber(currentVersion)) return;
+                if (compareVersions(version, currentVersion) <= 0) return;
 
-                const assets = { portable: {}, installer: {}, diskImage: {}, linux: {} };
-                for (const asset of response.data.assets) {
-                    const name = asset.name;
-                    if (!name) continue;
-                    if (/\d+\.\d+\.\d+(?:-Opt\.\d+)?-win\.7z/.test(name)) assets.portable[updateTargets.windowsX64] = asset;
-                    else if (/\d+\.\d+\.\d+(?:-Opt\.\d+)?-arm64-win\.7z/.test(name)) assets.portable[updateTargets.windowsArm64] = asset;
-                    else if (/\d+\.\d+\.\d+(?:-Opt\.\d+)?-arm64-mac\.7z/.test(name)) assets.portable[updateTargets.macArm64] = asset;
-                    else if (/\d+\.\d+\.\d+(?:-Opt\.\d+)?-mac\.7z/.test(name)) assets.portable[updateTargets.macX64] = asset;
-                    else if (/\d+\.\d+\.\d+(?:-Opt\.\d+)?\.arm64\.exe/.test(name)) assets.installer[updateTargets.windowsArm64] = asset;
-                    else if (/\d+\.\d+\.\d+(?:-Opt\.\d+)?\.exe/.test(name)) assets.installer[updateTargets.windowsX64] = asset;
-                    else if (/arm64\.dmg/.test(name)) assets.diskImage[updateTargets.macArm64] = asset;
-                    else if (/\.dmg/.test(name)) assets.diskImage[updateTargets.macX64] = asset;
-                    else if (/x64\-linux\.tar\.gz/.test(name)) assets.linux[updateTargets.linuxX64] = asset;
-                }
-                const assetUrl = category => assets[category]?.[currentTarget()]?.browser_download_url;
-                let downloadUrl;
-                if (this.portableMode) downloadUrl = assetUrl("portable");
-                else if (isMacOS()) downloadUrl = assetUrl("diskImage");
-                else if (isWindows()) downloadUrl = assetUrl("installer");
-                else if (isLinux()) downloadUrl = assetUrl("linux");
-                const releasePage = `https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/${encodeURIComponent(version)}`;
+                const asset = selectReleaseAsset(response.data, {
+                    platform: runtimeProcess.platform, arch: runtimeProcess.arch, portable: this.portableMode
+                });
+                const page = releasePage(version);
                 this.newVersionInfo = {
                     version,
+                    displayVersion: response.data.display_version || version,
                     log: String(response.data.body || ""),
-                    url: downloadUrl || "https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases",
-                    releasePage,
+                    url: asset?.browser_download_url || releasesUrl,
+                    releasePage: page,
                     isPortable: this.portableMode,
                     reactions: response.data?.reactions || null,
-                    reactionClick: () => electron.shell.openExternal(releasePage)
+                    reactionClick: () => electron.shell.openExternal(page)
                 };
             },
             createConfigurationRuntime() {

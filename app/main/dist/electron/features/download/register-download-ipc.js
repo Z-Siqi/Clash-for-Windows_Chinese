@@ -1,4 +1,5 @@
 "use strict";
+const { config: releaseConfig } = require("../../core/release/release-info");
 
 function registerDownloadIpc({ ipcMain, getMainWindow, app, fs, path, platform = process.platform }) {
     let pending;
@@ -10,7 +11,7 @@ function registerDownloadIpc({ ipcMain, getMainWindow, app, fs, path, platform =
         const segments = url.pathname.split("/");
         const extension = platform === "darwin" ? ".dmg" : ".exe";
         if (typeof value !== "string" || url.protocol !== "https:" || url.hostname !== "github.com" || url.port
-            || url.username || url.password || segments[1] !== "Z-Siqi" || segments[2] !== "Clash-for-Windows_Chinese"
+            || url.username || url.password || `${segments[1]}/${segments[2]}` !== releaseConfig.repository
             || segments[3] !== "releases" || segments[4] !== "download" || segments.length !== 7
             || !segments[5] || !segments[6].endsWith(extension)) throw new Error("Unsupported update source");
         const directory = fs.mkdtempSync(path.join(app.getPath("temp"), "cfw-update-"));

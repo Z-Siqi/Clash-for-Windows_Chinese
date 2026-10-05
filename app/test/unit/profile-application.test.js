@@ -31,7 +31,7 @@ test("profile applies overrides, restores all groups then mode and stops TAP", a
     h.input.profiles.files[0].selected = [{ name: "missing", now: "bad" }, { name: "ok", now: "DIRECT" }];
     h.input.profiles.files[0].mode = "rule";
     assert.deepEqual(await h.apply(h.input), { success: true, message: null });
-    assert.deepEqual(h.calls.map(call => call[0]), ["put", "setPayload", "setProvidersVisible", "resetDns", "select", "select", "switchMode", "stopTap"]);
+    assert.deepEqual(h.calls.map(call => call[0]), ["put", "setPayload", "setProvidersVisible", "select", "select", "switchMode", "resetDns", "stopTap"]);
     assert.equal(h.calls[0][1]["log-level"], "warning");
     assert.equal(h.calls[0][1].ipv6, false);
     assert.equal(h.calls[0][2].timeout, 10000);
@@ -153,8 +153,17 @@ test("renderer refreshes serialize async mixins and recover after a failed apply
     };
     const first = refreshProfile(model, dependencies); await entered;
     const second = refreshProfile(model, dependencies); const third = refreshProfile(model, dependencies);
+    const { readStableProfileState } = require("../../main/dist/electron/core/network/profile-refresh-state");
+    let selectionRead = false;
+    const reading = readStableProfileState(model.clashApi, async () => {
+        selectionRead = true;
+        return payloads.at(-1).number;
+    });
+    await Promise.resolve();
+    assert.equal(selectionRead, false);
     assert.equal(count, 1); release();
     const results = await Promise.all([first, second, third]);
     assert.deepEqual(results.map(value => value.success), [true, false, true]);
     assert.deepEqual(payloads.map(value => value.number), [1, 3]);
+    assert.equal(await reading, 3);
 });

@@ -7,7 +7,8 @@ Mihomo core, system-proxy helper, and Service Mode helper in one package must
 all match the selected architecture.
 
 The extracted legacy core can run on older systems, but the complete current
-application uses Electron 44.4.4 and therefore requires macOS 13 or later. Do
+application uses the Electron version in `core/release/release-config.json`
+and requires macOS 13 or later. Recheck that minimum when upgrading Electron. Do
 not advertise the old package's former macOS 10.13 minimum for this build.
 
 ```sh

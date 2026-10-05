@@ -4,6 +4,7 @@ const { createProfileApplication } = require("../../features/profiles/profile-ap
 const { buildTunConfig } = require("../../features/tun/build-tun-config");
 const { createProfileNetworkEffects } = require("../../features/network/profile-network-effects");
 const { prepareDisconnectCleanup } = require("../../features/connections/disconnect-cleanup");
+const { trackProfileRefresh } = require("../../core/network/profile-refresh-state");
 
 // Serialize refreshes on each renderer instance so async mixins cannot apply out of order.
 const pending = new WeakMap();
@@ -57,6 +58,7 @@ function refreshProfile(vm, dependencies) {
     };
     const result = (pending.get(vm) || Promise.resolve()).then(run, run);
     pending.set(vm, result);
+    trackProfileRefresh(vm.clashApi, result);
     return result;
 }
 

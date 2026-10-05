@@ -3,14 +3,16 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
+const { config: releaseConfig } = require("../../app/main/dist/electron/core/release/release-info");
+const { synchronizeRelease } = require("./sync-release");
 
 const repositoryRoot = path.resolve(__dirname, "../..");
 const applicationRoot = path.join(repositoryRoot, "app");
 const sourceRoot = path.join(applicationRoot, "main");
-const buildRoot = path.join(applicationRoot, "build");
+const buildRoot = path.resolve(process.env.CFW_BUILD_ROOT || path.join(applicationRoot, "build"));
 const monacoRoot = path.join(buildRoot, "generated", "monaco");
 const rendererRoot = path.join(buildRoot, "generated", "renderer");
-const linuxDesktopId = "com.lbyczf.clashwin";
+const linuxDesktopId = releaseConfig.applicationId;
 
 const targets = Object.freeze({
     "win-x64": {
@@ -231,6 +233,7 @@ printf 'Installed %s\\n' "$desktop_file"
 }
 
 async function main() {
+    synchronizeRelease();
     const targetName = process.argv[2];
     const target = targets[targetName];
     if (!target) {
@@ -262,10 +265,13 @@ async function main() {
         name: target.productName,
         platform: target.platform,
         arch: target.arch,
-        electronVersion: "44.4.4",
-        appBundleId: "com.lbyczf.clashwin",
+        electronVersion: releaseConfig.electronVersion,
+        download: process.env.CFW_ELECTRON_CACHE ? { cacheRoot: process.env.CFW_ELECTRON_CACHE } : undefined,
+        appVersion: releaseConfig.version,
+        appBundleId: releaseConfig.applicationId,
         appCategoryType: "public.app-category.utilities",
         out: invocationRoot,
+        tmpdir: path.join(buildRoot, "temp"),
         prune: true,
         asar: true,
         overwrite: false,

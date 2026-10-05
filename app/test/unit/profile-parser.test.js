@@ -189,6 +189,13 @@ test("profile download preserves request headers and appends a parsed profile", 
         assert.deepEqual(result, { success: true, targetIndex: 0 });
         assert.equal(request.options.headers["X-Request"], "request");
         assert.equal(request.options.headers["X-Global"], "global");
+        assert.equal(request.options.headers["user-agent"], "ClashforWindows/Optimize");
+        await parser.downloadProfile({ url: "https://example/custom.yaml", headersString: "User-Agent: custom-client" });
+        assert.equal(request.options.headers["user-agent"], "custom-client");
+        store.state.app.settings.headersText = "headers:\n  USER-AGENT: global-client\n";
+        await parser.downloadProfile({ url: "https://example/global.yaml", headersString: "user-agent: custom-client" });
+        assert.equal(request.options.headers["user-agent"], "global-client");
+        assert.equal(Object.keys(request.options.headers).filter(name => name.toLowerCase() === "user-agent").length, 1);
         assert.equal(commits[0][0], "APPEND_PROFILE");
         assert.equal(commits[0][1].profile.name, "named.yml");
         assert.equal(commits[0][1].profile.interval, 12);

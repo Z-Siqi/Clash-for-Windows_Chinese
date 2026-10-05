@@ -368,13 +368,13 @@ function createGeneralPageWorkflow({
                 return;
             }
             await this.$parent.checkForUpdate();
-            const { url, version, log, releasePage, reactions, reactionClick } = this.$parent.newVersionInfo;
+            const { url, version, displayVersion, log, releasePage, reactions, reactionClick } = this.$parent.newVersionInfo;
             if (!url) {
                 this.$alert({ title: labels.nowVersionUpToDate(), content: labels.nowVersionUpToDateDescribe() });
                 return;
             }
             const [selection] = await this.$select({
-                title: `${version}${labels.hadBeenReleased()}`,
+                title: `${displayVersion || version}${labels.hadBeenReleased()}`,
                 message: log,
                 reactions,
                 reactionClick,

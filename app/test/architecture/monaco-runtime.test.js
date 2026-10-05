@@ -98,7 +98,10 @@ test("every packaging target delegates to the lock-safe build pipeline", () => {
     assert.match(packager, /"mac-x64"/);
     assert.match(packager, /"mac-arm64"/);
     assert.match(packager, /platform: "darwin"/);
-    assert.match(packager, /appBundleId: "com\.lbyczf\.clashwin"/);
+    assert.match(packager, /appBundleId: releaseConfig\.applicationId/);
+    assert.equal(require("../../main/dist/electron/core/release/release-info").config.applicationId, "com.lbyczf.clashwin");
+    assert.match(packager, /electronVersion: releaseConfig\.electronVersion/);
+    assert.match(packager, /appVersion: releaseConfig\.version/);
     assert.match(packager, /appCategoryType: "public\.app-category\.utilities"/);
     assert.match(packager, /path\.join\(applicationRoot, "icon\.icns"\)/);
     assert.match(packager, /target\.requiredFiles \|\| \[\]/);

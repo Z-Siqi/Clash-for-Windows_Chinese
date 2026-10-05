@@ -7,7 +7,8 @@ const path = require("node:path");
 const esbuild = require("esbuild");
 
 const root = path.resolve(__dirname, "../..");
-const outputDirectory = path.join(root, "app/build/generated/monaco");
+const buildRoot = path.resolve(process.env.CFW_BUILD_ROOT || path.join(root, "app/build"));
+const outputDirectory = path.join(buildRoot, "generated/monaco");
 const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "cfw-monaco-"));
 const monacoPackagePath = path.join(root, "node_modules/monaco-editor/package.json");
 const monacoRoot = path.dirname(monacoPackagePath);
@@ -97,7 +98,7 @@ async function main() {
         fs.writeFileSync(path.join(temporaryDirectory, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 
         const resolvedOutput = path.resolve(outputDirectory);
-        const expectedParent = path.resolve(root, "app/build/generated");
+        const expectedParent = path.join(buildRoot, "generated");
         if (!resolvedOutput.startsWith(`${expectedParent}${path.sep}`)) {
             throw new Error(`Refusing to replace unexpected output directory: ${resolvedOutput}`);
         }

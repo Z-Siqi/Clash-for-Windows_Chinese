@@ -2,6 +2,9 @@
   "name": "clash-for-windows-chinese-maintenance",
   "private": true,
   "scripts": {
+    "build:release": "node CFW/BuildRelease/build-release.js",
+    "release:sync": "node scripts/build/sync-release.js",
+    "release:check": "node scripts/build/sync-release.js --check",
     "build:monaco": "node scripts/build/build-monaco.js",
     "build:renderer": "node scripts/build/build-renderer.js",
     "build:linux-service-helper": "node scripts/build/build-linux-service-helper.js",

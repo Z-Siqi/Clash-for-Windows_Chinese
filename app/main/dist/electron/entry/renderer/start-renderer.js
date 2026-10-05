@@ -14,7 +14,7 @@ const { createRendererRuntime } = require("./create-renderer-runtime");
 const { createSharedComponents } = require("./create-shared-components");
 const { mountRendererApplication } = require("./mount-application");
 
-const VERSION = "Opt-4";
+const { displayVersion } = require("../../core/release/release-info");
 
 function startRenderer({
     windowObject = window,
@@ -45,7 +45,7 @@ function startRenderer({
         providerFiles: runtime.providerFiles
     });
     const pages = createRendererPages({
-        Vuex, Language, modifyState, runtime, components, version: VERSION
+        Vuex, Language, modifyState, runtime, components, version: displayVersion()
     });
     const router = createRendererRouter({ Vue, Router, pages });
     const capabilities = createRendererCapabilities({
@@ -79,4 +79,4 @@ function startRenderer({
     });
 }
 
-module.exports = { VERSION, startRenderer };
+module.exports = { VERSION: displayVersion(), startRenderer };

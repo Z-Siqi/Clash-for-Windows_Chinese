@@ -4,12 +4,14 @@ const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const esbuild = require("esbuild");
+const { synchronizeRelease } = require("./sync-release");
 
 async function main() {
+    synchronizeRelease();
     const root = path.resolve(__dirname, "../..");
     const version = require("esbuild/package.json").version;
     if (version !== "0.28.2") throw new Error("Unexpected renderer builder version");
-    const output = path.join(root, "app/build/generated/renderer");
+    const output = path.join(path.resolve(process.env.CFW_BUILD_ROOT || path.join(root, "app/build")), "generated/renderer");
     fs.mkdirSync(output, { recursive: true });
     const result = await esbuild.build({
         entryPoints: [path.join(root, "app/main/dist/electron/renderer.js")],

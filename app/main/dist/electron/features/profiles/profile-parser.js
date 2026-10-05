@@ -1,6 +1,7 @@
 "use strict";
 
 const { writeAtomic } = require("../../core/storage/atomic-file");
+const { config: releaseConfig } = require("../../core/release/release-info");
 
 const SET = Symbol("set");
 const INSERT = Symbol("insert");
@@ -138,7 +139,14 @@ function createProfileParser(dependencies) {
         let custom = {};
         const text = store.state.app.settings.headersText;
         if (text) try { custom = yaml.parse(text).headers || {}; } catch (_error) {}
-        return { pragma: "no-cache", ...extra, ...custom };
+        // HTTP header names are case-insensitive; custom UAs must replace the default.
+        const headers = { pragma: "no-cache", "user-agent": releaseConfig.subscriptionUserAgent };
+        for (const values of [extra, custom]) {
+            for (const [name, value] of Object.entries(values)) {
+                headers[name.toLowerCase() === "user-agent" ? "user-agent" : name] = value;
+            }
+        }
+        return headers;
     }
 
     function directRequest(url, options = {}, headers = {}) {

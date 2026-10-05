@@ -1,6 +1,7 @@
 /.vs
 /app/output
 /app/build
+/CFW/BuildRelease/Build/
 /app/.electron-*
 /node_modules
 .DS_Store

@@ -1,6 +1,7 @@
 "use strict";
 
 const { supportsScriptMode } = require("../../core/clash-core/core-capabilities");
+const { readStableProfileState } = require("../../core/network/profile-refresh-state");
 
 function createProxiesPage({
     defineComponent,
@@ -362,10 +363,10 @@ function createProxiesPage({
             async fetchData() {
                 if (!this.clashApi.isReady()) return;
                 const maximumDelay = Number.MAX_SAFE_INTEGER;
-                const [proxyResponse, providerResponse] = await Promise.all([
+                const [proxyResponse, providerResponse] = await readStableProfileState(this.clashApi, () => Promise.all([
                     this.clashApi.getProxies(),
                     this.clashApi.getProxyProviders({ validateStatus: () => true })
-                ]);
+                ]));
                 const providers = providerResponse.data?.providers || {};
                 const proxyData = proxyResponse.data.proxies;
                 const globalOrder = proxyData.GLOBAL?.all || Object.keys(proxyData);

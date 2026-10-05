@@ -57,6 +57,11 @@ function createProfileApplication(deps) {
             }
             effects.setPayload(config);
             effects.setProvidersVisible(hasProviders);
+            if (profile.selected) {
+                // A stale group must not prevent the remaining groups or mode from restoring.
+                await Promise.allSettled(profile.selected.map(({ name, now }) => clashApi.selectProxy(name, now)));
+            }
+            if (profile.mode) await effects.switchMode(profile.mode);
             if (tun.enable) {
                 const addresses = dnsHijackAddresses(tun["dns-hijack"]);
                 if (addresses.length) {
@@ -65,11 +70,6 @@ function createProfileApplication(deps) {
                 }
                 if (platform === "win32" && tun.stack === "system") await effects.renewDhcp();
             } else await effects.resetDns();
-            if (profile.selected) {
-                // A stale group must not prevent the remaining groups or mode from restoring.
-                await Promise.allSettled(profile.selected.map(({ name, now }) => clashApi.selectProxy(name, now)));
-            }
-            if (profile.mode) await effects.switchMode(profile.mode);
             if (needsTap) await effects.startTap();
             else await effects.stopTap();
             return { success: true, message: null };

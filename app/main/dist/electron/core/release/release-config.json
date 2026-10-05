@@ -1,0 +1,11 @@
+{
+  "version": "0.20.39.4",
+  "displayVersion": "Opt-4",
+  "electronVersion": "44.4.4",
+  "productName": "Clash for Windows",
+  "applicationId": "com.lbyczf.clashwin",
+  "repository": "Z-Siqi/Clash-for-Windows_Chinese",
+  "updateBranch": "main",
+  "subscriptionUserAgent": "ClashforWindows/Optimize",
+  "publishedTargets": ["win-x64"]
+}
