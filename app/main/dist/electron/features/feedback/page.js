@@ -27,7 +27,7 @@ const FEEDBACK_LINKS = [
     "https://openai.com/codex/"
 ];
 
-function createLazyImage({ defineComponent, Language, modifyState }) {
+function createLazyImage({ defineComponent, getLanguage }) {
     const DEFAULT = Symbol("default");
     const LOADED = Symbol("loaded");
     const FAILED = Symbol("failed");
@@ -44,7 +44,7 @@ function createLazyImage({ defineComponent, Language, modifyState }) {
             imgFailed() { this.status = FAILED; }
         }
     }, function renderLazyImage(createElement) {
-        const labels = new Language(modifyState.language);
+        const labels = getLanguage();
         return createElement("div", { attrs: { id: "lazy-image-view clickable" } }, [
             createElement("div", {
                 directives: [{ name: "show", rawName: "v-show", value: this.isDefault, expression: "isDefault" }],
@@ -66,10 +66,10 @@ function createLazyImage({ defineComponent, Language, modifyState }) {
 }
 
 function createFeedbackPage({
-    defineComponent, escCaptureComponent, Language, modifyState,
+    defineComponent, escCaptureComponent, getLanguage, modifyState,
     cache, keys, publicContent, shell
 }) {
-    const LazyImageView = createLazyImage({ defineComponent, Language, modifyState });
+    const LazyImageView = createLazyImage({ defineComponent, getLanguage });
     const linkClass = "text-[color:var(--feedback-link-c)] cursor-pointer";
     const credits = [
         ["Mihomo", 20], ["Codex", 21],
@@ -103,7 +103,7 @@ function createFeedbackPage({
         }
     };
     return defineComponent(component, function renderFeedbackPage(createElement) {
-        const labels = new Language(modifyState.language);
+        const labels = getLanguage();
         const link = (text, index) => createElement("div", {
             staticClass: linkClass,
             on: { click: () => this.select(index) }

@@ -25,7 +25,7 @@ test("Application: real Vuex and production module wiring persist settings and p
         get sts() { return store.state.app.settings; },
         saveSettingsObject: payload => store.commit("SAVE_SETTINGS_OBJECT", payload)
     };
-    const mixin = createGlobalMixin({ Vuex, cloneDeep, fs, path, yaml, modifyState: {} });
+    const mixin = createGlobalMixin({ Vuex, cloneDeep, fs, path, yaml, modifyState: {}, setLanguageIndex() {} });
     const getter = mixin.computed;
     store.commit("SET_SETTINGS_OBJECT", { obj: { proxyCore: "clash", randomMixedPort: true, language: 0 } });
     const first = getter.settings.call(model), second = getter.settings.call(model);

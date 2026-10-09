@@ -21,6 +21,7 @@ const { createApplicationLogClient } = require("../../core/native/application-lo
 const { createPublicContentClient } = require("../../core/native/public-content-client");
 const { createRendererAppModule, createRendererStore } = require("./create-renderer-store");
 const { createRendererUtilities } = require("./utilities");
+const { createRendererLanguage } = require("./language-runtime");
 const { connectionStatus, proxyStatus } = require("../../features/application-state/status");
 const { createNetworkInfoClient } = require("../../core/native/network-info-client");
 const { createCoreLifecycleClient } = require("../../core/native/core-lifecycle-client");
@@ -40,7 +41,6 @@ const { createServiceModeClient } = require("../../core/native/service-mode-clie
 function createRendererRuntime({
     Vue,
     Vuex,
-    Language,
     modifyState,
     windowObject,
     staticRoot,
@@ -56,6 +56,7 @@ function createRendererRuntime({
         clipboard: createClipboardClient(electronHost.ipcRenderer),
         shell: { openExternal: url => electronHost.ipcRenderer.invoke("external-navigation", url) }
     });
+    const language = createRendererLanguage({ modifyState, cache, ipcRenderer: electron.ipcRenderer });
     const logger = createApplicationLogClient({ ipcRenderer: electron.ipcRenderer });
     let store;
     const repositories = createRepositoryClients({ ipcRenderer: electron.ipcRenderer, getHome: () => store.state.app.clashPath });
@@ -76,9 +77,10 @@ function createRendererRuntime({
         keys: preferenceKeys,
         connectionStatus,
         proxyStatus,
+        systemLanguage: processObject.systemLanguage,
         ipcRenderer: electron.ipcRenderer,
         modifyState,
-        labels: new Language(cache.get("language")),
+        labels: language.getLanguage(),
         settingsRepository: repositories.settings,
         profilesRepository: repositories.profiles,
         controllerApi,
@@ -129,6 +131,7 @@ function createRendererRuntime({
     const coreConfigRepository = createCoreConfigClient({ ipcRenderer: electron.ipcRenderer, shouldReplaceWintun: utilities.isNewVersion });
 
     return {
+        ...language,
         axios,
         cache,
         cron,

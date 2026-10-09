@@ -6,6 +6,8 @@ const os = require("node:os");
 const path = require("node:path");
 const { app, utilityProcess, ipcMain, BrowserWindow, shell } = require("electron");
 require("./native-boundaries");
+const { verifyLanguageHotload } = require("./language-hotload");
+const { verifyEditorDigits } = require("./editor-digits");
 
 const root = path.resolve(__dirname, "../../../..");
 const applicationRoot = process.env.CFW_SECURITY_SMOKE_APP_ROOT || path.join(root, "app", "main");
@@ -202,6 +204,8 @@ app.on("browser-window-created", (_event, window) => {
                 visible: Boolean(document.querySelector(".main-setting-view")),
                 rightText: document.querySelector(".right-side").innerText.slice(0, 300)
             })`);
+            const languageHotload = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: `(${verifyLanguageHotload.toString()})()` }]);
+            const editorDigits = await verifyEditorDigits(window);
             const proxiesClick = await window.webContents.executeJavaScript(`(() => {
                 const item = Array.from(document.querySelectorAll(".main-main-menu li.item"))
                     .find(candidate => /Proxies|代理/i.test(candidate.innerText));
@@ -300,6 +304,8 @@ app.on("browser-window-created", (_event, window) => {
             const { verifyUiRegressions } = require("./ui-regressions");
             const uiRegressions = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: `(${verifyUiRegressions.toString()})()` }]);
             uiRegressions.mihomoVersionNavigation = dashboardOpened;
+            uiRegressions.languageHotload = languageHotload;
+            uiRegressions.editorDigits = editorDigits;
             const indicatorWindow = BrowserWindow.getAllWindows().find(candidate => candidate.webContents.getURL().endsWith("/cfw-sub.html"));
             let indicatorUpdates = false;
             if (indicatorWindow) {

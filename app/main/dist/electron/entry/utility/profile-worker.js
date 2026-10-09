@@ -1,12 +1,12 @@
 "use strict";
 
 const { createProfileWorkerRuntime } = require("../../features/profiles/profile-worker-runtime");
-const { Language } = require("../../core/i18n/language");
+const { createTranslator } = require("../../core/i18n/language");
 const lodash = require("lodash");
 
 createProfileWorkerRuntime({
     parentPort: process.parentPort,
-    createLanguage: language => new Language(language),
+    createLanguage: createTranslator,
     parserDependencies: {
         axios: require("axios"), got: require("got"), fs: require("fs"), path: require("path"), yaml: require("yaml"),
         cloneDeep: lodash.cloneDeep, reduce: lodash.reduce, shuffle: lodash.shuffle,

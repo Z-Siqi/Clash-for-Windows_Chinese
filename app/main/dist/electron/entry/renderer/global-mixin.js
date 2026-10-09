@@ -3,7 +3,7 @@
 const { createSettingsProxy } = require("../../features/settings/settings-proxy");
 const { loadSettingsFromDisk } = require("../../features/settings/load-settings");
 
-function createGlobalMixin({ Vuex, platform, ipcRenderer, fs, path, yaml, cloneDeep, modifyState, settingsRepository, schedule = setTimeout }) {
+function createGlobalMixin({ Vuex, platform, ipcRenderer, fs, path, yaml, cloneDeep, setLanguageIndex, settingsRepository, schedule = setTimeout }) {
     return {
         data() { return { mixinScrollTop: 0 }; },
         computed: {
@@ -26,7 +26,7 @@ function createGlobalMixin({ Vuex, platform, ipcRenderer, fs, path, yaml, cloneD
                 await ipcRenderer.invoke("app", "exit", 0);
             },
             loadSettings() {
-                const onProfileLanguage = language => { modifyState.languageInProfile = language; };
+                const onProfileLanguage = language => { setLanguageIndex(language); };
                 const mergedSettings = settingsRepository ? settingsRepository.load(this.clashPath, onProfileLanguage) : loadSettingsFromDisk({
                     fs, path, yaml, clashPath: this.clashPath,
                     onProfileLanguage

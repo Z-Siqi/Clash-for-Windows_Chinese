@@ -38,6 +38,7 @@ function createAppMutations({ path, connectionStatus, schedule = setTimeout }) {
         ADD_AXIOS_FLYING_REQUEST_COUNT(state, { count }) { state.clashAxiosFlyingRequestCount += count; },
         SET_IS_SUB_VIEW_SHOW(state, { isShow }) { if (isShow) state.isSubViewShow = true; else schedule(() => { state.isSubViewShow = false; }, 50); },
         ADD_PROFILE_REFRESH_TIMES(state, { times = 1 }) { state.profileRefreshTimes += times; },
+        ADD_PROXY_REFRESH_TIMES(state, { times = 1 }) { state.proxyRefreshTimes += times; },
         CHANGE_MODE(state, { mode }) { if (["direct", "rule", "global", "script"].includes(mode)) state.mode = mode; }
     };
 }

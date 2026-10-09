@@ -24,8 +24,7 @@ function createScriptEditor({
     cache,
     selectViewComponent,
     electron,
-    Language,
-    modifyState
+    getLanguage
 } = {}) {
     const options = {
         name: "ScriptView",
@@ -67,7 +66,7 @@ function createScriptEditor({
             ...Vuex.mapState({}),
             ...Vuex.mapGetters(["theme", "clashAxiosClient"]),
             saveHint() {
-                const labels = new Language(modifyState.language);
+                const labels = getLanguage();
                 return platform.isMacOS() ? "Command+S" : `${labels.save()}(Ctrl+S)`;
             },
             mdt: {
@@ -136,7 +135,7 @@ function createScriptEditor({
                 electron.shell.openExternal(SCRIPT_DOCUMENTATION_URL);
             },
             async test() {
-                const labels = new Language(modifyState.language);
+                const labels = getLanguage();
                 const script = this.editorCode.getValue();
                 cache.put(preferenceKeys.TEST_SCRIPT_CONTENT, script);
                 if (!this.resolve) return;
@@ -176,7 +175,7 @@ function createScriptEditor({
     return defineComponent(options, function renderScriptEditor() {
         const viewModel = this;
         const createElement = viewModel._self._c;
-        const labels = new Language(modifyState.language);
+        const labels = getLanguage();
         if (!viewModel.isShow) return viewModel._e();
 
         const renderSelect = (items, value, onChange) => createElement("SelectView", {

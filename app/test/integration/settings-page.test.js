@@ -10,6 +10,7 @@ const yaml = require("../../main/node_modules/yaml");
 const { defineComponent } = require("../../main/dist/electron/features/renderer-ui/component");
 const { createSettingsPage } = require("../../main/dist/electron/features/settings/page");
 const { assertRendererComposition } = require("../fixtures/assert-renderer-composition");
+const { createRendererLanguage } = require("../../main/dist/electron/entry/renderer/language-runtime");
 
 const EmptyComponent = { render: h => h("span") };
 const labels = new Proxy({}, { get: (_target, key) => () => String(key) });
@@ -32,6 +33,49 @@ function createPage(overrides = {}) {
         ...overrides
     });
 }
+
+test("language dropdown updates page text, saved settings and tray without a window reload", async () => {
+    const calls = [], storage = new Map([["language", 0]]);
+    const cache = { get: key => storage.get(key) ?? null, put: (key, value) => storage.set(key, value) };
+    const modifyState = Vue.observable({ language: 0 });
+    const language = createRendererLanguage({ modifyState, cache,
+        ipcRenderer: { invoke: async (...args) => calls.push(args) } });
+    Vue.use(Vuex);
+    const store = new Vuex.Store({ state: { app: { settings: {}, confData: {} } },
+        getters: { secret: () => "", clashAxiosClient: () => null } });
+    const vm = new (Vue.extend(createPage({ ...language, cache })))({ store });
+    vm.settings = Vue.observable({ language: 0, draft: "keep this edit" });
+    vm.isLinux = false;
+    vm.isMacOS = false;
+    vm.isWindows = true;
+    const nodesOf = vnode => vnode ? [vnode, ...(vnode.children || vnode.componentOptions?.children || []).flatMap(nodesOf)] : [];
+    const snapshots = [];
+    vm.$watch(() => nodesOf(vm._render()).map(node => node.text || "").join(""), value => snapshots.push(value), { immediate: true });
+    const selection = () => nodesOf(vm._render()).find(node => node.data?.attrs?.items?.[0] === "简体中文");
+    assert.equal(selection().data.model.value, 0);
+    const sectionTitles = () => nodesOf(vm._render()).filter(node => node.componentOptions?.tag === "Section"
+        && node.componentOptions.children.some(child => child.tag))
+        .map(node => node.componentOptions.propsData.title);
+    assert.deepEqual(vm.sections, sectionTitles());
+    assert.equal(vm.sections[0], "安全");
+    assert.equal(vm.sections.length, 17);
+    selection().data.model.callback(1);
+    await Vue.nextTick();
+    assert.match(snapshots.at(-1), /Settings/);
+    assert.equal(selection().data.model.value, 1);
+    assert.equal(vm.settings.language, 1);
+    assert.equal(vm.settings.draft, "keep this edit");
+    assert.equal(cache.get("language"), 1);
+    assert.deepEqual(vm.sections, sectionTitles());
+    assert.equal(vm.sections[0], "Security");
+    selection().data.model.callback(1);
+    selection().data.model.callback(0);
+    await Vue.nextTick();
+    assert.match(snapshots.at(-1), /设置/);
+    assert.deepEqual(vm.sections, sectionTitles());
+    assert.deepEqual(calls, [["cfw-language", 1], ["cfw-language", 0]]);
+    vm.$destroy();
+});
 
 test("Settings navigator binds the scrolling action and default tray style exposes delay controls", () => {
     Vue.use(Vuex);

@@ -155,7 +155,6 @@ function createConnectionsPage({
     const ConnectionsPage = defineComponent({
         components: { Hint, ConnectionInfoView, EscCapture },
         data() {
-            const labels = getLanguage();
             return {
                 isPause: false,
                 isActive: false,
@@ -166,17 +165,6 @@ function createConnectionsPage({
                 labelSelected: 4,
                 reverseTags: [],
                 detailConnectionId: "",
-                filterTypes: [
-                    { title: labels.sourceIP(), key: "sourceIP" },
-                    { title: labels.destinationIP(), key: "destinationIP" },
-                    { title: labels.domain(), key: "host" },
-                    { title: labels.processPath(), key: "processPath" },
-                    { title: labels.network(), key: "network" },
-                    { title: labels.type(), key: "type" },
-                    { title: labels.sourcePort(), key: "sourcePort" },
-                    { title: labels.destinationPort(), key: "destinationPort" },
-                    { title: labels.modeDNS(), key: "dnsMode" }
-                ],
                 filterTypeIndex: 0,
                 isShowTypeFilter: false
             };
@@ -193,6 +181,20 @@ function createConnectionsPage({
         computed: {
             ...Vuex.mapState({ clashStatus: state => state.app.clashStatus }),
             ...Vuex.mapGetters(["clashAxiosClient", "clashWSClient"]),
+            filterTypes() {
+                const labels = getLanguage();
+                return [
+                    { title: labels.sourceIP(), key: "sourceIP" },
+                    { title: labels.destinationIP(), key: "destinationIP" },
+                    { title: labels.domain(), key: "host" },
+                    { title: labels.processPath(), key: "processPath" },
+                    { title: labels.network(), key: "network" },
+                    { title: labels.type(), key: "type" },
+                    { title: labels.sourcePort(), key: "sourcePort" },
+                    { title: labels.destinationPort(), key: "destinationPort" },
+                    { title: labels.modeDNS(), key: "dnsMode" }
+                ];
+            },
             detailConnection() {
                 return this.detailConnectionId
                     ? this.data.connections.find(connection => connection.id === this.detailConnectionId) || null

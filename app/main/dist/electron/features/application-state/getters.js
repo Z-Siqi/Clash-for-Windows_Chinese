@@ -3,8 +3,10 @@
 const { parseControllerPort, createAxiosClient, createGotClient, createWebSocketFactory } = require("../../core/network/clash-clients");
 const { createClashApi } = require("../../core/network/clash-api");
 const { resolveCoreBinaryPath } = require("../../core/clash-core/core-selection");
+const { createTranslator } = require("../../core/i18n/language");
+const { localizeMenuItems } = require("./menu-items");
 
-function createAppGetters({ path, platform, arch, axios, got, WebSocket, cache, keys, trim, controllerApi, controllerStreams }) {
+function createAppGetters({ path, platform, arch, axios, got, WebSocket, cache, keys, trim, controllerApi, controllerStreams, labels = createTranslator() }) {
     return {
         mixedPort: state => state.confData["mixed-port"] || 0,
         controllerPort: state => parseControllerPort(state.confData["external-controller"]),
@@ -22,10 +24,7 @@ function createAppGetters({ path, platform, arch, axios, got, WebSocket, cache, 
         },
         menuItemsWithOrder(state) {
             const order = cache.get(keys.MENU_ITEM_ORDER) || [];
-            return [...state.menuItems].sort((left, right) => {
-                const index = order.indexOf(left.title);
-                return index === -1 ? 1 : index - order.indexOf(right.title);
-            });
+            return localizeMenuItems(state.menuItems, labels, order);
         },
         fontFamily(state) {
             const names = (state.settings.fontFamily || "").split(",").map(name => `"${trim(name, ' "')}"`);

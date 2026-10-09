@@ -29,11 +29,10 @@ function refreshProfile(vm, dependencies) {
                 async detectInterface() { await vm.detectInterfaceName(); return vm.finalInterfaceName; },
                 setPayload(config) { payload = config; vm.setCurrentProfilePayload({ payload: config }); },
                 setProvidersVisible(visible) {
-                    const title = messages.providers;
                     const items = vm.menuItems;
-                    if (visible && !items.some(item => item.title === title)) {
-                        vm.setMenuItems({ items: [...items, { title, path: "/home/provider" }] });
-                    } else if (!visible) vm.setMenuItems({ items: items.filter(item => item.title !== title) });
+                    if (visible && !items.some(item => item.path === "/home/provider")) {
+                        vm.setMenuItems({ items: [...items, { path: "/home/provider" }] });
+                    } else if (!visible) vm.setMenuItems({ items: items.filter(item => item.path !== "/home/provider") });
                 },
                 setDns,
                 setDnsChanged(changed) { vm.isUserDNSChanged = changed; },
@@ -53,6 +52,7 @@ function refreshProfile(vm, dependencies) {
             const tunnelActive = !!(payload?.tun?.enable || vm.tun2socks);
             applied.set(vm, { ...state, tunnelActive });
             await cleanup(!tunnelActive);
+            dependencies.onProfileApplied?.();
         }
         return result;
     };

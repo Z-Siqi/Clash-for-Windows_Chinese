@@ -352,7 +352,10 @@ function createServerPageWorkflow({
             }
             const { success = false, message = "Unknown profile download error", targetIndex } = result || {};
             if (success) {
-                if (selectAfterUpdated) await this.switchProfile(targetIndex).catch(() => {});
+                // Updating the active file must also apply it, even when automatic selection is off.
+                if (selectAfterUpdated || (targetIndex >= 0 && targetIndex === this.pfs?.index)) {
+                    await this.switchProfile(targetIndex);
+                }
                 this.now = moment();
             } else if (!String(message).endsWith(MANUAL_STOP)) this.$alert({ content: message });
             return success;

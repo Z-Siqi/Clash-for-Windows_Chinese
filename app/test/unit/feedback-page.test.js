@@ -29,7 +29,7 @@ function createPage(overrides = {}) {
     const page = createFeedbackPage({
         defineComponent,
         escCaptureComponent: {},
-        Language: Labels,
+        getLanguage: () => new Labels(),
         modifyState: { language: 0, adImages: "https://example/ads?t=" },
         cache: { get: () => [{ img: "cached", click: "https://cached.test/" }], put: (...args) => saved.push(args) },
         keys: { AD_IMAGES: "ads" },

@@ -1,6 +1,6 @@
 "use strict";
 
-const { Language } = require("../../core/i18n/language");
+const { createTranslator } = require("../../core/i18n/language");
 const { normalizeExternalUrl } = require("../../core/network/external-url-policy");
 
 function createNativeActions({ ipcRenderer, shell, Notification, getSettings, getLanguage }) {
@@ -18,7 +18,7 @@ function createNativeActions({ ipcRenderer, shell, Notification, getSettings, ge
         async confirmOpenExternal(url) {
             const safeUrl = normalizeExternalUrl(url, { allowLoopbackHttp: true });
             if (!safeUrl) return false;
-            const labels = new Language(getLanguage());
+            const labels = createTranslator(getLanguage);
             const result = await showMessageBox({
                 type: "question", buttons: [labels.no(), labels.yes()], message: labels.askOpenURL(), detail: safeUrl
             });

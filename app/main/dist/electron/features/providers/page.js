@@ -7,6 +7,7 @@ function createProvidersPage({
     moment,
     connectedStatus,
     providerFiles,
+    onProxyProviderUpdated = () => {},
     Hint,
     AbortController = globalThis.AbortController
 }) {
@@ -127,6 +128,7 @@ function createProvidersPage({
                         validateStatus: () => true, timeout: 0, signal: this.updateAbortCtl.signal
                     });
                     if (status === 204) {
+                        onProxyProviderUpdated();
                         const refreshed = await this.fetchSingleData("proxies", name) ?? provider;
                         this.$set(this.providers, index, { ...refreshed, isUpdating: false, message: "" });
                     } else {

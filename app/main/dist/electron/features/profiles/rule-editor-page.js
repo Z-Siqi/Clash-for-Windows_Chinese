@@ -111,7 +111,7 @@ function createRuleEditor({
         data() {
             return {
                 listData: [], memoryData: [], showAlterModel: false,
-                saveBtnText: getLanguage().save(), axiosSource: null,
+                saveBtnText: null, axiosSource: null,
                 filterKeywords: "", providers: {}
             };
         },
@@ -167,7 +167,6 @@ function createRuleEditor({
                 this.loadData();
             }, 500),
             async applyRules() {
-                const labels = getLanguage();
                 try {
                     const rules = cloneJson(this.memoryData).map(rule => {
                         const params = rule.params ?? "";
@@ -185,7 +184,7 @@ function createRuleEditor({
                     this.$emit("error");
                     this.saveBtnText = "Fail";
                 }
-                schedule(() => { this.saveBtnText = labels.save(); }, 3000);
+                schedule(() => { this.saveBtnText = null; }, 3000);
             },
             removeItem(item, index) {
                 const memoryIndex = this.memoryData.findIndex(value => value.payload === item.payload
@@ -266,7 +265,7 @@ function createRuleEditor({
         }, [viewModel._v("\n        " + labels.add() + "\n      ")]), viewModel._v(" "), createElement("div", {
             staticClass: "btn btn-save md-button",
             on: { click: viewModel.applyRules }
-        }, [viewModel._v("\n        " + viewModel._s(viewModel.saveBtnText) + "\n      ")]), viewModel._v(" "), createElement("div", {
+        }, [viewModel._v("\n        " + viewModel._s(viewModel.saveBtnText == null ? labels.save() : viewModel.saveBtnText) + "\n      ")]), viewModel._v(" "), createElement("div", {
             staticClass: "btn btn-back md-button",
             on: { click() { return viewModel.$emit("cancel"); } }
         }, [viewModel._v("\n        " + labels.cancel() + "\n      ")])])]), viewModel._v(" "), createElement("div", {

@@ -19,7 +19,7 @@ test("Application: production refresh adapter reads disk, applies config, update
         const events = [];
         const model = {
             profilesPath: home, profiles: { index: 0, files: [{ time: "profile.yaml", mode: "direct", selected: [{ name: "group", now: "DIRECT" }] }] },
-            confData: { ipv6: false, "log-level": "warning" }, settings: {}, menuItems: [{ title: "Providers" }],
+            confData: { ipv6: false, "log-level": "warning" }, settings: {}, menuItems: [{ path: "/home/provider" }],
             clashApi: { async putConfig(body) { events.push("apply"); assert.equal(yaml.parse(body.payload)["log-level"], "warning"); return { status: 204 }; }, async selectProxy() { events.push("select"); } },
             setCurrentProfilePayload({ payload }) { this.payload = payload; },
             setMenuItems({ items }) { this.menuItems = items; }, resetDNS() { events.push("resetDNS"); },
@@ -54,7 +54,7 @@ for (const locale of [0, 1]) {
         const page = profilePage({ store, parent, dialogs, locale });
         await page.handleProfileClick(0);
         assert.equal(apiCalls, 0); assert.equal(dialogs.length, 1);
-        assert.equal(dialogs[0].message, new (rendererLanguage())(locale).couldNotSwitchProfile());
+        assert.equal(dialogs[0].message, (rendererLanguage())(locale).couldNotSwitchProfile());
         assert.match(dialogs[0].detail, /Error:/);
         assert.equal(store.state.app.profiles.index, -1);
         assert.equal(page.loadingProfileIndex.length, 0);
@@ -70,7 +70,7 @@ for (const locale of [0, 1]) {
             clashApi: { putConfig() { throw Error("must not apply without an interface"); } }
         });
         assert.equal(result.success, false);
-        assert.equal(result.message, new (rendererLanguage())(locale).modeTAPEnableNoINthisYAML());
+        assert.equal(result.message, (rendererLanguage())(locale).modeTAPEnableNoINthisYAML());
         assert.match(result.message, locale === 0 ? /接口名称/ : /interface-name/);
     });
 }

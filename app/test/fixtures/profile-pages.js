@@ -9,21 +9,22 @@ const lodash = require("../../main/node_modules/lodash");
 
 const EmptyComponent = { render: h => h("span") };
 
-function profilePage({ store, parent, dialogs, locale = 1 }) {
-    const labels = new (rendererLanguage())(locale);
+function profilePage({ store, parent, dialogs, locale = 1, downloadProfile = async () => ({}) }) {
+    const labels = (rendererLanguage())(locale);
     const { methods } = createServerPageWorkflow({
         labels,
         getLanguage: () => labels,
         moment: () => ({ locale() { return this; }, from() { return ""; } }),
         yaml: { parse: () => ({}) },
         fs: {}, path: {}, electron: {}, lodash: {}, CancelToken: class {},
-        downloadProfile: async () => ({}), runUserScript() {}, profileScriptType: "profile",
+        downloadProfile, runUserScript() {}, profileScriptType: "profile",
         scheduler: {}, confirmOpenExternal() {}, cloneJson: value => value,
         showMessageBox: async options => { dialogs.push(options); return { response: 0 }; },
         formatBytes: String
     });
     return {
-        ...methods, loadingProfileIndex: [], $parent: parent,
+        ...methods, loadingProfileIndex: [], downlodingUrls: {}, $parent: parent,
+        $delete: (object, key) => { delete object[key]; },
         get pfs() { return store.state.app.profiles; },
         get settings() { return store.state.app.settings; },
         get clashApi() { return store.getters.clashApi; },
@@ -32,8 +33,8 @@ function profilePage({ store, parent, dialogs, locale = 1 }) {
     };
 }
 
-function proxiesPage(store, locale = 1) {
-    const labels = new (rendererLanguage())(locale);
+function proxiesPage(store, locale = 1, reactive = false) {
+    const labels = (rendererLanguage())(locale);
     const page = createProxiesPage({
         defineComponent,
         slicedToArray: require("../../main/node_modules/@babel/runtime/helpers/slicedToArray"),
@@ -48,6 +49,12 @@ function proxiesPage(store, locale = 1) {
         status: { CONNECTED: "connected" }, velocity() {},
         scheduler: { ZP: { add: () => "timer", stop() {} } }, getLanguage: () => labels
     });
+    if (reactive) {
+        const Vue = require("../../main/node_modules/vue");
+        return new (Vue.extend({ mixins: [page], computed: {
+            clashApi: () => store.getters.clashApi, settings: () => store.state.app.settings
+        } }))({ store });
+    }
     return {
         ...page.methods, proxies: [], testingProxyNames: [], delayKeyName: "delay",
         get clashApi() { return store.getters.clashApi; },

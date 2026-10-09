@@ -33,8 +33,8 @@ const { createRendererConfiguration } = require("./configuration");
 const { refreshProfile } = require("./refresh-profile");
 const { persistSelection } = require("../../features/profiles/persist-selection");
 
-function createRendererPages({ Vuex, Language, modifyState, runtime, components, version }) {
-    const language = () => new Language(modifyState.language);
+function createRendererPages({ Vuex, modifyState, runtime, components, version }) {
+    const language = runtime.getLanguage;
     const languageIndex = () => modifyState.language;
     const {
         axios, cache, cron, defaultBypass, defaultPac, electron, firewall,
@@ -65,8 +65,10 @@ function createRendererPages({ Vuex, Language, modifyState, runtime, components,
         firewallRuleExists: firewall.status, getWlanInterfaces,
         mousetrap, cron, serviceStatus: serviceModule.statusService,
         serviceActiveStatus: serviceModule.status.Active,
-        runtimeState: modifyState, languageKey: "language", getLanguage: language,
-        refreshRendererProfile: refreshProfile,
+        runtimeState: modifyState, getLanguage: language,
+        refreshRendererProfile: (vm, dependencies) => refreshProfile(vm, {
+            ...dependencies, onProfileApplied: () => store.commit("ADD_PROFILE_REFRESH_TIMES", { times: 1 })
+        }),
         profileNetworkEffects: runtime.profileNetworkEffects,
         runMixin: runtime.runMixin,
         runTrayScript: runtime.runTrayScript,
@@ -141,6 +143,7 @@ function createRendererPages({ Vuex, Language, modifyState, runtime, components,
     const provider = createProvidersPage({
         defineComponent, Vuex, getLanguage: language, moment,
         connectedStatus: connectionStatus.CONNECTED, providerFiles: runtime.providerFiles,
+        onProxyProviderUpdated: () => store.commit("ADD_PROXY_REFRESH_TIMES", { times: 1 }),
         Hint: components.Hint
     });
     const proxy = createProxiesPage({
@@ -201,11 +204,11 @@ function createRendererPages({ Vuex, Language, modifyState, runtime, components,
         logger, showMessageBox: utilities.showMessageBox, updateYaml: utilities.updateYaml,
         Info: components.InfoIcon, getWlanInterfaces,
         getLanguage: language,
-        setLanguageIndex: value => { modifyState.language = value; },
+        setLanguageIndex: runtime.setLanguageIndex,
         languageKey: "language", renderConnectionDisconnectSettings
     });
     const about = createFeedbackPage({
-        defineComponent, escCaptureComponent: components.EscCapture, Language,
+        defineComponent, escCaptureComponent: components.EscCapture, getLanguage: language,
         modifyState, cache, keys, publicContent: runtime.publicContent, shell: electron.shell
     });
 

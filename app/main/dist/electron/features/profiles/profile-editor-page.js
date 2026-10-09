@@ -300,11 +300,11 @@ function createProfileEditor({
                 conf: null,
                 specialProxies: [{ name: "DIRECT" }, { name: "REJECT" }],
                 addType: -1,
-                addData: null,
-                saveBtn: getLanguage().save()
+                addData: null
             };
         },
         computed: {
+            saveBtn() { return getLanguage().save(); },
             ...Vuex.mapState({
                 clashPath: state => state.app.clashPath,
                 profilesPath: state => state.app.profilesPath
@@ -380,7 +380,7 @@ function createProfileEditor({
                 } catch (_error) {}
             },
             async saveData() {
-                if (!this.conf || getLanguage().save() !== this.saveBtn) return;
+                if (!this.conf) return;
                 try {
                     if (profileFiles) await profileFiles.writeProfile(this.profilesPath, this.profileName, yaml.stringify(this.conf));
                     else fs.writeFileSync(path.join(this.profilesPath, this.profileName), yaml.stringify(this.conf));

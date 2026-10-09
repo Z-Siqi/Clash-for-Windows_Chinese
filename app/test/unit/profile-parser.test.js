@@ -7,6 +7,7 @@ const os = require("node:os");
 const path = require("node:path");
 const yaml = require("../../main/node_modules/yaml");
 const lodash = require("../../main/node_modules/lodash");
+const releaseConfig = require("../../main/dist/electron/core/release/release-config.json");
 const {
     createProfileParser,
     mergeProfileYaml,
@@ -189,7 +190,7 @@ test("profile download preserves request headers and appends a parsed profile", 
         assert.deepEqual(result, { success: true, targetIndex: 0 });
         assert.equal(request.options.headers["X-Request"], "request");
         assert.equal(request.options.headers["X-Global"], "global");
-        assert.equal(request.options.headers["user-agent"], "ClashforWindows/Optimize");
+        assert.equal(request.options.headers["user-agent"], releaseConfig.subscriptionUserAgent);
         await parser.downloadProfile({ url: "https://example/custom.yaml", headersString: "User-Agent: custom-client" });
         assert.equal(request.options.headers["user-agent"], "custom-client");
         store.state.app.settings.headersText = "headers:\n  USER-AGENT: global-client\n";

@@ -100,7 +100,7 @@ test("Editor foundation: production bridge registers YAML completion, provider l
             if (fail) throw Error("offline");
             return { status: 200, data: { rule: { prefix: "MATCH", body: ["MATCH,${1:policy}"] } } };
         } },
-        labels: new (require("../../main/dist/electron/core/i18n/language").Language)(1)
+        labels: require("../../main/dist/electron/core/i18n/language").createTranslator(1)
     });
     const model = {
         getValue: () => 'proxies:\n  - name: "node"\nrules:\n  ',

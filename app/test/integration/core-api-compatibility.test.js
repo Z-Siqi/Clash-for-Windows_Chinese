@@ -219,9 +219,13 @@ async function verifyCore(coreName, relativeBinary) {
             changeProfile: payload => store.commit("CHANGE_PROFILE", payload),
             switchMode: mode => store.dispatch("setMode", { mode })
         };
-        model.refreshProfile = bundledRefresh().bind(model);
+        const onProfileApplied = () => store.commit("ADD_PROFILE_REFRESH_TIMES", { times: 1 });
+        model.refreshProfile = bundledRefresh(process.platform, 1, onProfileApplied).bind(model);
         const dialogs = [];
-        const profilesUi = profilePage({ store, parent: model, dialogs });
+        const profilesUi = profilePage({ store, parent: model, dialogs, downloadProfile: async () => {
+            fs.writeFileSync(path.join(home, "application.yaml"), "proxy-groups:\n  - name: updated-subscription\n    type: select\n    proxies: [DIRECT, REJECT]\nrules: []\n");
+            return { success: true, targetIndex: 0 };
+        } });
         await profilesUi.handleProfileClick(0);
         assert.equal(dialogs.length, 0);
         assert.equal(profilesUi.loadingProfileIndex.length, 0);
@@ -233,7 +237,7 @@ async function verifyCore(coreName, relativeBinary) {
         assert.equal(proxies.data.proxies["app-test"].now, "REJECT");
         assert.equal(store.state.app.currentProfilePayload["proxy-groups"][0].name, "app-test");
         assert.equal(store.state.app.mode, "rule");
-        const proxiesUi = proxiesPage(store);
+        const proxiesUi = proxiesPage(store, 1, true);
         await proxiesUi.fetchData();
         assert.equal(proxiesUi.proxyInMode.some(group => group.name === "app-test"), true);
         assert.equal(proxiesUi.proxyInMode.find(group => group.name === "app-test").data.now, "REJECT");
@@ -241,6 +245,19 @@ async function verifyCore(coreName, relativeBinary) {
         const restarted = buildStore({ home }).store;
         restarted.commit("LOAD_PROFILES");
         assert.equal(restarted.state.app.profiles.files[0].selected.find(group => group.name === "app-test").now, "REJECT");
+
+        const originalInstance = proxiesUi._uid;
+        store.commit("SAVE_SETTINGS_OBJECT", { obj: { ...store.state.app.settings, selectAfterUpdated: false } });
+        assert.equal(await profilesUi.updateConfig({ url: "https://subscription.test/active", selectAfterUpdated: false }), true);
+        const refreshDeadline = Date.now() + 3000;
+        while (!proxiesUi.proxies.some(group => group.name === "updated-subscription") && Date.now() < refreshDeadline) {
+            await new Promise(resolve => setTimeout(resolve, 20));
+        }
+        assert.equal(proxiesUi.proxyInMode.some(group => group.name === "updated-subscription"), true);
+        assert.equal(proxiesUi.proxyInMode.some(group => group.name === "app-test"), false);
+        assert.equal(proxiesUi._uid, originalInstance);
+        assert.equal(store.state.app.profiles.index, 0);
+        const successfulRevision = store.state.app.profileRefreshTimes;
 
         // Exercise malformed YAML and core-level validation through the actual click handlers.
         fs.writeFileSync(path.join(home, "broken.yaml"), "proxy-groups: [\n");
@@ -261,18 +278,20 @@ async function verifyCore(coreName, relativeBinary) {
         assert.equal(profilesUi.loadingProfileIndex.length, 0);
         assert.equal(apiCalls.filter(([method, url]) => method === "put" && url === "/configs").length, writesBeforeSyntaxError + 1);
         await proxiesUi.fetchData();
-        assert.equal(proxiesUi.proxyInMode.some(group => group.name === "app-test"), true);
+        assert.equal(proxiesUi.proxyInMode.some(group => group.name === "updated-subscription"), true);
+        assert.equal(store.state.app.profileRefreshTimes, successfulRevision);
 
         // A subsequent valid selection must replace the visible groups, including in Chinese.
         fs.writeFileSync(path.join(home, "second.yaml"), "proxy-groups:\n  - name: second-profile\n    type: select\n    proxies: [DIRECT, REJECT]\nrules: []\n");
         store.commit("APPEND_PROFILE", { profile: { time: "second.yaml", mode: "rule" } });
-        model.refreshProfile = bundledRefresh(process.platform, 0).bind(model);
+        model.refreshProfile = bundledRefresh(process.platform, 0, onProfileApplied).bind(model);
         await profilesUi.handleProfileClick(3);
         assert.equal(dialogs.length, 2);
         assert.equal(store.state.app.profiles.index, 3);
         await proxiesUi.fetchData();
         assert.equal(proxiesUi.proxyInMode.some(group => group.name === "second-profile"), true);
         assert.equal(proxiesUi.proxyInMode.some(group => group.name === "app-test"), false);
+        proxiesUi.$destroy();
     } finally {
         await stopChild(child);
         fs.rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });

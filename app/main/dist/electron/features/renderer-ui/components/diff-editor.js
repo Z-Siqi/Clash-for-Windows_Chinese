@@ -10,8 +10,7 @@ function createDiffEditor({
     utilities,
     preferenceKeys,
     cache,
-    Language,
-    modifyState
+    getLanguage
 } = {}) {
     const options = {
         components: {
@@ -45,13 +44,13 @@ function createDiffEditor({
         },
         computed: {
             saveHint() {
-                const labels = new Language(modifyState.language);
+                const labels = getLanguage();
                 return platform.isMacOS() ? "Command+S" : `${labels.save()}(Ctrl+S)`;
             }
         },
         methods: {
             show({ base, change }) {
-                const labels = new Language(modifyState.language);
+                const labels = getLanguage();
                 this.isShow = true;
                 this.renderSideBySide = cache.get(preferenceKeys.IS_DIFF_EIDTOR_SEPARATED);
                 this.originalChangeCode = change;
@@ -93,7 +92,7 @@ function createDiffEditor({
                 });
             },
             async handleCancel() {
-                const labels = new Language(modifyState.language);
+                const labels = getLanguage();
                 if (this.changeModel.getValue() === this.originalChangeCode) {
                     this.reject();
                     this.isShow = false;
@@ -126,7 +125,7 @@ function createDiffEditor({
     return defineComponent(options, function renderDiffEditor() {
         const viewModel = this;
         const createElement = viewModel._self._c;
-        const labels = new Language(modifyState.language);
+        const labels = getLanguage();
         if (!viewModel.isShow) return viewModel._e();
 
         return createElement("esc-capture", {

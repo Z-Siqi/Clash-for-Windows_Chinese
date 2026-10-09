@@ -12,8 +12,7 @@ function createCodeEditor({
     escCaptureComponent,
     navigatorComponent,
     editorLanguages,
-    Language,
-    modifyState
+    getLanguage
 } = {}) {
     const options = {
         name: "CodeView",
@@ -49,7 +48,7 @@ function createCodeEditor({
             ...Vuex.mapState({}),
             ...Vuex.mapGetters(["theme"]),
             saveHint() {
-                const labels = new Language(modifyState.language);
+                const labels = getLanguage();
                 return platform.isMacOS() ? "Command+S" : `${labels.save()}(Ctrl+S)`;
             },
             topKeys() {
@@ -65,7 +64,7 @@ function createCodeEditor({
         },
         methods: {
             show({ code, language = "yaml", readOnly = false, fontSize = 13 }) {
-                const labels = new Language(modifyState.language);
+                const labels = getLanguage();
                 this.isShow = true;
                 this.language = language;
                 this.readOnly = readOnly;
@@ -117,7 +116,7 @@ function createCodeEditor({
                 this.save();
             },
             async handleAbortClick() {
-                const labels = new Language(modifyState.language);
+                const labels = getLanguage();
                 if (this.code === this.originCode) {
                     this.cancel();
                     return;
@@ -169,7 +168,7 @@ function createCodeEditor({
     return defineComponent(options, function renderCodeEditor() {
         const viewModel = this;
         const createElement = viewModel._self._c;
-        const labels = new Language(modifyState.language);
+        const labels = getLanguage();
         if (!viewModel.isShow) return viewModel._e();
 
         return createElement("EscCapture", {

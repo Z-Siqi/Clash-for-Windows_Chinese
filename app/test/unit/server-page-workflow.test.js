@@ -68,6 +68,31 @@ test("server page update delegates to the profile downloader and selects its res
     assert.deepEqual(selected, [3]);
 });
 
+test("manual and bulk updates reapply the current profile even when select-after-update is disabled", async () => {
+    const selected = [];
+    const { workflow } = createWorkflow({ downloadProfile: async ({ url }) => ({ success: true,
+        targetIndex: url.endsWith("active") ? 1 : 0 }) });
+    const page = { ...workflow.methods, pfs: { index: 1 }, settings: { selectAfterUpdated: false },
+        profiles: [{ url: "https://fixture.test/other" }, { url: "https://fixture.test/active" }],
+        downlodingUrls: {}, switchProfile: async index => selected.push(index),
+        $delete: (target, key) => delete target[key], $alert() { assert.fail("unexpected error"); } };
+    assert.equal(await page.updateConfig({ url: "https://fixture.test/active" }), true);
+    assert.deepEqual(selected, [1]);
+    selected.length = 0;
+    await page.handleUpdateAllProfiles();
+    assert.deepEqual(selected, [1]);
+});
+
+test("an in-flight update cannot switch back to a profile the user has since left", async () => {
+    let complete;
+    const { workflow } = createWorkflow({ downloadProfile: () => new Promise(resolve => { complete = resolve; }) });
+    const page = { ...workflow.methods, pfs: { index: 1 }, switchProfile() { assert.fail("must preserve current selection"); } };
+    const download = page.updateConfig({ url: "https://fixture.test/active" });
+    page.pfs.index = 0;
+    complete({ success: true, targetIndex: 1 });
+    assert.equal(await download, true);
+});
+
 test("server page reports rejected downloads instead of silently swallowing them", async () => {
     const error = new Error("network unavailable");
     const { workflow } = createWorkflow({ downloadProfile: async () => { throw error; } });

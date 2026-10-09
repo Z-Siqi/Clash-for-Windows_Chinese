@@ -1,5 +1,7 @@
 "use strict";
 
+const { languageIndex } = require("../../core/i18n/language");
+
 function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, languageKey, renderConnectionDisconnectSettings }) {
     return function renderSettingsPage() {
                     const viewModel = this;
@@ -273,13 +275,11 @@ function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, 
                             items: ["简体中文", "English"]
                         },
                         model: {
-                            value: cache.get(languageKey) === null ? 0 : cache.get(languageKey),
+                            value: languageIndex(labels.locale()),
                             callback: function (value) {
-                                if (value != cache.get(languageKey)) {
-                                    cache.put(languageKey, value);
-                                    setLanguageIndex(value);
+                                if (value !== cache.get(languageKey)) {
                                     viewModel.$set(viewModel.settings, "language", value);
-                                    require("electron").ipcRenderer.invoke("window", "reload");
+                                    setLanguageIndex(value);
                                 }
                             },
                             expression: "settings.language"

@@ -5,7 +5,6 @@ const Vuex = require("vuex");
 const Router = require("vue-router");
 const electronPlugin = require("vue-electron");
 
-const { Language } = require("../../core/i18n/language");
 const { proxyStatus } = require("../../features/application-state/status");
 const { createRendererRouter } = require("../../features/renderer-ui/router");
 const { createRendererCapabilities } = require("./capabilities");
@@ -23,18 +22,17 @@ function startRenderer({
     processObject = process,
     electronHost
 } = {}) {
-    const modifyState = {
-        languageInProfile: -1,
+    const modifyState = Vue.observable({
         language: -1,
         isTun: false,
         isMixin: false,
         adImages: ""
-    };
+    });
     const runtime = createRendererRuntime({
-        Vue, Vuex, Language, modifyState, windowObject, staticRoot, processObject, electronHost
+        Vue, Vuex, modifyState, windowObject, staticRoot, processObject, electronHost
     });
     const components = createSharedComponents({
-        Language, modifyState, windowObject, documentObject,
+        getLanguage: runtime.getLanguage, windowObject, documentObject,
         electron: runtime.electron,
         platform: runtime.platform,
         utilities: runtime.utilities,
@@ -45,7 +43,7 @@ function startRenderer({
         providerFiles: runtime.providerFiles
     });
     const pages = createRendererPages({
-        Vuex, Language, modifyState, runtime, components, version: displayVersion()
+        Vuex, modifyState, runtime, components, version: displayVersion()
     });
     const router = createRendererRouter({ Vue, Router, pages });
     const capabilities = createRendererCapabilities({
@@ -75,7 +73,7 @@ function startRenderer({
         yaml: runtime.yaml,
         settingsRepository: runtime.settingsRepository,
         cloneDeep: runtime.lodash.cloneDeep,
-        modifyState
+        setLanguageIndex: runtime.setLanguageIndex
     });
 }
 

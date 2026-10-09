@@ -29,6 +29,33 @@ The dashboard runs with `sandbox: true`, `nodeIntegration: false` and `contextIs
 
 Architecture tests reject upward dependencies from `core/` and horizontal dependencies between features.
 
+## Localization
+
+`core/i18n/` owns the packaged i18next catalogs for `zh-CN` and `en-US`. Existing
+settings retain their numeric language values (`0` and `1`). Renderer consumers
+share a translator that reads the observable language selection on each call;
+existing page methods are thin adapters to the catalog keys. Utility workers use
+fixed translators so concurrent downloads cannot change the renderer's locale.
+
+Until an explicit preference is saved, startup uses the first operating-system
+UI language: Chinese selects Simplified Chinese; English and all unsupported
+languages select English. This automatic choice is not persisted, so later
+system-language changes remain effective. Saved profile and cache choices take
+precedence over the system default.
+
+Language selection updates the current Vue application and notifies the tray
+without reloading the window or restarting the proxy core. Sidebar entries and
+saved ordering use route paths; legacy ordering stored as either language's titles
+is still understood. Translated component labels belong in render functions or
+computed properties, rather than initial component data. Caller-supplied dialog
+content remains the caller's text.
+
+Successful configuration application advances the profile refresh revision;
+updating an active subscription also reapplies its downloaded file. Proxy-provider
+updates advance a separate proxy revision so retained proxy pages refresh without
+resetting concurrent provider operations. Reads wait for pending configuration
+application, and an older fetch cannot replace a newer proxy snapshot.
+
 Native network enumeration, local core lifecycle, controller REST operations and
 WebSocket subscriptions are owned by the main process. Renderer clients use named
 IPC operations; callers cannot supply controller endpoints, transport overrides,

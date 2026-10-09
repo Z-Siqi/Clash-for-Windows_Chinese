@@ -6,12 +6,12 @@ const yaml = require("../../main/node_modules/yaml");
 const { refreshProfile } = require("../../main/dist/electron/entry/renderer/refresh-profile");
 const { rendererLanguage } = require("./renderer-harness");
 const { homePage } = require("./home-page");
-function bundledRefresh(platform = process.platform, locale = 1) {
+function bundledRefresh(platform = process.platform, locale = 1, onProfileApplied) {
     return homePage({
         runtimeProcess: { platform, arch: process.arch },
-        refreshRendererProfile: refreshProfile,
+        refreshRendererProfile: (vm, dependencies) => refreshProfile(vm, { ...dependencies, onProfileApplied }),
         runtimeState: { languageInProfile: -1, language: locale, isTun: false, isMixin: false, adImages: "" },
-        getLanguage: () => new (rendererLanguage())(locale), fs, path, yaml,
+        getLanguage: () => (rendererLanguage())(locale), fs, path, yaml,
         childProcess: { execSync() { throw Error("No operating system commands in application tests"); } },
         profileNetworkEffects: { hasTap: async () => true, renewDhcp() {} },
         requireFromString: code => { const module = { exports: {} }; Function("module", code)(module); return module.exports; },

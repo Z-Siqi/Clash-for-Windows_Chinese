@@ -4,6 +4,7 @@ const { compareVersions, releasePage, releasesUrl } = require("../../core/releas
 const { selectReleaseAsset } = require("../../core/release/update-policy");
 
 const { shouldCloseWindowForShortcut } = require("./window-shortcut-policy");
+const { bindMenuShortcuts } = require("./menu-shortcuts");
 const { supportsScriptMode } = require("../../core/clash-core/core-capabilities");
 const { parsePort } = require("../../core/network/tcp-port");
 const {
@@ -34,7 +35,7 @@ function createHomePageOptions(dependencies) {
         yaml, sudoPrompt, validatePort, notify, showMessageBox, updateYaml, hash, sleep,
         shouldReplaceWintun, detectInterface, store, defaultPac, getPort, startPacServer,
         downloadProfile, net, runMacCommand, uuid, firewallRuleExists, getWlanInterfaces,
-        mousetrap, cron, serviceStatus, serviceActiveStatus, runtimeState, languageKey,
+        mousetrap, cron, serviceStatus, serviceActiveStatus, runtimeState,
         getLanguage, refreshRendererProfile, createRendererConfiguration, persistSelection,
         createTunRuntime, createClashCoreRuntime,
         isMacOS, isWindows, isLinux
@@ -98,7 +99,6 @@ function createHomePageOptions(dependencies) {
                 if (value === connectionStatus.CONNECTED) {
                     this.setIsLaunching({ isLaunching: false });
                     await this.refreshProfile().catch(() => {});
-                    this.addProfileRefreshTimes({ times: 1 });
                     await this.checkMixedPortConflict();
                 }
             },
@@ -189,9 +189,11 @@ function createHomePageOptions(dependencies) {
             "settings.staticSystemProxyHost"() { this.resetSystemProxySettings(); },
             "settings.enableDHCPServer"(enabled) {
                 if (enabled) {
-                    this.setMenuItems({ items: [...this.menuItems, { title: getLanguage().router(), path: "/home/router" }] });
+                    if (!this.menuItems.some(item => item.path === "/home/router")) {
+                        this.setMenuItems({ items: [...this.menuItems, { path: "/home/router" }] });
+                    }
                 } else {
-                    this.setMenuItems({ items: this.menuItems.filter(item => item.title !== "Router") });
+                    this.setMenuItems({ items: this.menuItems.filter(item => item.path !== "/home/router") });
                 }
             },
             isMixinEnable(value) {
@@ -874,10 +876,6 @@ function createHomePageOptions(dependencies) {
             setInterval(pollCoreStatus, 3000);
             await this.handlerRestartClash();
 
-            if (runtimeState.languageInProfile !== -1 && runtimeState.languageInProfile !== cache.get(languageKey)) {
-                cache.put(languageKey, runtimeState.languageInProfile);
-                electron.ipcRenderer.invoke("window", "reload");
-            }
             if (!this.settings.disableLoadingAdsLink) {
                 runtimeState.adImages = "https://raw.githubusercontent.com/Fndroid/ads/master/ads_v2.json?t=";
             } else if (cache.get(keys.AD_IMAGES) !== null && cache.get(keys.AD_IMAGES) !== "") {
@@ -922,19 +920,11 @@ function createHomePageOptions(dependencies) {
                 }
                 return undefined;
             }, "keydown");
-            const navigateToMenu = position => {
-                const index = position - 1;
-                if (index >= 0 && index < this.menuItemsWithOrder.length) {
-                    this.$router.replace({ path: this.menuItemsWithOrder[index].path }).catch(() => {});
-                }
-            };
-            for (let position = 1; position <= 9; position++) {
-                mousetrap.bind(`${position}`, () => {
-                    this.menuKeyboardClickTimes++;
-                    navigateToMenu(position);
-                    return false;
-                });
-            }
+            bindMenuShortcuts({
+                mousetrap, getMenuItems: () => this.menuItemsWithOrder,
+                onNavigate: () => { this.menuKeyboardClickTimes++; },
+                navigate: path => this.$router.replace({ path }).catch(() => {})
+            });
         }
     };
 }

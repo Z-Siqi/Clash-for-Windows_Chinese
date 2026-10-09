@@ -10,6 +10,9 @@ const { defineComponent } = require("../../main/dist/electron/features/renderer-
 const { createProxiesPage } = require("../../main/dist/electron/features/proxies/page");
 const { rendererPath } = require("../fixtures/renderer-harness");
 const { assertRendererComposition } = require("../fixtures/assert-renderer-composition");
+const { createTranslator } = require("../../main/dist/electron/core/i18n/language");
+const { createProvidersPage } = require("../../main/dist/electron/features/providers/page");
+const { createAppMutations } = require("../../main/dist/electron/features/application-state/mutations");
 
 const EmptyComponent = { render: h => h("span") };
 const labels = new Proxy({}, { get: (_target, key) => () => key === "timeout" ? "Timeout" : String(key) });
@@ -27,6 +30,96 @@ function createPage(overrides = {}) {
         ...overrides
     });
 }
+
+test("retained Proxies instances refresh after configuration apply and provider updates", async t => {
+    Vue.use(Vuex);
+    let node = "original";
+    const api = {
+        isReady: () => true,
+        getProxies: async () => ({ data: { proxies: { Auto: { type: "Selector", all: [node], history: [] } } } }),
+        getProxyProviders: async () => ({ data: { providers: {} } }),
+        updateProxyProvider: async () => { node = "provider-updated"; return { status: 204 }; }
+    };
+    const store = new Vuex.Store({ modules: { app: {
+        state: { profileRefreshTimes: 0, proxyRefreshTimes: 0, settings: {} },
+        mutations: createAppMutations({ path, connectionStatus: {} })
+    } }, getters: { clashAxiosClient: () => ({}) } });
+    const vm = new (Vue.extend({ mixins: [createPage()], computed: {
+        clashApi: () => api, settings: () => ({})
+    } }))({ store });
+    t.after(() => vm.$destroy());
+    const flush = async () => { await Vue.nextTick(); await new Promise(resolve => setImmediate(resolve)); };
+    await vm.fetchData();
+    const uid = vm._uid;
+    const visibleNode = () => vm.proxies[0].data.all[0].name;
+    assert.equal(visibleNode(), "original");
+    node = "subscription-updated";
+    store.commit("ADD_PROFILE_REFRESH_TIMES", { times: 1 });
+    await flush();
+    assert.equal(visibleNode(), "subscription-updated");
+    const providerPage = createProvidersPage({ defineComponent, Vuex, getLanguage: () => labels,
+        onProxyProviderUpdated: () => store.commit("ADD_PROXY_REFRESH_TIMES", { times: 1 }) });
+    const providers = { providers: [{ name: "remote", vehicleType: "HTTP" }],
+        updateAbortCtl: new AbortController(), clashApi: api,
+        $set: (array, index, value) => { array[index] = value; },
+        fetchSingleData: async () => { throw Error("provider detail read failed"); } };
+    await providerPage.methods.handleProviderUpdate.call(providers, 0);
+    await flush();
+    assert.equal(visibleNode(), "provider-updated");
+    assert.equal(vm._uid, uid);
+    api.updateProxyProvider = async () => ({ status: 500, data: {} });
+    await providerPage.methods.handleProviderUpdate.call(providers, 0);
+    assert.equal(store.state.app.proxyRefreshTimes, 1);
+});
+
+test("an older node fetch cannot overwrite a newer provider refresh", async () => {
+    const page = createPage();
+    let releaseOld;
+    let calls = 0;
+    const response = name => ({ data: { proxies: { Auto: { type: "Selector", all: [name], history: [] } } } });
+    const context = { clashApi: {
+        isReady: () => true,
+        getProxies: () => ++calls === 1 ? new Promise(resolve => { releaseOld = resolve; }) : Promise.resolve(response("new")),
+        getProxyProviders: async () => ({ data: { providers: {} } })
+    }, findProvider: page.methods.findProvider, delayKeyName: "delay", testingProxyNames: [], settings: {}, proxies: [] };
+    const old = page.methods.fetchData.call(context);
+    await new Promise(resolve => setImmediate(resolve));
+    await page.methods.fetchData.call(context);
+    releaseOld(response("old"));
+    await old;
+    assert.equal(context.proxies[0].data.all[0].name, "new");
+});
+
+test("timed-out proxy labels follow the current language without refetching or changing node state", async () => {
+    let language = 0;
+    const translator = createTranslator(() => language);
+    const page = createPage({ getLanguage: () => translator });
+    const context = {
+        clashApi: {
+            isReady: () => true,
+            getProxies: async () => ({ data: { proxies: {
+                Auto: { type: "Selector", now: "node", all: ["node", "provider-node"], history: [] },
+                node: { history: [{ delay: 0 }] }
+            } } }),
+            getProxyProviders: async () => ({ data: { providers: {
+                fixture: { proxies: [{ name: "provider-node", history: [{ delay: 0 }] }] }
+            } } })
+        },
+        findProvider: page.methods.findProvider,
+        delayKeyName: "delay", testingProxyNames: [], settings: {}, proxies: []
+    };
+    await page.methods.fetchData.call(context);
+    const nodes = context.proxies.find(group => group.name === "Auto").data.all;
+    assert.deepEqual(nodes.map(node => node.latency), [0, 0]);
+    for (const node of nodes) assert.equal(page.methods.checkBtnText(node), translator.t("timeout"));
+    language = 1;
+    for (const node of nodes) {
+        assert.equal(page.methods.checkBtnText(node), "Timeout");
+        assert.equal(node.latency, 0);
+    }
+    assert.equal(page.methods.checkBtnText({ latency: -1 }), "-- ms");
+    assert.equal(page.methods.checkBtnText({ latency: "30 ms" }), "30 ms");
+});
 
 test("Proxies page: extracted owner builds proxy groups and provider-backed nodes", async () => {
     const page = createPage();

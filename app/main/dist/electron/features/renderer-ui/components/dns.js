@@ -33,7 +33,7 @@ function flattenDnsRecords(records, recordTypes) {
     ]);
 }
 
-function createDns({ Vuex, escCaptureComponent, Language, modifyState } = {}) {
+function createDns({ Vuex, escCaptureComponent, getLanguage } = {}) {
     const options = {
         components: { EscCapture: escCaptureComponent },
         name: "DNSView",
@@ -129,7 +129,7 @@ function createDns({ Vuex, escCaptureComponent, Language, modifyState } = {}) {
                 this.server = "";
             },
             async handleSearch() {
-                const labels = new Language(modifyState.language);
+                const labels = getLanguage();
                 this.error = "";
                 if (!this.searchHost) {
                     this.error = labels.pleaseInputDomain();
@@ -156,7 +156,7 @@ function createDns({ Vuex, escCaptureComponent, Language, modifyState } = {}) {
     return defineComponent(options, function renderDns() {
         const viewModel = this;
         const createElement = viewModel._self._c;
-        const labels = new Language(modifyState.language);
+        const labels = getLanguage();
         if (!viewModel.isShow) return viewModel._e();
 
         const renderRecordGrid = (title, records) => records.length > 0

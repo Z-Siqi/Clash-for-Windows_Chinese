@@ -6,11 +6,12 @@ const { createAppMutations } = require("../../features/application-state/mutatio
 const { createAppActions } = require("../../features/application-state/actions");
 const { createSettingsRepository } = require("../../features/settings/settings-repository");
 const { createProfilesRepository } = require("../../features/profiles/profiles-repository");
+const { initialLanguageIndex } = require("../../core/i18n/language");
 
 function createRendererAppModule(deps) {
-    const { cache, keys, modifyState, ipcRenderer, labels } = deps;
+    const { cache, keys, modifyState, ipcRenderer } = deps;
     if (modifyState.language === -1) {
-        modifyState.language = cache.get("language") == null ? 0 : cache.get("language");
+        modifyState.language = initialLanguageIndex(cache.get("language"), deps.systemLanguage);
         ipcRenderer.invoke("cfw-language", modifyState.language);
         modifyState.isTun = cache.get(keys.IS_TUN);
         modifyState.isMixin = cache.get(keys.IS_MIXIN);
@@ -54,7 +55,7 @@ function createRendererAppModule(deps) {
         };
     }
     return {
-        state: createAppState({ ...deps, labels }),
+        state: createAppState(deps),
         getters: createAppGetters(deps), mutations, actions: createAppActions(deps)
     };
 }

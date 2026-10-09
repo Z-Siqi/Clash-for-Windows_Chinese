@@ -3,7 +3,7 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const path = require("node:path");
-const { Language, language } = require("../../main/dist/electron/core/i18n/language");
+const { createTranslator } = require("../../main/dist/electron/core/i18n/language");
 const { removeEmoji } = require("../../main/dist/electron/core/text/remove-emoji");
 const { getRendererTrayIcon } = require("../../main/dist/electron/features/tray/renderer-tray-icon");
 const { createAutoLaunch, createLoginItemRuntime } = require("../../main/dist/electron/features/application/set-auto-launch");
@@ -33,14 +33,14 @@ test("platform identities preserve supported packaged target comparisons", () =>
     assert.equal(unknown.isLinux(), false);
 });
 
-test("language retains legacy defaults, fallback and every page translation method", () => {
-    assert.equal(new Language(null).locale(), "zh-cn");
-    assert.equal(new Language(0).feedback(), "关于");
-    assert.equal(new Language(1).feedback(), "Feedback");
-    assert.equal(language(-1, "en", "cn"), "en");
-    for (const key of Object.getOwnPropertyNames(Language.prototype).filter(key => key !== "constructor")) {
+test("i18n retains legacy defaults and every page translation method", () => {
+    assert.equal(createTranslator(null).locale(), "zh-cn");
+    assert.equal(createTranslator(0).feedback(), "关于");
+    assert.equal(createTranslator(1).feedback(), "Feedback");
+    assert.equal(createTranslator(-1).locale(), "en-us");
+    for (const key of Object.keys(createTranslator()).filter(key => key !== "t")) {
         for (const locale of [0, 1]) {
-            const value = new Language(locale)[key]();
+            const value = createTranslator(locale)[key]();
             assert.ok(typeof value === "string" || Array.isArray(value), `${key}/${locale}`);
         }
     }

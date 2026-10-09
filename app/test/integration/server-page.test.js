@@ -98,7 +98,7 @@ test("Server page: rule editor emits MATCH rules and applies serialized rules", 
     };
     RuleEditor.methods.applyRules.call(context);
     assert.deepEqual(JSON.parse(writes[0][1]).rules, ["DOMAIN,example.test,DIRECT", "MATCH,REJECT"]);
-    assert.equal(context.saveBtnText, "save");
+    assert.equal(context.saveBtnText, null);
     assert.equal(RuleEditor._scopeId, "data-v-459dde1e");
     alter.$destroy();
 });

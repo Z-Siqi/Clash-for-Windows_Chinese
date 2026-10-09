@@ -1,6 +1,6 @@
 "use strict";
 
-function installSandboxedRenderer({ window, fs, path, crypto, pathToFileURL, dirname, staticRoot, platform, arch, cwd }) {
+function installSandboxedRenderer({ window, fs, path, crypto, pathToFileURL, dirname, staticRoot, platform, arch, cwd, systemLanguage = "en" }) {
     const packaged = path.join(dirname, "generated");
     const generated = fs.existsSync(path.join(packaged, "renderer", "manifest.json")) ? packaged : path.resolve(dirname, "../../../build/generated");
     window.webContents.on("dom-ready", async () => {
@@ -9,7 +9,7 @@ function installSandboxedRenderer({ window, fs, path, crypto, pathToFileURL, dir
             const manifest = JSON.parse(fs.readFileSync(path.join(generated, "renderer", "manifest.json"), "utf8"));
             if (crypto.createHash("sha256").update(renderer).digest("hex") !== manifest.sha256) throw new Error("Renderer asset integrity check failed");
             const monaco = fs.readFileSync(path.join(generated, "monaco", "monaco.js"), "utf8");
-            const metadata = { platform, arch, cwd, staticRoot: path.resolve(staticRoot),
+            const metadata = { platform, arch, cwd, systemLanguage, staticRoot: path.resolve(staticRoot),
                 monacoBase: pathToFileURL(path.join(generated, "monaco") + path.sep).href,
                 rendererBase: pathToFileURL(dirname + path.sep).href };
             const bootstrap = `(() => {

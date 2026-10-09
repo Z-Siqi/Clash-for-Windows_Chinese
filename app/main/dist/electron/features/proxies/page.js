@@ -3,6 +3,9 @@
 const { supportsScriptMode } = require("../../core/clash-core/core-capabilities");
 const { readStableProfileState } = require("../../core/network/profile-refresh-state");
 
+// Store the core's zero-delay outcome, so translated text never becomes node state.
+const TIMEOUT_LATENCY = 0;
+
 function createProxiesPage({
     defineComponent,
     Hint,
@@ -19,6 +22,7 @@ function createProxiesPage({
     scheduler,
     getLanguage
 }) {
+    const latestFetch = new WeakMap();
     const ProxyModeSwitcher = defineComponent({
         components: { Hint },
         props: ["mode", "scriptModeVisible"],
@@ -105,6 +109,7 @@ function createProxiesPage({
             profileRefreshTimes() {
                 this.fetchData();
             },
+            proxyRefreshTimes() { this.fetchData(); },
             proxyBlinkIndex() {
                 setTimeout(() => { this.proxyBlinkIndex = -1; }, 300);
             },
@@ -123,6 +128,7 @@ function createProxiesPage({
                 confData: state => state.app.confData,
                 clashAxiosFlyingRequestCount: state => state.app.clashAxiosFlyingRequestCount,
                 profileRefreshTimes: state => state.app.profileRefreshTimes,
+                proxyRefreshTimes: state => state.app.proxyRefreshTimes,
                 currentMode: state => state.app.mode,
                 currentProfilePayload: state => state.app.currentProfilePayload,
                 scriptModeVisible: state => supportsScriptMode(state.app.settings.proxyCore)
@@ -214,6 +220,7 @@ function createProxiesPage({
             },
             checkBtnText(proxy) {
                 if (proxy.latency === -1) return "-- ms";
+                if (proxy.latency === TIMEOUT_LATENCY) return getLanguage().timeout();
                 return proxy.latency || getLanguage().check();
             },
             async handleSingleSpeedtest(group, proxy) {
@@ -225,7 +232,7 @@ function createProxiesPage({
                     if (currentProxy) {
                         currentProxy.latency = latency === -1
                             ? -1
-                            : latency + (/\d/.test(latency) ? " ms" : getLanguage().timeout());
+                            : Number(latency) > 0 ? `${latency} ms` : TIMEOUT_LATENCY;
                     }
                 };
 
@@ -334,9 +341,9 @@ function createProxiesPage({
                             latencyUrl || "https://www.gstatic.com/generate_204",
                             proxy.provider
                         );
-                        proxy.latency = latency > 0 ? `${latency} ms` : getLanguage().timeout();
+                        proxy.latency = latency > 0 ? `${latency} ms` : TIMEOUT_LATENCY;
                     } catch (_error) {
-                        proxy.latency = getLanguage().timeout();
+                        proxy.latency = TIMEOUT_LATENCY;
                     }
                 });
             },
@@ -361,12 +368,17 @@ function createProxiesPage({
                 return [null, {}];
             },
             async fetchData() {
-                if (!this.clashApi.isReady()) return;
+                const request = {};
+                latestFetch.set(this, request);
+                const api = this.clashApi;
+                if (!api.isReady()) return;
                 const maximumDelay = Number.MAX_SAFE_INTEGER;
-                const [proxyResponse, providerResponse] = await readStableProfileState(this.clashApi, () => Promise.all([
-                    this.clashApi.getProxies(),
-                    this.clashApi.getProxyProviders({ validateStatus: () => true })
+                const [proxyResponse, providerResponse] = await readStableProfileState(api, () => Promise.all([
+                    api.getProxies(),
+                    api.getProxyProviders({ validateStatus: () => true })
                 ]));
+                // A provider update can finish while an older controller read is still in flight.
+                if (latestFetch.get(this) !== request) return;
                 const providers = providerResponse.data?.providers || {};
                 const proxyData = proxyResponse.data.proxies;
                 const globalOrder = proxyData.GLOBAL?.all || Object.keys(proxyData);
@@ -384,7 +396,7 @@ function createProxiesPage({
                             return {
                                 name: proxyName,
                                 provider,
-                                latency: history.length ? (delay === 0 ? getLanguage().timeout() : `${delay} ms`) : "",
+                                latency: history.length ? (delay === 0 ? TIMEOUT_LATENCY : `${delay} ms`) : "",
                                 delay: delay || maximumDelay,
                                 udp: providerProxy.udp || false,
                                 alive: providerProxy.alive === undefined || providerProxy.alive
@@ -397,7 +409,7 @@ function createProxiesPage({
                             provider: null,
                             latency: this.testingProxyNames.includes(proxyName)
                                 ? -1
-                                : history.length ? (delay === 0 ? getLanguage().timeout() : `${delay} ms`) : null,
+                                : history.length ? (delay === 0 ? TIMEOUT_LATENCY : `${delay} ms`) : null,
                             delay: delay || maximumDelay,
                             udp: directProxy.udp || false,
                             alive: directProxy.alive === undefined || directProxy.alive
@@ -447,7 +459,7 @@ function createProxiesPage({
             directives: [{
                 name: "show",
                 rawName: "v-show",
-                value: (!viewModel.hideTimeoutSecNames.includes(group.name) || labels.timeout() !== proxy.latency)
+                value: (!viewModel.hideTimeoutSecNames.includes(group.name) || proxy.latency !== TIMEOUT_LATENCY)
                     && viewModel.filterKeywordReg.test(proxy.name)
             }],
             key: proxy.name + group.name + proxyIndex,
@@ -480,8 +492,8 @@ function createProxiesPage({
                 viewModel._v(" "),
                 proxy.latency === -1 ? createElement("div", { staticClass: "time" }, [viewModel._v("- ms")]) : createElement("div", {
                     class: {
-                        offline: labels.timeout() === proxy.latency,
-                        online: ![labels.timeout(), -1, null, undefined, ""].includes(proxy.latency),
+                        offline: proxy.latency === TIMEOUT_LATENCY,
+                        online: ![TIMEOUT_LATENCY, -1, null, undefined, ""].includes(proxy.latency),
                         time: true
                     },
                     on: {

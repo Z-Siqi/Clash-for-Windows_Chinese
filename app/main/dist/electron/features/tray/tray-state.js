@@ -2,6 +2,7 @@
 
 const { normalizeCoreType } = require("../../core/clash-core/core-selection");
 const { supportsScriptMode } = require("../../core/clash-core/core-capabilities");
+const { languageIndex } = require("../../core/i18n/language");
 
 const MODE_IDS = ["global", "rule", "direct", "script"];
 
@@ -57,7 +58,8 @@ function registerTrayStateIpc({
         }
     });
     ipcMain.handle("cfw-language", function(_event, language) {
-        state.language = language;
+        state.language = languageIndex(language);
+        refreshMenu();
     });
     ipcMain.on("core-type-changed", function(_event, coreType) {
         state.coreType = normalizeCoreType(coreType);

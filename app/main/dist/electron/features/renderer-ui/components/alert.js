@@ -2,7 +2,7 @@
 
 const { defineComponent } = require("../component");
 
-function createAlert({ Vuex, escCaptureComponent, Language, modifyState } = {}) {
+function createAlert({ Vuex, escCaptureComponent, getLanguage } = {}) {
     const options = {
         components: { EscCapture: escCaptureComponent },
         name: "AlertView",
@@ -49,7 +49,7 @@ function createAlert({ Vuex, escCaptureComponent, Language, modifyState } = {}) 
     return defineComponent(options, function renderAlert() {
         const viewModel = this;
         const createElement = viewModel._self._c;
-        const labels = new Language(modifyState.language);
+        const labels = getLanguage();
         if (!viewModel.isShow) return viewModel._e();
 
         return createElement("EscCapture", {

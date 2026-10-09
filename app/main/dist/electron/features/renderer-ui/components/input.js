@@ -2,8 +2,8 @@
 
 const { defineComponent } = require("../component");
 
-function createInput({ Vuex, escCaptureComponent, Language, modifyState } = {}) {
-    const labels = new Language(modifyState.language);
+function createInput({ Vuex, escCaptureComponent, getLanguage } = {}) {
+    const labels = getLanguage();
     const options = {
         components: { EscCapture: escCaptureComponent },
         name: "InputView",
@@ -17,7 +17,7 @@ function createInput({ Vuex, escCaptureComponent, Language, modifyState } = {}) 
                 hint: "",
                 resolve: null,
                 reject: null,
-                confirmText: labels.ok()
+                confirmText: null
             };
         },
         watch: {},
@@ -25,7 +25,7 @@ function createInput({ Vuex, escCaptureComponent, Language, modifyState } = {}) 
             ...Vuex.mapGetters(["theme"])
         },
         methods: {
-            show({ data = [], title = "", hint = "", confirmText = labels.ok() }) {
+            show({ data = [], title = "", hint = "", confirmText = null }) {
                 this.error = "";
                 this.isShow = true;
                 this.data = data;
@@ -142,7 +142,7 @@ function createInput({ Vuex, escCaptureComponent, Language, modifyState } = {}) 
             createElement("div", { staticClass: "card-btns" }, [
                 createElement("div", { staticClass: "btn btn-cancel", on: { click: viewModel.handleCancel } }, [viewModel._v(labels.cancel())]),
                 viewModel._v(" "),
-                createElement("div", { staticClass: "btn btn-ok", on: { click: viewModel.handleDone } }, [viewModel._v(viewModel._s(viewModel.confirmText))])
+                createElement("div", { staticClass: "btn btn-ok", on: { click: viewModel.handleDone } }, [viewModel._v(viewModel._s(viewModel.confirmText == null ? labels.ok() : viewModel.confirmText))])
             ])
         ])])]);
     }, "15034054");

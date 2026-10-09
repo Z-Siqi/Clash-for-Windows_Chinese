@@ -2,6 +2,12 @@
 
 const { supportsScriptMode } = require("../../core/clash-core/core-capabilities");
 
+const SECTION_KEYS = [
+    "security", "general", "appearance", "sysProxy", "mixin", "proxies", "connections",
+    "providers", "outbound", "childProcesses", "profiles", "logs", "ssid", "actions",
+    "shortcut", "settingsEditor", "cache", "experimentalFeatures"
+];
+
 function createSettingsPageOptions({
     Vuex,
     components,
@@ -28,11 +34,16 @@ function createSettingsPageOptions({
             return {
                 scrollTop: 0,
                 fontFamilyPlaceholder: isMacOS() ? "PingFang SC" : isWindows() ? "Microsoft Yahei" : "system-ui",
-                isEditingExternal: false,
-                sections: []
+                isEditingExternal: false
             };
         },
         computed: {
+            sections() {
+                const labels = getLanguage();
+                // The experimental section currently renders only macOS DHCP controls.
+                const keys = this.isMacOS ? SECTION_KEYS : SECTION_KEYS.filter(key => key !== "experimentalFeatures");
+                return keys.map(key => labels[key]());
+            },
             ...Vuex.mapState({
                 detectedInterfaceName: state => state.app.detectedInterfaceName,
                 clashPath: state => state.app.clashPath,
@@ -232,10 +243,6 @@ function createSettingsPageOptions({
                 await updateYaml(path.join(this.clashPath, "config.yaml"), "secret", secret);
                 this.reloadElectron();
             }
-        },
-        mounted() {
-            const sectionElements = this.$refs["mixin-scroll-content"].children;
-            this.sections = [...sectionElements].map(section => section.children[0].innerText);
         },
         beforeRouteLeave(_route, _previousRoute, next) { next(); }
     };

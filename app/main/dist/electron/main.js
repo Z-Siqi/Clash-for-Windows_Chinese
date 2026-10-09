@@ -36,6 +36,7 @@ const { registerClashClientInfo } = require("./entry/main/register-clash-client-
 const { registerCoreIpc } = require("./entry/main/register-core-ipc");
 const { installSandboxedRenderer } = require("./entry/main/load-sandboxed-renderer");
 const { createAuthorizedIpcMain } = require("./core/native/authorized-ipc");
+const { getSystemLanguage } = require("./core/i18n/language");
 
 function selectLanguage(language, chinese, english) {
     return language === 0 ? chinese : english;
@@ -105,7 +106,8 @@ function startApplication() {
             dirname: __dirname,
             initializeRenderer: window => installSandboxedRenderer({
                 window, fs, path, crypto: require("crypto"), pathToFileURL: require("url").pathToFileURL,
-                dirname: __dirname, staticRoot, platform: process.platform, arch: process.arch, cwd: process.cwd()
+                dirname: __dirname, staticRoot, platform: process.platform, arch: process.arch, cwd: process.cwd(),
+                systemLanguage: getSystemLanguage(electron.app)
             }),
             staticRoot,
             isLinux,

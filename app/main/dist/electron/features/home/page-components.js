@@ -304,7 +304,7 @@ function createHomePageComponents({
             tabs: {
                 get() { return this.menuItemsWithOrder; },
                 set(value) {
-                    cache.put(keys.MENU_ITEM_ORDER, value.map(tab => tab.title));
+                    cache.put(keys.MENU_ITEM_ORDER, value.map(tab => tab.path));
                     this.setMenuItems({ items: value });
                 }
             }
@@ -341,7 +341,7 @@ function createHomePageComponents({
                 attrs: { animation: 200, "delay-on-touch-only": true, disabled: !viewModel.isAllowSort, "drag-class": "drag-item", "ghost-class": "ghost-item" },
                 model: { value: viewModel.tabs, callback(value) { viewModel.tabs = value; }, expression: "tabs" }
             }, viewModel._l(viewModel.tabs, (tab, index) => createElement("li", {
-                key: index,
+                key: tab.path,
                 staticClass: "item",
                 class: viewModel.itemStyle(index),
                 on: { click() { return viewModel.itemClick(tab); } }
@@ -353,7 +353,7 @@ function createHomePageComponents({
                 viewModel._v(" "),
                 createElement("span", [viewModel._v(viewModel._s(tab.title))]),
                 viewModel._v(" "),
-                viewModel.profileUpdateFailedURLs.length > 0 && labels.profiles() === tab.title ? createElement("hint", {
+                viewModel.profileUpdateFailedURLs.length > 0 && tab.path === "/home/server" ? createElement("hint", {
                     attrs: { hint: "At least one profile failed to update while dashboard is closed.", position: "right" }
                 }, [createElement("span", { staticClass: "icon text-sm text-[color:var(--proxy-item-latency-offline-c)]" }, [viewModel._v("error")])]) : viewModel._e()
             ], 1)])), 0),

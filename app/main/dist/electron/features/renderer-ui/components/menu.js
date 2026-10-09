@@ -2,7 +2,7 @@
 
 const { defineComponent } = require("../component");
 
-function createMenu({ escCaptureComponent, Language, modifyState } = {}) {
+function createMenu({ escCaptureComponent, getLanguage } = {}) {
     const options = {
         name: "MenuView",
         props: [],
@@ -69,7 +69,7 @@ function createMenu({ escCaptureComponent, Language, modifyState } = {}) {
     return defineComponent(options, function renderMenu() {
         const viewModel = this;
         const createElement = viewModel._self._c;
-        const labels = new Language(modifyState.language);
+        const labels = getLanguage();
         if (!viewModel.isShow) return viewModel._e();
 
         return createElement("EscCapture", {
