@@ -3,13 +3,14 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const release = require("../../app/main/dist/electron/core/release/release-info");
+const { writeAtomic } = require("../../app/main/dist/electron/core/storage/atomic-file");
 const repositoryRoot = path.resolve(__dirname, "../..");
 
-function synchronizeRelease(root = repositoryRoot, info = release, check = false) {
+function synchronizeRelease(root = repositoryRoot, info = release, check = false, fileSystem = fs) {
     const outputs = new Map();
     for (const relative of ["app/main/package.json", "app/main/package-lock.json"]) {
         const file = path.join(root, relative);
-        const original = fs.readFileSync(file, "utf8");
+        const original = fileSystem.readFileSync(file, "utf8");
         const manifest = JSON.parse(original);
         manifest.version = info.config.version;
         if (manifest.packages?.[""]) manifest.packages[""].version = info.config.version;
@@ -17,7 +18,7 @@ function synchronizeRelease(root = repositoryRoot, info = release, check = false
         outputs.set(file, `${JSON.stringify(manifest, null, indent)}\n`);
     }
     const feedPath = path.join(root, "update");
-    const oldFeed = JSON.parse(fs.readFileSync(feedPath, "utf8"));
+    const oldFeed = JSON.parse(fileSystem.readFileSync(feedPath, "utf8"));
     outputs.set(feedPath, `${JSON.stringify(info.createUpdateFeed({ body: oldFeed.body }), null, 2)}\n`);
     const installerName = info.assetName("win-x64").replace(/\.exe$/, "");
     const defines = {
@@ -35,10 +36,16 @@ function synchronizeRelease(root = repositoryRoot, info = release, check = false
         + Object.entries(defines).map(([key, value]) => `#define ${key} "${value}"`).join("\n") + "\n");
     const changed = [];
     for (const [file, content] of outputs) {
-        const previous = fs.existsSync(file) ? fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n") : null;
+        let previous;
+        try { previous = fileSystem.readFileSync(file, "utf8").replace(/\r\n/g, "\n"); }
+        catch (error) {
+            if (error.code !== "ENOENT") throw error;
+            previous = null;
+        }
         if (previous === content) continue;
         changed.push(path.relative(root, file));
-        if (!check) fs.writeFileSync(file, content);
+        // Rename a complete, exclusively created sibling; never truncate a re-opened target.
+        if (!check) writeAtomic({ fs: fileSystem, path, file, content });
     }
     if (check && changed.length) throw new Error(`Release metadata is out of date: ${changed.join(", ")}; run npm run release:sync`);
     return changed;
