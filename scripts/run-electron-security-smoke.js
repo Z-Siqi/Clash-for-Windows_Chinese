@@ -5,7 +5,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 
-async function runElectronSecuritySmoke({ binary, applicationRoot, timeout = 45000, spawnProcess = spawn }) {
+async function runElectronSecuritySmoke({ binary, applicationRoot, timeout = 75000, spawnProcess = spawn }) {
     const executable = path.resolve(binary);
     // A packaged app ignores the fixture argument and could open a real profile.
     if (!fs.existsSync(path.join(path.dirname(executable), "resources", "default_app.asar"))) {

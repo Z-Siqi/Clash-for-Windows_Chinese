@@ -15,7 +15,7 @@ These rules apply to the whole repository. Preserve user work and keep changes s
 - Inspect `git status --short` before editing. Never discard, relocate, stage, or overwrite unrelated user changes.
 - Do not use destructive Git commands, mass formatting, or whole-bundle regeneration.
 - Keep executable entries readable and free of numeric webpack module IDs or loaders.
-- Prefer extracting testable behavior over adding more inline bundle logic. Remove the replaced inline owner so behavior is not duplicated.
+- Put behavior in testable modules and keep executable entries limited to adaptation and composition. Each behavior must have one owner.
 - Add short comments for non-obvious runtime constraints. Do not create session journals or temporary refactor narratives in `docs`.
 - Do not edit vendored `node_modules` unless the task explicitly requires a pinned vendor patch.
 - Never commit generated `app/output`, logs, user profiles, secrets, temporary data, or local settings.
@@ -30,7 +30,7 @@ These rules apply to the whole repository. Preserve user work and keep changes s
 
 ## Product invariants
 
-- Legacy Clash remains supported and is the default; Mihomo is an explicit alternative.
+- Mihomo is the default for new settings; legacy Clash remains supported and explicit saved core choices must be preserved.
 - Both cores use the same CFW data directory. Always pass that directory explicitly when starting a core, including Service Mode.
 - Core selection, firewall rules, service allow-lists, and packaged filenames must agree for every supported platform and architecture.
 - User-entered TCP ports are integers in `1..65535`. A manual mixed-port choice must not be silently replaced by random-port startup behavior.

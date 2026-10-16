@@ -134,6 +134,7 @@ function startApplication() {
             shell: electron.shell,
             clashApi,
             clashClientRegistry,
+            unsafeUrlPolicy,
             staticRoot,
             getMainWindow: () => mainWindow
         });

@@ -33,9 +33,9 @@ test("getters select both packaged cores, theme and controller clients", () => {
     state.settings = { systemTheme: true }; state.shouldUseDarkTheme = true; assert.equal(getters.theme(state), "dark");
     assert.deepEqual(getters.menuItemsWithOrder(state).map(item => item.title), ["B", "A"]);
     assert.equal(state.menuItems[0].title, "A");
-    assert.match(getters.clashBinaryPath(state, { filesPath: "files" }), /clash-win64.exe$/);
-    state.settings.proxyCore = "mihomo";
     assert.match(getters.clashBinaryPath(state, { filesPath: "files" }), /mihomo-windows-amd64.exe$/);
+    state.settings.proxyCore = "clash";
+    assert.match(getters.clashBinaryPath(state, { filesPath: "files" }), /clash-win64.exe$/);
     getters.clashAxiosClient(state, { controllerPort: 12345, secret: "" });
     assert.equal(clientOptions.baseURL, "http://127.0.0.1:12345/");
 });

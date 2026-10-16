@@ -15,6 +15,12 @@ test("the production browser renderer manifest excludes native transports and ca
     assert.equal(manifest.builder, "esbuild@0.28.2");
     assert.ok(manifest.inputs.some(value => value.endsWith("dist/electron/renderer.js")));
     for (const file of manifest.inputs) assert.doesNotMatch(file, /node_modules\/(got|ws|electron-log|@vscode\/sudo-prompt)\//);
+    // Vue 2's template-parser advisory does not apply to this runtime-only build.
+    assert.ok(manifest.inputs.some(file => file.endsWith("vue/dist/vue.runtime.common.prod.js")));
+    for (const file of manifest.inputs) {
+        assert.doesNotMatch(file, /node_modules\/(?:@vue\/compiler-sfc|vue-template-compiler|source-map-js)\//);
+        assert.doesNotMatch(file, /vue\/dist\/vue\.common(?:\.prod)?\.js$/);
+    }
     const preload = fs.readFileSync(path.join(root, "app/main/dist/electron/preload.js"), "utf8");
     assert.deepEqual(Array.from(preload.matchAll(/require\("([^"]+)"\)/g), match => match[1]), ["electron"]);
     assert.doesNotMatch(preload, /exposeInMainWorld/);

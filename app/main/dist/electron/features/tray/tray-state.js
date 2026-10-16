@@ -1,6 +1,6 @@
 "use strict";
 
-const { normalizeCoreType } = require("../../core/clash-core/core-selection");
+const { DEFAULT_CORE_TYPE, normalizeCoreType } = require("../../core/clash-core/core-selection");
 const { supportsScriptMode } = require("../../core/clash-core/core-capabilities");
 const { languageIndex } = require("../../core/i18n/language");
 
@@ -16,7 +16,7 @@ function createTrayState() {
         menuStyle: 0,
         isShowDelayIcon: false,
         language: 0,
-        coreType: "clash"
+        coreType: DEFAULT_CORE_TYPE
     };
 }
 

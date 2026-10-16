@@ -11,6 +11,14 @@ var ArraySet = require('./array-set').ArraySet;
 var base64VLQ = require('./base64-vlq');
 var quickSort = require('./quick-sort').quickSort;
 
+// Upper bound for a section's `offset.line` in an indexed source map. A flat
+// map spends one ';' per generated line, so a tiny indexed map with a huge
+// offset.line turns into a huge amount of work and memory once its mappings
+// are copied into a SourceMapGenerator (CVE-2026-93749). Ten million lines is
+// far beyond any real generated file. Columns are VLQ-encoded as deltas and
+// don't amplify, so they only need to be valid integers.
+var MAX_SECTION_OFFSET_LINE = 1e7;
+
 function SourceMapConsumer(aSourceMap, aSourceMapURL) {
   var sourceMap = aSourceMap;
   if (typeof aSourceMap === 'string') {
@@ -935,6 +943,7 @@ function IndexedSourceMapConsumer(aSourceMap, aSourceMapURL) {
     line: -1,
     column: 0
   };
+  var maxOffsetLine = 0;
   this._sections = sections.map(function (s) {
     if (s.url) {
       // The url field will require support for asynchronicity.
@@ -945,11 +954,31 @@ function IndexedSourceMapConsumer(aSourceMap, aSourceMapURL) {
     var offsetLine = util.getArg(offset, 'line');
     var offsetColumn = util.getArg(offset, 'column');
 
+    if (!isValidOffset(offsetLine) || !isValidOffset(offsetColumn)) {
+      throw new Error('Section offset line and column must be non-negative integers.');
+    }
+    if (offsetLine > MAX_SECTION_OFFSET_LINE) {
+      throw new Error('Section offset line must not exceed ' + MAX_SECTION_OFFSET_LINE + '.');
+    }
+
     if (offsetLine < lastOffset.line ||
         (offsetLine === lastOffset.line && offsetColumn < lastOffset.column)) {
       throw new Error('Section offsets must be ordered and non-overlapping.');
     }
     lastOffset = offset;
+
+    var consumer = new SourceMapConsumer(util.getArg(s, 'map'), aSourceMapURL);
+
+    // Offsets of a nested indexed map add up with this one, so apply the
+    // bound to the total.
+    var totalOffsetLine = offsetLine + (consumer._maxOffsetLine || 0);
+    if (totalOffsetLine > MAX_SECTION_OFFSET_LINE) {
+      throw new Error('Section offset line must not exceed ' + MAX_SECTION_OFFSET_LINE +
+                      ', including offsets of nested sections.');
+    }
+    if (totalOffsetLine > maxOffsetLine) {
+      maxOffsetLine = totalOffsetLine;
+    }
 
     return {
       generatedOffset: {
@@ -958,9 +987,24 @@ function IndexedSourceMapConsumer(aSourceMap, aSourceMapURL) {
         generatedLine: offsetLine + 1,
         generatedColumn: offsetColumn + 1
       },
-      consumer: new SourceMapConsumer(util.getArg(s, 'map'), aSourceMapURL)
+      consumer: consumer
     }
   });
+
+  // The largest offset.line of any section, including nested sections.
+  this._maxOffsetLine = maxOffsetLine;
+}
+
+/**
+ * Section offsets come from untrusted input and are used as line/column
+ * numbers, so only accept non-negative safe integers (rejects NaN, Infinity,
+ * strings, fractions, etc).
+ */
+function isValidOffset(aValue) {
+  return typeof aValue === 'number' &&
+    aValue >= 0 &&
+    aValue <= 9007199254740991 && // Number.MAX_SAFE_INTEGER
+    Math.floor(aValue) === aValue;
 }
 
 IndexedSourceMapConsumer.prototype = Object.create(SourceMapConsumer.prototype);
@@ -978,8 +1022,12 @@ Object.defineProperty(IndexedSourceMapConsumer.prototype, 'sources', {
   get: function () {
     var sources = [];
     for (var i = 0; i < this._sections.length; i++) {
-      for (var j = 0; j < this._sections[i].consumer.sources.length; j++) {
-        sources.push(this._sections[i].consumer.sources[j]);
+      // Read the getter once per section: for a nested indexed map it is
+      // itself this getter, and re-reading it per item is exponential in the
+      // nesting depth (CVE-2026-93749).
+      var sectionSources = this._sections[i].consumer.sources;
+      for (var j = 0; j < sectionSources.length; j++) {
+        sources.push(sectionSources[j]);
       }
     }
     return sources;

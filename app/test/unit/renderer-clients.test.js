@@ -43,6 +43,8 @@ assert.equal(axiosResult, "axios-client");
 assert.deepEqual(axiosConfig, {
     baseURL: "http://127.0.0.1:9090/",
     timeout: 5000,
+    proxy: false,
+    maxRedirects: 0,
     headers: { Authorization: "Bearer secret" }
 });
 assert.equal(
@@ -64,6 +66,8 @@ const gotResult = createGotClient({
 assert.equal(gotResult, "got-client");
 assert.deepEqual(gotConfig, {
     baseUrl: "http://127.0.0.1:9091",
+    cache: false,
+    followRedirect: false,
     headers: { Authorization: "Bearer got-secret" }
 });
 

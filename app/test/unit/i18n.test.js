@@ -32,10 +32,17 @@ test("i18n preserves every original message and array in both packaged catalogs"
         "en-US": "197485eb13322bf35d48cbcba405828e21b5d420ae2ca24385e30e2c88b79170"
     };
     const chinese = require("../../main/dist/electron/core/i18n/locales/zh-CN.json");
+    const securityMessages = new Set([
+        "trustedCertificateOrigins", "trustedCertificateOriginsDescribe", "profileDownloadExceptions", "profileDownloadExceptionsDescribe",
+        "allowRemoteProfileParsers", "allowRemoteProfileParsersDescribe", "confirmRemoteProfileParsers", "invalidSecuritySetting",
+        "allowHttpExternalLinks", "allowHttpExternalLinksDescribe", "confirmHttpExternalLinks", "profileProcessingTimedOut"
+    ]);
     for (const [locale, hash] of Object.entries(hashes)) {
         const catalog = require(`../../main/dist/electron/core/i18n/locales/${locale}.json`);
-        // These fingerprints were captured from the removed Language class before migration.
-        assert.equal(createHash("sha256").update(JSON.stringify(catalog)).digest("hex"), hash);
+        // Preserve the migration fingerprints while admitting these explicit additions.
+        const original = Object.fromEntries(Object.entries(catalog).filter(([key]) => !securityMessages.has(key)));
+        assert.equal(createHash("sha256").update(JSON.stringify(original)).digest("hex"), hash);
+        for (const key of securityMessages) assert.ok(typeof catalog[key] === "string" && catalog[key].length > 0);
         assert.deepEqual(Object.keys(catalog), Object.keys(chinese));
         const labels = createTranslator(locale);
         for (const [key, value] of Object.entries(catalog)) {

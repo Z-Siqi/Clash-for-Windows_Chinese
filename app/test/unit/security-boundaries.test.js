@@ -72,6 +72,41 @@ test("certificate exceptions reject foreign frames and match only exact HTTPS UR
     assert.equal(policy.allowsCertificate(url, {}), false);
 });
 
+test("invalid or removed certificate exceptions revoke earlier grants without accepting foreign frames", () => {
+    let update;
+    const owner = { mainFrame: {} }, url = "https://certificate.test/resource";
+    const event = { sender: owner, senderFrame: owner.mainFrame };
+    const policy = createUnsafeUrlPolicy({ ipcMain: { on: (_name, fn) => { update = fn; } }, getMainWindow: () => ({ webContents: owner }) });
+    for (const value of [[], "not an array", ["http://certificate.test/resource"], [url, null],
+        ["https://name:password@certificate.test/resource"], Array(129).fill(url), ["https://certificate.test/" + "a".repeat(4096)]]) {
+        update(event, [url]);
+        update({ ...event, senderFrame: {} }, []);
+        assert.equal(policy.allowsCertificate(url, owner), true);
+        update(event, value);
+        assert.equal(policy.allowsCertificate(url, owner), false);
+    }
+});
+
+test("certificate origins and HTTP browser permissions require owner grants and can be independently revoked", () => {
+    let update;
+    const owner = { mainFrame: {} }, event = { sender: owner, senderFrame: owner.mainFrame };
+    const policy = createUnsafeUrlPolicy({ ipcMain: { on: (_name, fn) => { update = fn; } }, getMainWindow: () => ({ webContents: owner }) });
+    assert.equal(policy.allowsExternalHttp(), false);
+    update(event, [], ["https://trusted.test:8443"], true);
+    for (const url of ["https://trusted.test:8443/profile?changing=1", "https://trusted.test:8443/other"]) assert.equal(policy.allowsCertificate(url, owner), true);
+    for (const url of ["https://trusted.test/", "https://child.trusted.test:8443/", "https://trusted.test.evil:8443/", "http://trusted.test:8443/", "https://name:password@trusted.test:8443/"]) assert.equal(policy.allowsCertificate(url, owner), false);
+    assert.equal(policy.allowsExternalHttp(), true);
+    update({ ...event, senderFrame: {} }, [], [], false);
+    assert.equal(policy.allowsExternalHttp(), true);
+    assert.equal(policy.allowsCertificate("https://trusted.test:8443/other", owner), true);
+    for (const origins of [[], ["https://*.trusted.test"], ["https://trusted.test/path"], ["https://trusted.test/?query=1"], ["https://trusted.test/#fragment"], ["http://trusted.test"]]) {
+        update(event, [], ["https://trusted.test:8443"], true);
+        update(event, [], origins, false);
+        assert.equal(policy.allowsExternalHttp(), false);
+        assert.equal(policy.allowsCertificate("https://trusted.test:8443/other", owner), false);
+    }
+});
+
 test("service credentials bind an installation to one data directory and use private atomic files", () => {
     const home = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "cfw-service-credentials-")));
     try {

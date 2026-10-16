@@ -2,8 +2,11 @@
 
 const { createSettingsRepository } = require("../../features/settings/settings-repository");
 const { createProfilesRepository } = require("../../features/profiles/profiles-repository");
+const { resolveDownloadPolicy } = require("../../core/network/profile-download-policy");
+const { createTranslator } = require("../../core/i18n/language");
 
-function registerProfileDownloadIpc({ ipcMain, app, getMainWindow, fs, path, yaml, forkWorker, workerPath, Notification, platform = process.platform }) {
+function registerProfileDownloadIpc({ ipcMain, app, getMainWindow, fs, path, yaml, forkWorker, workerPath, Notification, platform = process.platform,
+    schedule = setTimeout, cancelTimer = clearTimeout }) {
     const jobs = new Map();
     const homes = [path.resolve(app.getPath("home"), ".config", "clash"), path.resolve(app.getPath("exe"), "..", "data")];
     const normalize = value => platform === "win32" ? value.toLowerCase() : value;
@@ -46,10 +49,13 @@ function registerProfileDownloadIpc({ ipcMain, app, getMainWindow, fs, path, yam
             function finish(error, value) {
                 if (settled) return;
                 settled = true;
-                clearTimeout(timer); jobs.delete(request.id); worker.kill();
+                cancelTimer(timer); jobs.delete(request.id); worker.kill();
                 error ? reject(new Error("Profile download worker failed")) : resolve(value);
             }
-            const timer = setTimeout(() => finish(true), 120000);
+            const policy = resolveDownloadPolicy({ settings, yaml, url: request.url });
+            const timer = schedule(() => finish(false, { result: { success: false,
+                message: createTranslator(request.language === 1 ? 1 : 0).profileProcessingTimedOut()
+            }, mutations: [] }), policy.workerTimeout);
             jobs.set(request.id, { sender: event.sender, cancel: () => finish(true) });
             worker.on("exit", () => finish(true));
             worker.on("message", message => {

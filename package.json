@@ -37,5 +37,8 @@
     "@electron/packager": "20.3.0",
     "esbuild": "0.28.2",
     "monaco-editor": "0.57.0"
+  },
+  "overrides": {
+    "dompurify": "3.4.17"
   }
 }

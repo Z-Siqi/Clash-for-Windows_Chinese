@@ -34,6 +34,7 @@ const { registerProviderFileIpc } = require("../../features/providers/register-p
 const { registerPublicContentIpc } = require("../../features/network/register-public-content-ipc");
 const { readServiceCredentials } = require("../../core/network/service-credentials");
 const { registerNavigationIpc } = require("../../features/navigation/register-navigation-ipc");
+const { createCertificateRequestOptions } = require("../../core/network/certificate-request-options");
 
 function registerCoreIpc({
     ipcMain,
@@ -47,7 +48,8 @@ function registerCoreIpc({
     getMainWindow,
     clashApi,
     clashClientRegistry,
-    staticRoot
+    staticRoot,
+    unsafeUrlPolicy
 }) {
     registerApplicationIpc({ ipcMain, app, getMainWindow, fs: require("fs"), path: require("path"), os: require("os") });
     registerWindowIpc({ ipcMain, getMainWindow, app });
@@ -70,8 +72,13 @@ function registerCoreIpc({
         isIPv4: require("net").isIPv4
     });
     if (clashApi && staticRoot) {
-        registerNavigationIpc({ ipcMain, app, getMainWindow, fs: require("fs"), path: require("path"), shell });
-        registerPublicContentIpc({ ipcMain, getMainWindow, axios: require("axios") });
+        registerNavigationIpc({ ipcMain, app, getMainWindow, fs: require("fs"), path: require("path"), shell,
+            allowExternalHttp: () => unsafeUrlPolicy?.allowsExternalHttp() === true });
+        registerPublicContentIpc({ ipcMain, getMainWindow, axios: require("axios"),
+            certificateRequestOptions: url => createCertificateRequestOptions({
+                url, allowsCertificate: value => unsafeUrlPolicy?.allowsCertificate(value, getMainWindow()?.webContents) === true
+            })
+        });
         registerPortIpc({ ipcMain, getMainWindow, net: require("net"), getPort: require("get-port") });
         registerApplicationLogIpc({ ipcMain, getMainWindow, app, shell, fs: require("fs"), path: require("path"), logger: require("electron-log"), getSensitiveValues: () => [clashClientRegistry.getConnectionInfo()?.secret] });
         registerDhcpIpc({ ipcMain, app, getMainWindow, powerSaveBlocker, dhcp: require("dhcp"), networkInterfaces: require("os").networkInterfaces, isIPv4: require("net").isIPv4 });

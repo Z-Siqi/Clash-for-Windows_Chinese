@@ -2,7 +2,7 @@
 
 ## Dual-core behavior
 
-- Legacy Clash is the compatibility default; Mihomo is the modern core selected explicitly by the user.
+- Mihomo is the default for new settings. Legacy Clash remains available, and saved explicit core choices are preserved.
 - Both cores share the CFW data directory, profiles, controller secret, and UI state.
 - Every core start must pass `-d <CFW data directory>`. Service Mode runs under a system account and must not rely on that account's default home directory.
 - Core paths are resolved only by `core-selection.js`. Firewall and service startup code must consume that same result.
@@ -26,6 +26,7 @@
 - Selecting `mixed-port` manually disables random-port mode so the choice survives a restart.
 - Port-conflict recovery starts only after a connected core reports `mixed-port: 0` repeatedly; restart and core-switch transients must not open the recovery dialog.
 - The controller binds to `127.0.0.1` by default. Clients obtain URLs and authentication headers from the shared factory.
+- Controller HTTP clients bypass environment proxies and reject redirects so bearer credentials stay on loopback. Host transports keep HTTP response caching disabled.
 - External dashboards receive only the loopback controller address, port, and secret. Never write the secret to logs or documentation.
 
 ## Connection cleanup
@@ -34,16 +35,16 @@
 - `connProxyDisconnect` defaults to enabled. A successful System Proxy on-to-off transition, or a TUN/Mixin switch-off that actually stops TUN/TAP, closes only connection IDs captured before that operation. Enabling proxies, startup, ordinary profile refreshes and unsuccessful changes do not trigger cleanup.
 - New connections created after the snapshot are preserved. Cleanup is best effort, uses bounded requests and never exposes controller request details in logs. The other connection cleanup settings remain independent.
 
-## Bundles and platform assets
+## Runtime entries and platform assets
 
 - The title-bar pin is available with Linux X11/Xwayland and hidden on native Wayland, where Electron cannot set always-on-top. Explicit `--ozone-platform=x11` takes precedence over the desktop session. The renderer persists only the native pin state confirmed by the main process.
 
 - `main.js` and `renderer.js` are runtime inputs, not disposable generated files.
-- Dashboard and auxiliary page main worlds must use `nodeIntegration: false`, `contextIsolation: true`, and `webSecurity: true`. The legacy renderer may execute only in its isolated preload world; do not expose `require`, `process`, generic IPC, filesystem, or module-loader capabilities through `contextBridge`.
+- Dashboard and auxiliary page main worlds must use `nodeIntegration: false`, `contextIsolation: true`, and `webSecurity: true`. The browser renderer may execute only in its isolated preload world; do not expose `require`, `process`, generic IPC, filesystem, or module-loader capabilities through `contextBridge`.
 - Privileged application IPC accepts only the main window's main frame. The tray indicator may send only its fixed Show action. Download targets are private host-selected temporary files for trusted HTTPS release assets; renderers cannot select paths. Certificate exceptions are exact HTTPS URLs and apply only to the authorized main window.
 - The dashboard HTML must not load the privileged renderer or Monaco JavaScript directly. Its content-security policy restricts scripts and active content; the isolated preload loader owns runtime order and asset bases.
-- Renderer Axios traffic uses the Node HTTP adapter. Do not allow DOM-global adapter detection to move core API or profile download requests onto XHR, where the isolated origin, CORS, and CSP change legacy behavior.
+- Controller HTTP and WebSocket operations run in the main process; profile downloads run in utility workers. The renderer uses named IPC clients and must not import native transports or bypass Chromium CORS enforcement.
 - Auxiliary windows use dedicated channel-specific preload code. The speed indicator preload binds its DOM and two fixed IPC channels without exposing a page-world bridge.
 - Monaco is pinned in the root lockfile and built locally as a browser-only runtime before tests and packaging. Its generated manifest and license notices must ship with the application; CDN loading and renderer-time Node imports are forbidden.
 - Equivalent helper files in platform directories must remain identical. Core updates must also update binaries, license/source records, and hash manifests.
-- Business rules belong in testable modules. Bundles retain only dependency adaptation and Vue/Electron wiring.
+- Business rules belong in testable modules. Executable entries retain only dependency adaptation and Vue/Electron composition.

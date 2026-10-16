@@ -56,6 +56,11 @@ for (const target of ["linux-x64", "linux-arm64"]) {
         const control = tarEntries(gunzipSync(members.get("control.tar.gz")));
         assert.match(control.find(entry => entry.name === "control").data, new RegExp(`Architecture: ${target === "linux-x64" ? "amd64" : "arm64"}`));
         assert.equal(control.find(entry => entry.name === "postinst").mode, 0o755);
+        assert.equal(control.find(entry => entry.name === "postrm").mode, 0o755);
+        for (const name of ["postinst", "postrm"]) {
+            assert.match(control.find(entry => entry.name === name).data, /gtk-update-icon-cache -q -t \/usr\/share\/icons\/hicolor/);
+            assert.match(control.find(entry => entry.name === name).data, /update-desktop-database -q \/usr\/share\/applications/);
+        }
         const data = tarEntries(gunzipSync(members.get("data.tar.gz")));
         const sandbox = data.find(entry => entry.name === "opt/clash-for-windows/chrome-sandbox");
         assert.equal(sandbox.mode, 0o4755);
@@ -63,5 +68,8 @@ for (const target of ["linux-x64", "linux-arm64"]) {
         assert.equal(data.find(entry => entry.name === "opt/clash-for-windows/cfw").mode, 0o755);
         assert.equal(data.find(entry => entry.name === "usr/bin/cfw").mode, 0o755);
         assert.equal(data.find(entry => entry.name.endsWith(".desktop")).mode, 0o644);
+        const desktop = data.find(entry => entry.name.endsWith(".desktop")).data;
+        assert.match(desktop, /TryExec=\/usr\/bin\/cfw/);
+        assert.match(desktop, /Icon=\/usr\/share\/icons\/hicolor\/512x512\/apps\/com\.lbyczf\.clashwin\.png/);
     });
 }

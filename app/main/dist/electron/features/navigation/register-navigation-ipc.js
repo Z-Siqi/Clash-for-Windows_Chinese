@@ -2,7 +2,7 @@
 
 const { normalizeExternalUrl } = require("../../core/network/external-url-policy");
 
-function registerNavigationIpc({ ipcMain, getMainWindow, app, fs, path, shell }) {
+function registerNavigationIpc({ ipcMain, getMainWindow, app, fs, path, shell, allowExternalHttp = () => false }) {
     function authorize(event) {
         const owner = getMainWindow()?.webContents;
         if (!owner || event.sender !== owner || event.senderFrame !== owner.mainFrame) throw new Error("Invalid navigation sender");
@@ -10,7 +10,7 @@ function registerNavigationIpc({ ipcMain, getMainWindow, app, fs, path, shell })
     ipcMain.handle("external-navigation", (event, value) => {
         authorize(event);
         if (typeof value !== "string" || value.length > 8192) throw new Error("Invalid external URL");
-        const url = normalizeExternalUrl(value, { allowLoopbackHttp: true });
+        const url = normalizeExternalUrl(value, { allowLoopbackHttp: true, allowHttp: allowExternalHttp() === true });
         if (!url) throw new Error("Unsupported external URL");
         return shell.openExternal(url);
     });

@@ -154,82 +154,13 @@ function preparePackagedSource(buildPath, target) {
 
 function writeLinuxDesktopInstaller(outputPath, target) {
     if (target.platform !== "linux") return null;
-
-    const desktopId = target.desktopId;
-    const launcherPath = path.join(outputPath, "launch-cfw.sh");
-    const scriptPath = path.join(outputPath, "install-desktop-entry.sh");
-    const launcher = `#!/bin/sh
-set -eu
-app_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-cd "$app_dir"
-exec "$app_dir/${target.productName}" "$@"
-`;
-    const script = `#!/bin/sh
-set -eu
-
-app_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-data_home=\${XDG_DATA_HOME:-"$HOME/.local/share"}
-applications_dir="$data_home/applications"
-icons_dir="$data_home/icons/hicolor/512x512/apps"
-desktop_file="$applications_dir/${desktopId}.desktop"
-icon_file="$icons_dir/${desktopId}.png"
-executable="$app_dir/${target.productName}"
-launcher="$app_dir/launch-cfw.sh"
-sandbox="$app_dir/chrome-sandbox"
-
-mkdir -p "$applications_dir" "$icons_dir"
-cp "$app_dir/resources/static/imgs/icon_512.png" "$icon_file"
-chmod 0755 "$executable" "$launcher"
-
-if [ ! -f "$sandbox" ] || [ -L "$sandbox" ]; then
-    printf 'Electron sandbox helper is missing or unsafe: %s\\n' "$sandbox" >&2
-    exit 1
-fi
-sandbox_owner=$(stat -c '%u' "$sandbox")
-sandbox_mode=$(stat -c '%a' "$sandbox")
-if [ "$sandbox_owner" != '0' ] || [ "$sandbox_mode" != '4755' ]; then
-    if ! command -v sudo >/dev/null 2>&1; then
-        printf 'sudo is required to configure %s as root:root mode 4755.\\n' "$sandbox" >&2
-        exit 1
-    fi
-    printf 'Configuring the Electron sandbox helper (sudo required)...\\n'
-    sudo chown root:root -- "$sandbox"
-    sudo chmod 4755 -- "$sandbox"
-fi
-if [ "$(stat -c '%u:%g:%a' "$sandbox")" != '0:0:4755' ]; then
-    printf 'Failed to configure Electron sandbox helper: %s\\n' "$sandbox" >&2
-    exit 1
-fi
-
-escaped_launcher=$(printf '%s' "$launcher" | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\"/g; s/%/%%/g')
-escaped_app_dir=$(printf '%s' "$app_dir" | sed 's/\\\\/\\\\\\\\/g')
-{
-    printf '%s\\n' '[Desktop Entry]'
-    printf '%s\\n' 'Type=Application'
-    printf '%s\\n' 'Version=1.5'
-    printf '%s\\n' 'Name=Clash for Windows'
-    printf '%s\\n' 'Comment=Rule-based proxy client'
-    printf 'Exec="%s"\\n' "$escaped_launcher"
-    printf 'TryExec=%s\\n' "$launcher"
-    printf 'Path=%s\\n' "$escaped_app_dir"
-    printf '%s\\n' 'Icon=${desktopId}'
-    printf '%s\\n' 'StartupWMClass=${desktopId}'
-    printf '%s\\n' 'Categories=Network;'
-    printf '%s\\n' 'StartupNotify=false'
-    printf '%s\\n' 'Terminal=false'
-} > "$desktop_file"
-chmod 0644 "$desktop_file" "$icon_file"
-
-if command -v update-desktop-database >/dev/null 2>&1; then
-    update-desktop-database "$applications_dir" >/dev/null 2>&1 || true
-fi
-printf 'Installed %s\\n' "$desktop_file"
-`;
-    fs.writeFileSync(launcherPath, launcher, { mode: 0o755 });
-    fs.writeFileSync(scriptPath, script, { mode: 0o755 });
-    fs.chmodSync(launcherPath, 0o755);
-    fs.chmodSync(scriptPath, 0o755);
-    return scriptPath;
+    for (const name of ["launch-cfw.sh", "install-desktop-entry.sh", "uninstall-desktop-entry.sh"]) {
+        const template = fs.readFileSync(path.join(applicationRoot, "linux", name), "utf8").replace(/\r\n/g, "\n");
+        const destination = path.join(outputPath, name);
+        fs.writeFileSync(destination, template.replaceAll("@CFW_DESKTOP_ID@", target.desktopId), { mode: 0o755 });
+        fs.chmodSync(destination, 0o755);
+    }
+    return path.join(outputPath, "install-desktop-entry.sh");
 }
 
 async function main() {

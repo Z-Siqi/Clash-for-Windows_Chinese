@@ -4,6 +4,7 @@ const CORE_TYPES = Object.freeze({
     CLASH: "clash",
     MIHOMO: "mihomo"
 });
+const DEFAULT_CORE_TYPE = CORE_TYPES.MIHOMO;
 
 const TARGETS = Object.freeze({
     "win32:x64": { directory: ["win", "x64"], clash: "clash-win64.exe", mihomo: "mihomo-windows-amd64.exe" },
@@ -15,7 +16,7 @@ const TARGETS = Object.freeze({
 });
 
 function normalizeCoreType(value) {
-    return value === CORE_TYPES.MIHOMO ? CORE_TYPES.MIHOMO : CORE_TYPES.CLASH;
+    return value === CORE_TYPES.CLASH ? CORE_TYPES.CLASH : DEFAULT_CORE_TYPE;
 }
 
 function resolveCoreBinaryPath({ path, filesPath, platform = process.platform, arch = process.arch, coreType }) {
@@ -29,4 +30,4 @@ function getCoreDisplayName(coreType) {
     return normalizeCoreType(coreType) === CORE_TYPES.MIHOMO ? "Mihomo" : "Clash";
 }
 
-module.exports = { CORE_TYPES, normalizeCoreType, resolveCoreBinaryPath, getCoreDisplayName };
+module.exports = { CORE_TYPES, DEFAULT_CORE_TYPE, normalizeCoreType, resolveCoreBinaryPath, getCoreDisplayName };

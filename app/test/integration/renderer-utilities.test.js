@@ -36,8 +36,14 @@ test("Renderer utilities: confirmed links, notification click behavior and seman
     response = 1;
     await api.confirmOpenExternal("https://example.com");
     assert.deepEqual(opened, ["https://example.com/"]);
+    assert.equal(await api.confirmOpenExternal("http://lan.test/home"), false);
+    store.state.app.settings.allowHttpExternalLinks = true;
+    assert.equal(await api.confirmOpenExternal("http://lan.test/home"), true);
+    assert.equal(opened.at(-1), "http://lan.test/home");
+    store.state.app.settings.allowHttpExternalLinks = false;
+    assert.equal(await api.confirmOpenExternal("http://lan.test/home"), false);
     assert.equal(await api.confirmOpenExternal("file:///C:/malware.exe"), false);
-    assert.deepEqual(opened, ["https://example.com/"]);
+    assert.deepEqual(opened, ["https://example.com/", "http://lan.test/home"]);
     api.notify("disabled");
     assert.equal(notices.length, 0);
     store.state.app.settings.showNotifications = true;

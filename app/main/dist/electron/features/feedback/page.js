@@ -66,7 +66,7 @@ function createLazyImage({ defineComponent, getLanguage }) {
 }
 
 function createFeedbackPage({
-    defineComponent, escCaptureComponent, getLanguage, modifyState,
+    defineComponent, escCaptureComponent, getLanguage,
     cache, keys, publicContent, shell
 }) {
     const LazyImageView = createLazyImage({ defineComponent, getLanguage });
@@ -83,19 +83,24 @@ function createFeedbackPage({
         data() {
             return { adImages: [], isShowDisclaimerStatement: false, isShowAds: false };
         },
+        watch: {
+            "settings.disableLoadingAdsLink"(value) {
+                if (value !== false) this.adImages = [];
+            }
+        },
         methods: {
             select(index) { return shell.openExternal(FEEDBACK_LINKS[index]); },
             adClick(index) {
-                const url = normalizeExternalUrl(this.adImages[index]?.click);
+                const url = normalizeExternalUrl(this.adImages[index]?.click, { allowHttp: this.settings?.allowHttpExternalLinks === true });
                 return url ? shell.openExternal(url) : false;
             }
         },
         beforeRouteEnter(_to, _from, next) {
             next(async vm => {
+                if (vm.settings.disableLoadingAdsLink !== false) { vm.adImages = []; return; }
                 vm.adImages = cache.get(keys.AD_IMAGES) || [];
-                if (!modifyState.adImages) return;
                 const response = await publicContent.getAds();
-                if (response.status === 200 && response.data.feedback) {
+                if (vm.settings.disableLoadingAdsLink === false && response.status === 200 && response.data.feedback) {
                     cache.put(keys.AD_IMAGES, response.data.feedback);
                     vm.adImages = response.data.feedback;
                 }

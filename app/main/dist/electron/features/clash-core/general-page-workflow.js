@@ -66,6 +66,7 @@ function createGeneralPageWorkflow({
         protableMode: false,
         version: "",
         clashCoreVersion: "",
+        coreVersionRequest: 0,
         serviceNeedUpdate: false,
         isTunSettingsVisible: false,
         isInterfacesVisible: false,
@@ -78,7 +79,12 @@ function createGeneralPageWorkflow({
         mixedPort(value) { if (value) this.port = value; },
         isWindowShow(value) { if (value) { this.setupComponent(); this.setupSwitches(); } },
         isLaunching(value) { if (!value) this.setupComponent(); },
-        clashStatus(value) { if (value === connectedStatus) this.setupComponent(); },
+        clashStatus(value) {
+            this.invalidateCoreVersion();
+            if (value === connectedStatus) this.setupComponent();
+        },
+        "settings.proxyCore"() { this.invalidateCoreVersion(); },
+        "$parent.isCoreRestarting"(value) { if (value) this.invalidateCoreVersion(); },
         async clashPath() { this.serviceNeedUpdate = await service.needUpdate(); }
     };
 
@@ -459,7 +465,7 @@ function createGeneralPageWorkflow({
         },
         setupSwitches() { this.autoLaunchLoading = false; this.systemProxyLoading = false; },
         async setupComponent() {
-            if (!this.clashApi.isReady()) return;
+            if (!this.clashApi.isReady() || this.clashStatus !== connectedStatus) return;
             try {
                 const [{ status, data }] = await Promise.all([this.clashApi.getConfig(), this.fetchCoreVersion()]);
                 if (status === 200) {
@@ -472,10 +478,19 @@ function createGeneralPageWorkflow({
                 }
             } catch (error) { console.error(error.stack); }
         },
+        invalidateCoreVersion() {
+            this.coreVersionRequest = (this.coreVersionRequest || 0) + 1;
+            this.clashCoreVersion = "";
+        },
         async fetchCoreVersion() {
-            if (!this.clashApi.isReady()) return;
+            if (!this.clashApi.isReady() || this.clashStatus !== connectedStatus) return;
+            const core = this.settings.proxyCore;
+            const request = this.coreVersionRequest = (this.coreVersionRequest || 0) + 1;
             const response = await this.clashApi.getVersion();
-            this.clashCoreVersion = normalizeCoreVersion(response.data, this.settings.proxyCore);
+            // A previous core's in-flight response must not overwrite the new version.
+            if (request !== this.coreVersionRequest || core !== this.settings.proxyCore
+                || this.clashStatus !== connectedStatus || response.status !== 200) return;
+            this.clashCoreVersion = normalizeCoreVersion(response.data, core);
         }
     };
 

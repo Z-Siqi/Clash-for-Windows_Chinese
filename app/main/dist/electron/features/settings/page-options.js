@@ -1,6 +1,8 @@
 "use strict";
 
 const { supportsScriptMode } = require("../../core/clash-core/core-capabilities");
+const { readDownloadExceptions } = require("../../core/network/profile-download-policy");
+const { normalizeCertificateExceptions } = require("../../core/network/certificate-exceptions");
 
 const SECTION_KEYS = [
     "security", "general", "appearance", "sysProxy", "mixin", "proxies", "connections",
@@ -82,7 +84,7 @@ function createSettingsPageOptions({
             cancelExternalEdit() {
                 externalEditor.cancel();
             },
-            async edit(settingName, fallback = "", language = "yaml") {
+            async edit(settingName, fallback = "", language = "yaml", validate) {
                 let changed = false;
                 try {
                     const currentValue = this.settings[settingName] || fallback;
@@ -94,12 +96,14 @@ function createSettingsPageOptions({
                                 language,
                                 fontSize: this.settings.editorFontSize
                             });
+                            if (validate) await validate(code);
                             this.settings[settingName] = code;
                             changed = code !== currentValue;
                         } catch (_error) {}
                     } else {
                         this.isEditingExternal = true;
                         const value = await externalEditor.edit(language, currentValue);
+                        if (validate) await validate(value);
                         this.settings[settingName] = value;
                         changed = value !== currentValue;
                     }
@@ -125,6 +129,52 @@ function createSettingsPageOptions({
             },
             async handleEditUnsafeURLs() {
                 await this.edit("unsafeURLsText", "urls: # array\n");
+            },
+            async editSecuritySetting(name, template, validate) {
+                return this.edit(name, template, "yaml", async code => {
+                    try { validate(code); }
+                    catch (error) {
+                        await showMessageBox({ type: "error", message: getLanguage().invalidSecuritySetting(), detail: error.message });
+                        throw error;
+                    }
+                });
+            },
+            async handleEditUnsafeOrigins() {
+                return this.editSecuritySetting("unsafeURLOriginsText", "origins: []\n# origins:\n#   - https://trusted.example:8443\n", code => {
+                    let document;
+                    try { document = yaml.parse(code); } catch { throw new Error("Invalid origins YAML"); }
+                    if (document == null) return;
+                    const entries = document.origins ?? [];
+                    if (!document || typeof document !== "object" || Array.isArray(document)
+                        || Object.keys(document).some(key => key !== "origins") || !Array.isArray(entries)
+                        || normalizeCertificateExceptions(entries, true).length !== entries.length) {
+                        throw new Error("Use origins: [] with at most 128 exact HTTPS origins; paths, queries, credentials and wildcards are not allowed");
+                    }
+                });
+            },
+            async handleEditDownloadExceptions() {
+                const template = "exceptions: []\n# exceptions:\n#   - url: https://trusted.example/profile.yaml\n#     maxSizeMiB: 64\n#     timeoutSeconds: 180\n#     processingTimeoutSeconds: 600\n";
+                return this.editSecuritySetting("profileDownloadExceptionsText", template, text => readDownloadExceptions({ yaml, text }));
+            },
+            async handleRemoteProfileParsersChange(enabled) {
+                if (enabled === (this.settings.allowRemoteProfileParsers === true)) return;
+                if (enabled) {
+                    const labels = getLanguage();
+                    const result = await showMessageBox({ type: "warning", message: labels.confirmRemoteProfileParsers(),
+                        buttons: [labels.no(), labels.yes()], defaultId: 0, cancelId: 0 });
+                    if (result.response !== 1) return;
+                }
+                this.$set(this.settings, "allowRemoteProfileParsers", enabled === true);
+            },
+            async handleHttpExternalLinksChange(enabled) {
+                if (enabled === (this.settings.allowHttpExternalLinks === true)) return;
+                if (enabled) {
+                    const labels = getLanguage();
+                    const result = await showMessageBox({ type: "warning", message: labels.confirmHttpExternalLinks(),
+                        buttons: [labels.no(), labels.yes()], defaultId: 0, cancelId: 0 });
+                    if (result.response !== 1) return;
+                }
+                this.$set(this.settings, "allowHttpExternalLinks", enabled === true);
             },
             async handleEditHeaders() {
                 await this.edit("headersText", "headers: # object\n");

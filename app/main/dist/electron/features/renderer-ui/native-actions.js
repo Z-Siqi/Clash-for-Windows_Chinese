@@ -16,7 +16,7 @@ function createNativeActions({ ipcRenderer, shell, Notification, getSettings, ge
             };
         },
         async confirmOpenExternal(url) {
-            const safeUrl = normalizeExternalUrl(url, { allowLoopbackHttp: true });
+            const safeUrl = normalizeExternalUrl(url, { allowLoopbackHttp: true, allowHttp: getSettings()?.allowHttpExternalLinks === true });
             if (!safeUrl) return false;
             const labels = createTranslator(getLanguage);
             const result = await showMessageBox({

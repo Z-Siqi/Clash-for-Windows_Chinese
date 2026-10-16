@@ -42,7 +42,9 @@
     },
     "overrides": {
         "ansi-regex": "5.0.1",
+        "http-cache-semantics": "4.3.0",
         "nanoid": "3.3.18",
-        "postcss": "8.5.23"
+        "postcss": "8.5.23",
+        "source-map-js": "1.2.2"
     }
 }

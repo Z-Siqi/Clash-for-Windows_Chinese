@@ -15,3 +15,11 @@ test("external URL policy permits HTTPS and explicit loopback HTTP only", () => 
         assert.equal(normalizeExternalUrl(value, { allowLoopbackHttp: true }), null);
     }
 });
+
+test("explicit HTTP browser compatibility never permits local files or executable schemes", () => {
+    assert.equal(normalizeExternalUrl("http://lan.test/home", { allowHttp: true }), "http://lan.test/home");
+    assert.equal(normalizeExternalUrl("http://lan.test/home", { allowHttp: "true" }), null);
+    for (const url of ["file:///C:/tool.exe", "javascript:alert(1)", "data:text/html,hello", "clash://install"]) {
+        assert.equal(normalizeExternalUrl(url, { allowHttp: true }), null);
+    }
+});

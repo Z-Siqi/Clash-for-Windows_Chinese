@@ -60,7 +60,9 @@ assert.equal(english.template[0].label, "Dashboard");
 assert.equal(chinese.template[0].label, "仪表盘");
 assert.equal(english.getMenuItemById("mode-rule").enabled, true);
 assert.equal(english.getMenuItemById("mode-rule").checked, true);
-assert.equal(english.getMenuItemById("mode-script").visible, true);
+assert.equal(english.getMenuItemById("mode-script").visible, false);
+const legacy = buildStaticTrayMenu({ Menu, locale: "en", state: { coreType: "clash", isReady: true }, actions });
+assert.equal(legacy.getMenuItemById("mode-script").visible, true);
 assert.equal(chinese.getMenuItemById("mode-rule").enabled, false);
 
 english.template[0].click();

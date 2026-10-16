@@ -1,7 +1,7 @@
 "use strict";
 const { updateUrl } = require("../../core/release/release-info");
 
-function registerPublicContentIpc({ ipcMain, getMainWindow, axios }) {
+function registerPublicContentIpc({ ipcMain, getMainWindow, axios, certificateRequestOptions = () => ({}) }) {
     let pending = 0;
     ipcMain.handle("public-content", async (event, operation, section) => {
         const owner = getMainWindow()?.webContents;
@@ -14,7 +14,7 @@ function registerPublicContentIpc({ ipcMain, getMainWindow, axios }) {
         if (pending >= 16) throw new Error("Public content requests are busy");
         pending++;
         try {
-            const response = await axios.get(url, { timeout: 20000, maxRedirects: 0, maxContentLength: 2097152, responseType: "json", validateStatus: () => true });
+            const response = await axios.get(url, { ...certificateRequestOptions(url), timeout: 20000, maxRedirects: 0, maxContentLength: 2097152, responseType: "json", validateStatus: () => true });
             return { status: response.status, data: response.data };
         } catch { throw new Error("Public content request failed"); }
         finally { pending--; }

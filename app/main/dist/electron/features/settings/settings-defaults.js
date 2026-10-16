@@ -1,4 +1,5 @@
 "use strict";
+const { normalizeCoreType } = require("../../core/clash-core/core-selection");
 
 const DEFAULT_TRAY_ORDERS = [["icon"], ["status", "traffic", "text"]];
 
@@ -18,7 +19,8 @@ function mergeSettings(settings = {}) {
         checkForUpdates: settings.checkForUpdates !== false,
         disableLoadingAdsLink: settings.disableLoadingAdsLink !== false,
         allowRemoteProfileParsers: settings.allowRemoteProfileParsers === true,
-        proxyCore: settings.proxyCore === "mihomo" ? "mihomo" : "clash"
+        allowHttpExternalLinks: settings.allowHttpExternalLinks === true,
+        proxyCore: normalizeCoreType(settings.proxyCore)
     };
 }
 

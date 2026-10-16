@@ -44,3 +44,20 @@ test("public content exposes only fixed hosts and snippet identities, bounded re
         assert.equal(options.headers, undefined);
     }
 });
+
+test("browser HTTP compatibility is checked by the host and revocation takes effect on the next open", async () => {
+    let handler, enabled = false;
+    const owner = { mainFrame: {} }, opened = [];
+    registerNavigationIpc({ ipcMain: { handle(name, callback) { if (name === "external-navigation") handler = callback; } },
+        getMainWindow: () => ({ webContents: owner }), allowExternalHttp: () => enabled,
+        shell: { openExternal: url => opened.push(url) } });
+    const event = { sender: owner, senderFrame: owner.mainFrame };
+    assert.throws(() => handler(event, "http://lan.test/home"), /Unsupported/);
+    enabled = true;
+    handler(event, "http://lan.test/home");
+    assert.deepEqual(opened, ["http://lan.test/home"]);
+    assert.throws(() => handler({ ...event, senderFrame: {} }, "http://lan.test/home"), /sender/);
+    for (const url of ["file:///tmp/tool", "javascript:alert(1)", "clash://install"]) assert.throws(() => handler(event, url), /Unsupported/);
+    enabled = false;
+    assert.throws(() => handler(event, "http://lan.test/home"), /Unsupported/);
+});

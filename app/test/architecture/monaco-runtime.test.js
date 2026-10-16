@@ -55,7 +55,7 @@ test("generated Monaco assets have a complete auditable manifest and browser-onl
         version: "0.57.0",
         integrity: lockfile.packages["node_modules/monaco-editor"].integrity
     });
-    assert.deepEqual(manifest.bundledDependencies, { dompurify: "3.4.15", marked: "14.0.0" });
+    assert.deepEqual(manifest.bundledDependencies, { dompurify: "3.4.17", marked: "14.0.0" });
     assert.equal(manifest.builder, "esbuild@0.28.2");
     for (const [relative, expected] of Object.entries(manifest.files)) {
         const file = path.join(generatedRoot, relative);
@@ -71,6 +71,17 @@ test("generated Monaco assets have a complete auditable manifest and browser-onl
     assert.match(runtime, /__CFW_MONACO__/);
     assert.match(runtime, /editor\.worker\.js/);
     assert.doesNotMatch(runtime, /\brequire\s*\(|from\s+["']electron["']|\bprocess\.(?:env|platform|versions)\b/);
+});
+
+test("Monaco bundles the patched sanitizer instead of its embedded vulnerable copy", () => {
+    const manifest = JSON.parse(fs.readFileSync(path.join(generatedRoot, "manifest.json"), "utf8"));
+    assert.ok(Array.isArray(manifest.inputs), "the manifest must record actual bundle inputs");
+    assert.ok(manifest.inputs.some(file => file.endsWith("node_modules/dompurify/dist/purify.es.mjs")));
+    assert.equal(manifest.inputs.some(file => file.endsWith("monaco-editor/esm/vs/base/browser/dompurify/dompurify.js")), false);
+    assert.ok("LICENSE.dompurify.txt" in manifest.files);
+    const runtime = fs.readFileSync(path.join(generatedRoot, "monaco.js"), "utf8");
+    assert.equal(runtime.includes("DOMPurify 3.4.17"), true);
+    assert.equal(runtime.includes("DOMPurify 3.4.15"), false);
 });
 
 test("every packaging target delegates to the lock-safe build pipeline", () => {

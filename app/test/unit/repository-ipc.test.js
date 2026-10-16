@@ -189,6 +189,9 @@ test("core configuration edits restrict owned keys and reset preserves unrelated
     await assert.rejects(() => core.update(home, "mixed-port", "12345 & injected"), /operation failed/);
     await assert.rejects(() => core.update(home, "external-controller", "0.0.0.0:12345"), /operation failed/);
     await assert.rejects(() => core.update(home, "secret", ""), /operation failed/);
+    const updatedSecret = require("node:crypto").randomUUID();
+    await core.update(home, "secret", updatedSecret);
+    assert.ok((await core.load(home)).secret === updatedSecret);
     assert.equal((await core.load(home))["external-controller"], "127.0.0.1:9090");
     assert.ok((await core.metadata(home)).geoipModifiedAt > 0);
     fs.writeFileSync(path.join(home, "unrelated.txt"), "keep");

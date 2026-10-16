@@ -42,7 +42,7 @@ function createPage(overrides = {}) {
 
 test("feedback page owns external links and advertisement refresh", async () => {
     const { page, opened, saved } = createPage();
-    const vm = { ...page.data(), ...page.methods };
+    const vm = { ...page.data(), ...page.methods, settings: { disableLoadingAdsLink: false } };
     vm.select(2);
     assert.equal(opened[0], FEEDBACK_LINKS[2]);
     let enter;
@@ -55,6 +55,29 @@ test("feedback page owns external links and advertisement refresh", async () => 
     vm.adImages = [{ click: "file:///C:/malware.exe" }];
     assert.equal(vm.adClick(0), false);
     assert.equal(opened.length, 2);
+});
+
+test("feedback does not load cached or remote advertisements while disabled, including late responses", async () => {
+    let requests = 0, complete;
+    const { page, saved } = createPage({ publicContent: { getAds: () => {
+        requests++;
+        return new Promise(resolve => { complete = resolve; });
+    } } });
+    let enter;
+    page.beforeRouteEnter({}, {}, callback => { enter = callback; });
+    const vm = { ...page.data(), settings: { disableLoadingAdsLink: true } };
+    await enter(vm);
+    assert.equal(requests, 0);
+    assert.deepEqual(vm.adImages, []);
+    vm.settings.disableLoadingAdsLink = false;
+    const pending = enter(vm);
+    assert.equal(requests, 1);
+    vm.settings.disableLoadingAdsLink = true;
+    page.watch["settings.disableLoadingAdsLink"].call(vm, true);
+    complete({ status: 200, data: { feedback: ["late advertisement"] } });
+    await pending;
+    assert.deepEqual(vm.adImages, []);
+    assert.deepEqual(saved, []);
 });
 
 test("feedback lazy image preserves loading, loaded and failed states", () => {

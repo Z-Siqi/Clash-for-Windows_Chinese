@@ -1,7 +1,7 @@
 {
   "name": "source-map-js",
   "description": "Generates and consumes source maps",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "homepage": "https://github.com/7rulnik/source-map-js",
   "author": "Valentin 7rulnik Semirulnik <v7rulnik@gmail.com>",
   "contributors": [

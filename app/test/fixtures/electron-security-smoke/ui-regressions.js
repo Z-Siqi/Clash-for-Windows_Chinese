@@ -26,6 +26,69 @@ async function verifyUiRegressions() {
     await navigate(/Settings|设置/i);
     const settingsElement = document.querySelector(".main-setting-view");
     const settings = findComponent(component => component.$options._scopeId === "data-v-fc0cd1de");
+    const securitySection = settingsElement.querySelector(".main-setting-section");
+    const securityRows = Array.from(securitySection.querySelector(".content").children).filter(node => node.classList.contains("item"));
+    async function editSecurityRow(index, field, value) {
+        const original = settings.settings[field];
+        securityRows[index].querySelector(".hint").click();
+        await wait(450);
+        let editor = document.querySelector(".main-code-view").__vue__;
+        while (editor && editor.$options.name !== "CodeView") editor = editor.$parent;
+        editor.editor.setValue(value);
+        editor.save();
+        await wait(100);
+        settings.loadSettings();
+        await root.$nextTick();
+        const saved = settings.settings[field] === value;
+        settings.settings[field] = original || "";
+        return saved;
+    }
+    const originalUnsafeUrls = settings.settings.unsafeURLsText || "urls: []\n";
+    securityRows[1].querySelector(".hint").click();
+    await wait(500);
+    let securityEditor = document.querySelector(".main-code-view").__vue__;
+    while (securityEditor && securityEditor.$options.name !== "CodeView") securityEditor = securityEditor.$parent;
+    const certificateText = "urls:\n  - https://certificate.test/profile.yaml\n";
+    securityEditor.editor.setValue(certificateText);
+    securityEditor.save();
+    await wait(150);
+    settings.loadSettings();
+    await root.$nextTick();
+    const certificateSaved = settings.settings.unsafeURLsText === certificateText;
+    settings.settings.unsafeURLsText = originalUnsafeUrls;
+    const advertisementToggle = securityRows[2].querySelector("[data-v-37d0be30]");
+    const originalAdsDisabled = settings.settings.disableLoadingAdsLink;
+    advertisementToggle.click();
+    await wait(100);
+    settings.loadSettings();
+    await root.$nextTick();
+    const advertisementSaved = settings.settings.disableLoadingAdsLink === !originalAdsDisabled;
+    advertisementToggle.click();
+    await wait(100);
+    const originSaved = await editSecurityRow(3, "unsafeURLOriginsText", "origins:\n  - https://certificate.test:8443\n");
+    const limitsSaved = await editSecurityRow(4, "profileDownloadExceptionsText", "exceptions:\n  - url: https://download.test/profile.yaml\n    maxSizeMiB: 64\n    timeoutSeconds: 180\n    processingTimeoutSeconds: 600\n");
+    let compatibilitySwitches = true;
+    for (const [index, field] of [[5, "allowRemoteProfileParsers"], [6, "allowHttpExternalLinks"]]) {
+        await root.$nextTick();
+        const toggle = securityRows[index].querySelector("[data-v-37d0be30]");
+        toggle.click();
+        await wait(150);
+        settings.loadSettings();
+        await root.$nextTick();
+        compatibilitySwitches = compatibilitySwitches && settings.settings[field] === true;
+        toggle.click();
+        await wait(100);
+        compatibilitySwitches = compatibilitySwitches && settings.settings[field] === false;
+    }
+    const compatibilityLabels = [/Certificate Origin Exceptions|证书来源例外/, /Subscription Download Exceptions|订阅下载限制例外/,
+        /Allow Remote JavaScript Parsers|允许远程 JavaScript 解析器/, /Allow HTTP Links in Browser|允许浏览器打开 HTTP 链接/]
+        .every(label => label.test(securitySection.innerText));
+    const securityChecks = { rows: securityRows.length === 7, compatibilityLabels, certificateSaved, originSaved, limitsSaved, compatibilitySwitches, advertisementSaved,
+        advertisementRestored: settings.settings.disableLoadingAdsLink === originalAdsDisabled,
+        secretAction: typeof settings.handleGenerateUUIDSecret === "function" };
+    const securitySettings = Object.values(securityChecks).every(Boolean);
+    if (!securitySettings) throw Error("Security settings UI failed: "
+        + Object.entries(securityChecks).filter(([_name, passed]) => !passed).map(([name]) => name).join(", "));
     const scroller = settingsElement.querySelector(".content");
     const navigatorItems = settingsElement.querySelectorAll(".main-proxy-navigator .item");
     navigatorItems[navigatorItems.length - 1].click();
@@ -119,7 +182,7 @@ async function verifyUiRegressions() {
     if (!version) throw Error("Mihomo version action was not rendered");
     version.click();
     await wait(100);
-    return { connections, trafficUpdates, settingsNavigation, trayDelayVisible, enhancedTrayRounded, editorNavigationHeight, editorNavigationColor, editorNavigationExpandedContrast, diffSideBySide, minimizeCentered, pinControl };
+    return { connections, trafficUpdates, securitySettings, settingsNavigation, trayDelayVisible, enhancedTrayRounded, editorNavigationHeight, editorNavigationColor, editorNavigationExpandedContrast, diffSideBySide, minimizeCentered, pinControl };
 }
 
 module.exports = { verifyUiRegressions };

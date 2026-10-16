@@ -62,6 +62,7 @@ async function createTarGz(directory, output, { prefix = "", installed = false, 
 async function createDeb({ packagePath, target, version, output, staging, applicationId }) {
     const arch = target === "linux-x64" ? "amd64" : target === "linux-arm64" ? "arm64" : null;
     if (!arch || !/^\d+\.\d+\.\d+\.\d+$/.test(version)) throw new Error("Invalid Debian package target/version");
+    if (typeof applicationId !== "string" || !/^[A-Za-z][A-Za-z0-9.-]+$/.test(applicationId)) throw new Error("Invalid desktop application identity");
     const control = path.join(staging, "control");
     const data = path.join(staging, "data");
     const installed = path.join(data, "opt/clash-for-windows");
@@ -72,13 +73,36 @@ async function createDeb({ packagePath, target, version, output, staging, applic
     fs.mkdirSync(path.join(data, "usr/share/applications"), { recursive: true });
     fs.mkdirSync(path.join(data, "usr/share/icons/hicolor/512x512/apps"), { recursive: true });
     fs.writeFileSync(path.join(data, "usr/bin/cfw"), '#!/bin/sh\nset -eu\ncd /opt/clash-for-windows\nexec ./cfw "$@"\n');
-    fs.writeFileSync(path.join(data, `usr/share/applications/${applicationId}.desktop`), `[Desktop Entry]\nType=Application\nName=Clash for Windows\nExec=/usr/bin/cfw\nIcon=${applicationId}\nStartupWMClass=${applicationId}\nCategories=Network;\nTerminal=false\n`);
+    // An absolute icon works even before the desktop's theme cache is rebuilt.
+    fs.writeFileSync(path.join(data, `usr/share/applications/${applicationId}.desktop`), `[Desktop Entry]\nType=Application\nVersion=1.5\nName=Clash for Windows\nComment=Rule-based proxy client\nExec=/usr/bin/cfw\nTryExec=/usr/bin/cfw\nIcon=/usr/share/icons/hicolor/512x512/apps/${applicationId}.png\nStartupWMClass=${applicationId}\nCategories=Network;\nStartupNotify=false\nTerminal=false\n`);
     fs.copyFileSync(path.join(packagePath, "resources/static/imgs/icon_512.png"), path.join(data, `usr/share/icons/hicolor/512x512/apps/${applicationId}.png`));
-    fs.writeFileSync(path.join(control, "control"), `Package: clash-for-windows\nVersion: ${version}\nArchitecture: ${arch}\nMaintainer: CFW Chinese maintainers\nSection: net\nPriority: optional\nDepends: libc6, libgtk-3-0 | libgtk-3-0t64, libnss3, libgbm1, libasound2 | libasound2t64, libxss1, libatk-bridge2.0-0 | libatk-bridge2.0-0t64, libdrm2, libx11-xcb1\nDescription: Clash for Windows Chinese desktop proxy client\n Includes the legacy Clash and optional Mihomo cores.\n`);
+    fs.writeFileSync(path.join(control, "control"), `Package: clash-for-windows\nVersion: ${version}\nArchitecture: ${arch}\nMaintainer: CFW Chinese maintainers\nSection: net\nPriority: optional\nDepends: libc6, libgtk-3-0 | libgtk-3-0t64, libnss3, libgbm1, libasound2 | libasound2t64, libxss1, libatk-bridge2.0-0 | libatk-bridge2.0-0t64, libdrm2, libx11-xcb1\nDescription: Clash for Windows Chinese desktop proxy client\n Includes the default Mihomo and optional legacy Clash cores.\n`);
     // dpkg applies root ownership and setuid mode from data.tar; retain Chromium's sandbox.
-    fs.writeFileSync(path.join(control, "postinst"), '#!/bin/sh\nset -eu\nif [ "$1" = configure ]; then\n  sandbox=/opt/clash-for-windows/chrome-sandbox\n  [ -f "$sandbox" ] && [ ! -L "$sandbox" ]\n  chown root:root "$sandbox"\n  chmod 4755 "$sandbox"\n  if command -v update-desktop-database >/dev/null 2>&1; then update-desktop-database -q || true; fi\nfi\n');
+    const refreshCaches = `  if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database -q /usr/share/applications || true
+  fi
+  if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -q -t /usr/share/icons/hicolor || true
+  fi
+`;
+    fs.writeFileSync(path.join(control, "postinst"), `#!/bin/sh
+set -eu
+if [ "$1" = configure ]; then
+  sandbox=/opt/clash-for-windows/chrome-sandbox
+  [ -f "$sandbox" ] && [ ! -L "$sandbox" ]
+  chown root:root "$sandbox"
+  chmod 4755 "$sandbox"
+${refreshCaches}fi
+`);
+    fs.writeFileSync(path.join(control, "postrm"), `#!/bin/sh
+set -eu
+case "$1" in
+remove|purge|disappear)
+${refreshCaches}  ;;
+esac
+`);
     const controlTar = path.join(staging, "control.tar.gz"), dataTar = path.join(staging, "data.tar.gz");
-    await createTarGz(control, controlTar, { executable: ["postinst"] });
+    await createTarGz(control, controlTar, { executable: ["postinst", "postrm"] });
     await createTarGz(data, dataTar, { installed: true });
     async function* members() {
         yield Buffer.from("!<arch>\n");

@@ -34,6 +34,48 @@ function createWorkflow(overrides = {}) {
     return { workflow: createGeneralPageWorkflow(dependencies), calls, cacheValues };
 }
 
+test("core switching clears the old version and discards an in-flight response", async () => {
+    const { workflow } = createWorkflow();
+    let finishOld;
+    const page = {
+        ...workflow.data(), ...workflow.methods,
+        clashStatus: "connected", settings: { proxyCore: "clash" },
+        clashApi: { isReady: () => true, getVersion: () => new Promise(resolve => { finishOld = resolve; }) }
+    };
+    page.clashCoreVersion = "old";
+    const oldRequest = page.fetchCoreVersion();
+    page.settings.proxyCore = "mihomo";
+    workflow.watch["settings.proxyCore"].call(page);
+    assert.equal(page.clashCoreVersion, "");
+    page.clashApi.getVersion = async () => ({ status: 200, data: { version: "v1.19.0", meta: true } });
+    await page.fetchCoreVersion();
+    finishOld({ status: 200, data: { version: "2023.08.17", premium: true } });
+    await oldRequest;
+    assert.equal(page.clashCoreVersion, "Mihomo v1.19.0");
+});
+
+test("disconnect invalidates pending core versions and reconnect refreshes the page", async () => {
+    const { workflow } = createWorkflow();
+    let finish;
+    let refreshes = 0;
+    const page = {
+        ...workflow.data(), ...workflow.methods,
+        clashStatus: "connected", settings: { proxyCore: "clash" },
+        setupComponent() { refreshes++; },
+        clashApi: { isReady: () => true, getVersion: () => new Promise(resolve => { finish = resolve; }) }
+    };
+    const pending = page.fetchCoreVersion();
+    page.clashStatus = "disconnected";
+    workflow.watch.clashStatus.call(page, "disconnected");
+    finish({ status: 200, data: { version: "old" } });
+    await pending;
+    assert.equal(page.clashCoreVersion, "");
+    await page.fetchCoreVersion();
+    page.clashStatus = "connected";
+    workflow.watch.clashStatus.call(page, "connected");
+    assert.equal(refreshes, 1);
+});
+
 test("the Mihomo version action opens an HTTPS dashboard accepted by navigation policy", async () => {
     let opened;
     const { workflow } = createWorkflow({ electron: { shell: { openExternal: async url => { opened = url; } } } });

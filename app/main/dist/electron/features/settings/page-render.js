@@ -1,6 +1,7 @@
 "use strict";
 
 const { languageIndex } = require("../../core/i18n/language");
+const { renderSecurityCompatibilitySettings } = require("./security-controls");
 
 function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, languageKey, renderConnectionDisconnectSettings }) {
     return function renderSettingsPage() {
@@ -85,14 +86,11 @@ function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, 
                         model: {
                             value: viewModel.settings.disableLoadingAdsLink,
                             callback: function (value) {
-                                if (value) {
-                                    cache.put(keys.AD_IMAGES, "");
-                                }
                                 viewModel.$set(viewModel.settings, "disableLoadingAdsLink", value)
                             },
                             expression: "settings.disableLoadingAdsLink"
                         }
-                    })], 1)]), viewModel._v(" "), createElement("Section", {
+                    })], 1), ...renderSecurityCompatibilitySettings(viewModel.$createElement, viewModel, labels)]), viewModel._v(" "), createElement("Section", {
                         attrs: {
                             title: labels.general()
                         }

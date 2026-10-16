@@ -74,7 +74,9 @@ test("profile parser applies inline, YAML file, declarative and remote parsers i
         state: { app: {
             clashPath: "C:/cfw",
             profiles: { files: [{ url: "https://example/profile", name: "saved" }] },
-            settings: { allowRemoteProfileParsers: true, profileParsersText: yaml.stringify({ parsers: [{
+            settings: { allowRemoteProfileParsers: true,
+                profileDownloadExceptionsText: yaml.stringify({ exceptions: [{ url: "https://example/parser.js", maxSizeMiB: 64, timeoutSeconds: 180 }] }),
+                profileParsersText: yaml.stringify({ parsers: [{
                 reg: "example", code: "inline-script", file: "parser.yaml",
                 yaml: { "append-rules": ["DOMAIN,declarative,DIRECT"] },
                 remote: { url: "https://example/parser.js", cache: true }
@@ -107,6 +109,8 @@ test("profile parser applies inline, YAML file, declarative and remote parsers i
     assert.equal(yaml.parse(result).inlineApplied, true);
     assert.equal(yaml.parse(result).remoteApplied, true);
     assert.equal(calls[0][1].headers["cache-control"], "max-age=3600");
+    assert.equal(calls[0][1].maxContentLength, 64 * 1024 * 1024);
+    assert.equal(calls[0][1].timeout, 180000);
 });
 
 test("profile parser rejects remote JavaScript unless the unsafe compatibility switch is explicit", async () => {

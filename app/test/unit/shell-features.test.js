@@ -382,6 +382,8 @@ ipcListeners.get("clash-core-info")({ sender: mainWindow.webContents, senderFram
 assert.deepEqual(axiosConfig, {
     baseURL: "http://127.0.0.1:9090/",
     timeout: 5000,
+    proxy: false,
+    maxRedirects: 0,
     headers: { Authorization: "Bearer token" }
 });
 assert.deepEqual(clashClient.getClient(), { id: "client" });

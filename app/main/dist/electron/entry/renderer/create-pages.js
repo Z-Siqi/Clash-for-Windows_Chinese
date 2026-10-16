@@ -209,7 +209,7 @@ function createRendererPages({ Vuex, modifyState, runtime, components, version }
     });
     const about = createFeedbackPage({
         defineComponent, escCaptureComponent: components.EscCapture, getLanguage: language,
-        modifyState, cache, keys, publicContent: runtime.publicContent, shell: electron.shell
+        cache, keys, publicContent: runtime.publicContent, shell: electron.shell
     });
 
     return { home, general, proxy, provider, log: logs, server, connection, router, setting, about };

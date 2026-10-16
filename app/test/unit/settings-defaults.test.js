@@ -28,7 +28,8 @@ assert.deepEqual(defaults, {
     checkForUpdates: true,
     disableLoadingAdsLink: true,
     allowRemoteProfileParsers: false,
-    proxyCore: "clash"
+    allowHttpExternalLinks: false,
+    proxyCore: "mihomo"
 });
 
 const customTrayOrders = [["text"]];
@@ -45,6 +46,7 @@ const custom = mergeSettings({
     checkForUpdates: false,
     disableLoadingAdsLink: false,
     allowRemoteProfileParsers: true,
+    allowHttpExternalLinks: true,
     preserved: "value"
 });
 assert.equal(custom.showNewVersionIcon, false);
@@ -55,6 +57,8 @@ assert.equal(custom.trayOrders, customTrayOrders);
 assert.equal(custom.preserved, "value");
 assert.equal(custom.connProxyDisconnect, false);
 assert.equal(custom.allowRemoteProfileParsers, true);
+assert.equal(custom.allowHttpExternalLinks, true);
+assert.equal(mergeSettings({ allowHttpExternalLinks: "true" }).allowHttpExternalLinks, false);
 
 const defaultsAgain = mergeSettings({});
 defaults.trayOrders[0].push("mutated");
@@ -96,7 +100,8 @@ assert.match(mixinSource, /require\("..\/..\/features\/settings\/load-settings"\
 assert.match(mixinSource, /settingsRepository\.load\(this\.clashPath, onProfileLanguage\)/);
 assert.match(mixinSource, /loadSettingsFromDisk\(\{/);
 assert.equal(mergeSettings({ proxyCore: "mihomo" }).proxyCore, "mihomo");
-assert.equal(mergeSettings({ proxyCore: "unknown" }).proxyCore, "clash");
+assert.equal(mergeSettings({ proxyCore: "unknown" }).proxyCore, "mihomo");
+assert.equal(mergeSettings({ proxyCore: "clash" }).proxyCore, "clash");
 assert.match(
     settingsPageComponentsSource,
     /viewModel\.\$slots\.default\?\.length/,

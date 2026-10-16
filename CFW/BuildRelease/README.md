@@ -93,12 +93,23 @@ Service Mode, change system proxies, or modify the user's CFW data directory.
 
 ```sh
 sudo apt install ./Clash.for.Windows-<version>-linux-x64.deb
+# Reinstall a rebuilt package whose version is already installed:
+sudo apt install --reinstall ./Clash.for.Windows-<version>-linux-x64.deb
 # Removal:
 sudo apt remove clash-for-windows
 ```
 
 The portable `.tar.gz` remains available for other distributions; its
 included desktop installer configures the sandbox with `sudo` when needed.
+After extraction, run `sh ./install-desktop-entry.sh` as the desktop user.
+Before deleting that portable folder, run `sh ./uninstall-desktop-entry.sh`
+to remove its application-list entry and icon. The uninstaller leaves app
+files, user profiles and launchers owned by another portable folder intact.
+Both scripts redirect ordinary sudo invocations back to the original user;
+a root shell without a desktop user is rejected rather than installing an
+invisible launcher into `/root`. Debian packages manage system desktop
+entries and icon caches through their package install/remove hooks; use
+`apt remove` for those packages rather than the portable scripts.
 RPM, AppImage, Snap and Flatpak are separate Linux distribution formats;
 this pipeline currently produces Debian installers and portable tarballs.
 The Debian writer is portable Node code, so it can build on Windows without

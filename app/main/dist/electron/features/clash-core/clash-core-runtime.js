@@ -87,6 +87,7 @@ function createClashCoreRuntime({
                 // become reachable before reporting Service Mode as successful.
                 for (let attempt = 0; attempt < 15; attempt += 1) {
                     if ((await getStatus(clashApi, 150)).connected) {
+                        await onCoreReady();
                         return { processHandle: null, serviceMode: true };
                     }
                     if (attempt < 14) await sleep(100);

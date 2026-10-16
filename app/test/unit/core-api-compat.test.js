@@ -77,7 +77,7 @@ const connectionsPage = fs.readFileSync(path.join(
 ), "utf8");
 assert.match(renderer, /features\/clash-core\/core-api-compat/);
 assert.match(renderer, /features\/clash-core\/general-page-workflow/);
-assert.match(generalWorkflow, /normalizeCoreVersion\(response\.data, this\.settings\.proxyCore\)/);
+assert.match(generalWorkflow, /normalizeCoreVersion\(response\.data, core\)/);
 assert.match(logsPage, /normalizeStructuredLog\(JSON\.parse\(payload\)\)/);
 assert.match(logsPage, /parseCoreLogLine\(line\)/);
 assert.match(connectionsPage, /normalizeConnectionsSnapshot\(JSON\.parse\(payload\)\)/);

@@ -7,7 +7,7 @@ function createGeoipRuntime({ fs, path, got, zlib, tarStream }) {
     const marker = Buffer.from([171, 205, 239, ...Buffer.from("MaxMind.com")]);
     function download(url, onProgress) {
         return new Promise((resolve, reject) => {
-            const stream = got.stream(url, { timeout: { request: 120000 }, retry: { limit: 0 } });
+            const stream = got.stream(url, { cache: false, timeout: { request: 120000 }, retry: { limit: 0 } });
             const chunks = []; let size = 0;
             stream.on("downloadProgress", progress => onProgress(Math.max(0, Math.min(1, progress.percent || 0))));
             stream.on("data", chunk => {

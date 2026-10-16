@@ -153,6 +153,7 @@ async function run() {
     assert.equal(calls.some(call => call[0] === "service-stop"), true);
 
     const serviceLogs = [];
+    let serviceReady = 0;
     const service = await runtime.start({
         clashPath: "C:\\clash",
         binaryPath: "clash.exe",
@@ -165,10 +166,11 @@ async function run() {
         clashApi: { getConfig: () => Promise.resolve({ status: 200, data: { "mixed-port": 7890 } }) },
         startupErrorMessage: "failed",
         onLogFile: file => serviceLogs.push(file),
-        onCoreReady() {},
+        onCoreReady() { serviceReady++; },
         onServiceFallback() {}
     });
     assert.equal(service.serviceMode, true);
+    assert.equal(serviceReady, 1);
     assert.deepEqual(serviceLogs, ["service.log"]);
 
     let timeoutProbeCount = 0;

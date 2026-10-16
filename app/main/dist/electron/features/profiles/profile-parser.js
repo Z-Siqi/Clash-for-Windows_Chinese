@@ -2,6 +2,9 @@
 
 const { writeAtomic } = require("../../core/storage/atomic-file");
 const { config: releaseConfig } = require("../../core/release/release-info");
+const { createCertificateExceptionMatcher } = require("../../core/network/certificate-exceptions");
+const { createCertificateRequestOptions } = require("../../core/network/certificate-request-options");
+const { resolveDownloadPolicy } = require("../../core/network/profile-download-policy");
 
 const SET = Symbol("set");
 const INSERT = Symbol("insert");
@@ -149,10 +152,26 @@ function createProfileParser(dependencies) {
         return headers;
     }
 
+    function certificateOptions(url, createAgent) {
+        return createCertificateRequestOptions({
+            url, createAgent,
+            allowsCertificate: createCertificateExceptionMatcher({ yaml,
+                text: store.state.app.settings.unsafeURLsText, originsText: store.state.app.settings.unsafeURLOriginsText })
+        });
+    }
+
+    function downloadLimits(url) {
+        const { timeout, maxContentLength } = resolveDownloadPolicy({ settings: store.state.app.settings, yaml, url });
+        // Axios counts decompressed bytes, including gzip subscriptions.
+        return { timeout, maxContentLength };
+    }
+
     function directRequest(url, options = {}, headers = {}) {
         return axios.get(url, {
             validateStatus: () => true,
             ...options,
+            ...certificateOptions(url),
+            ...downloadLimits(url),
             headers: configuredHeaders(headers),
             responseType: "text",
             transformResponse: [value => value]
@@ -161,16 +180,15 @@ function createProfileParser(dependencies) {
 
     function proxiedRequest(url, options = {}, headers = {}) {
         const { "mixed-port": mixedPort, authentication = [] } = store.state.app.confData;
-        const httpsAgent = new HttpsProxyAgent({
-            proxy: `http://${authentication.length ? `${authentication[0]}@` : ""}127.0.0.1:${mixedPort}`
-        });
+        const proxy = `http://${authentication.length ? `${authentication[0]}@` : ""}127.0.0.1:${mixedPort}`;
         return axios.get(url, {
             validateStatus: () => true,
             ...options,
+            ...certificateOptions(url, options => new HttpsProxyAgent({ proxy, ...options })),
+            ...downloadLimits(url),
             headers: configuredHeaders(headers),
             responseType: "text",
             transformResponse: [value => value],
-            httpsAgent,
             proxy: false
         });
     }
@@ -224,6 +242,8 @@ function createProfileParser(dependencies) {
                     const { url: remoteUrl, cache = false } = parser.remote;
                     if (!remoteUrl) throw new Error("Remote parser url is required");
                     const response = await axios.get(remoteUrl, {
+                        ...certificateOptions(remoteUrl),
+                        ...downloadLimits(remoteUrl),
                         headers: { "cache-control": cache ? "max-age=3600" : "no-cache" }
                     });
                     if (response.status !== 200) {
@@ -316,7 +336,7 @@ function createProfileParser(dependencies) {
             store.commit(...mutation);
             return { success: true, targetIndex };
         } catch (error) {
-            console.error(error);
+            // Axios errors retain request headers and proxy credentials; do not log them.
             if (error.message) {
                 return {
                     success: false,

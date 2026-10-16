@@ -42,6 +42,13 @@ function createHomePageOptions(dependencies) {
     } = dependencies;
     const { setDns, getDns } = createMacDnsHelpers({ runMacCommand, net });
 
+    function publishCertificateExceptions(settings = {}) {
+        let urls = [], origins = [];
+        try { urls = yaml.parse(settings.unsafeURLsText)?.urls || []; } catch (_error) {}
+        try { origins = yaml.parse(settings.unsafeURLOriginsText)?.origins || []; } catch (_error) {}
+        electron.ipcRenderer.send("set-allow-unsafe-urls", urls, origins, settings.allowHttpExternalLinks === true);
+    }
+
 
     return {
         name: "landing-page",
@@ -204,13 +211,23 @@ function createHomePageOptions(dependencies) {
             "settings.mixinText"() { if (this.isMixinEnable && this.settings.mixinType === 0) this.refreshProfile(); },
             "settings.mixinCode"() { if (this.isMixinEnable && this.settings.mixinType === 1) this.refreshProfile(); },
             "settings.mixinType"() { this.refreshProfile(); },
-            "settings.unsafeURLsText": {
+            "settings.disableLoadingAdsLink": {
                 immediate: true,
                 handler(value) {
-                    let urls = [];
-                    try { urls = yaml.parse(value)?.urls || []; } catch (_error) {}
-                    electron.ipcRenderer.send("set-allow-unsafe-urls", urls);
+                    if (value !== false && cache.get(keys.AD_IMAGES) !== "") cache.put(keys.AD_IMAGES, "");
                 }
+            },
+            "settings.unsafeURLsText": {
+                immediate: true,
+                handler() { publishCertificateExceptions(this.settings); }
+            },
+            "settings.unsafeURLOriginsText": {
+                immediate: true,
+                handler() { publishCertificateExceptions(this.settings); }
+            },
+            "settings.allowHttpExternalLinks": {
+                immediate: true,
+                handler() { publishCertificateExceptions(this.settings); }
             },
             "settings.clashAuthentication"() { this.refreshProfile(); },
             isTunEnable(value) {
@@ -629,9 +646,11 @@ function createHomePageOptions(dependencies) {
                 if (this.confData) await dependencies.startUserProcesses();
             },
             async preDownloadAds() {
-                if (!runtimeState.adImages) return;
+                if (this.settings.disableLoadingAdsLink !== false) return;
                 const response = await dependencies.publicContent.getAds();
-                if (response.status === 200 && response.data.feedback) cache.put(keys.AD_IMAGES, response.data.feedback);
+                if (this.settings.disableLoadingAdsLink === false && response.status === 200 && response.data.feedback) {
+                    cache.put(keys.AD_IMAGES, response.data.feedback);
+                }
             },
             async profileUpdater() {
                 if (!this.profiles || this.isAppSuspend) return;
@@ -876,11 +895,6 @@ function createHomePageOptions(dependencies) {
             setInterval(pollCoreStatus, 3000);
             await this.handlerRestartClash();
 
-            if (!this.settings.disableLoadingAdsLink) {
-                runtimeState.adImages = "https://raw.githubusercontent.com/Fndroid/ads/master/ads_v2.json?t=";
-            } else if (cache.get(keys.AD_IMAGES) !== null && cache.get(keys.AD_IMAGES) !== "") {
-                cache.put(keys.AD_IMAGES, "");
-            }
             cache.put(keys.IS_LIGHTWEIGHT_MODE_CLOSE, false);
             if (!this.showStartup) {
                 this.showStartup = true;

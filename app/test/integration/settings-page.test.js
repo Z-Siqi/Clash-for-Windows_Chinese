@@ -4,6 +4,8 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const os = require("node:os");
+const { randomUUID } = require("node:crypto");
 const Vue = require("../../main/node_modules/vue");
 const Vuex = require("../../main/node_modules/vuex");
 const yaml = require("../../main/node_modules/yaml");
@@ -11,6 +13,9 @@ const { defineComponent } = require("../../main/dist/electron/features/renderer-
 const { createSettingsPage } = require("../../main/dist/electron/features/settings/page");
 const { assertRendererComposition } = require("../fixtures/assert-renderer-composition");
 const { createRendererLanguage } = require("../../main/dist/electron/entry/renderer/language-runtime");
+const { createSettingsRepository } = require("../../main/dist/electron/features/settings/settings-repository");
+const { createSettingsProxy } = require("../../main/dist/electron/features/settings/settings-proxy");
+const { updateYamlValue } = require("../../main/dist/electron/core/storage/yaml-file");
 
 const EmptyComponent = { render: h => h("span") };
 const labels = new Proxy({}, { get: (_target, key) => () => String(key) });
@@ -33,6 +38,119 @@ function createPage(overrides = {}) {
         ...overrides
     });
 }
+
+test("Security Core Secret changes only after confirmation, preserves configuration, and waits for saving before restart", async t => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "cfw-secret-settings-"));
+    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+    const file = path.join(directory, "config.yaml");
+    const previous = randomUUID();
+    fs.writeFileSync(file, yaml.stringify({ secret: previous, "mixed-port": 7895, "allow-lan": false }));
+    let confirmation = 0, generated, writes = 0, restarts = 0, fail = false;
+    const page = createPage({
+        uuid: { v4: () => { generated = randomUUID(); return generated; } },
+        showMessageBox: async () => ({ response: confirmation }),
+        updateYaml: async (target, key, value) => {
+            if (fail) throw new Error("save failed");
+            await Promise.resolve();
+            updateYamlValue({ fs, path, yaml, file: target, key, value });
+            writes++;
+        }
+    });
+    const model = { clashPath: directory, reloadElectron() {
+        assert.ok(yaml.parse(fs.readFileSync(file, "utf8")).secret === generated);
+        restarts++;
+    } };
+    await page.methods.handleGenerateUUIDSecret.call(model);
+    assert.equal(writes, 0); assert.equal(restarts, 0);
+    confirmation = 1;
+    await page.methods.handleGenerateUUIDSecret.call(model);
+    const saved = yaml.parse(fs.readFileSync(file, "utf8"));
+    assert.ok(saved.secret !== previous && saved.secret === generated);
+    assert.equal(saved["mixed-port"], 7895); assert.equal(saved["allow-lan"], false);
+    assert.equal(writes, 1); assert.equal(restarts, 1);
+    fail = true;
+    await assert.rejects(page.methods.handleGenerateUUIDSecret.call(model), /save failed/);
+    assert.equal(restarts, 1);
+});
+
+test("Security certificate exception edits persist through the settings proxy and cancellation preserves them", async t => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "cfw-exception-settings-"));
+    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+    const repository = createSettingsRepository({ fs, path, yaml });
+    let settings = { disableLoadingAdsLink: false }, cancelled = false;
+    const text = "urls:\n  - https://certificate.test/profile.yaml\n";
+    const page = createPage();
+    const model = { edit: page.methods.edit,
+        settings: createSettingsProxy({ getSettings: () => settings, cloneDeep: structuredClone,
+            saveSettings(value) { repository.save(directory, value); settings = value; } }),
+        async $code() { if (cancelled) throw new Error("cancelled"); return { code: text }; }
+    };
+    await page.methods.handleEditUnsafeURLs.call(model);
+    assert.equal(repository.load(directory).unsafeURLsText, text);
+    assert.equal(repository.load(directory).disableLoadingAdsLink, false);
+    cancelled = true;
+    await page.methods.handleEditUnsafeURLs.call(model);
+    assert.equal(repository.load(directory).unsafeURLsText, text);
+});
+
+test("Security compatibility switches require confirmation, persist explicitly and revoke without a restart", async t => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "cfw-compatibility-settings-"));
+    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+    const repository = createSettingsRepository({ fs, path, yaml });
+    let settings = repository.load(directory), response = 0;
+    const dialogs = [];
+    const page = createPage({ showMessageBox: async options => { dialogs.push(options); return { response }; } });
+    const model = { settings: createSettingsProxy({ getSettings: () => settings, cloneDeep: structuredClone,
+        saveSettings(value) { repository.save(directory, value); settings = value; } }),
+        $set(target, key, value) { target[key] = value; } };
+    for (const [method, field] of [["handleRemoteProfileParsersChange", "allowRemoteProfileParsers"], ["handleHttpExternalLinksChange", "allowHttpExternalLinks"]]) {
+        response = 0;
+        await page.methods[method].call(model, true);
+        assert.equal(model.settings[field], false);
+        assert.equal(dialogs.at(-1).cancelId, 0);
+        response = 1;
+        await page.methods[method].call(model, true);
+        assert.equal(repository.load(directory)[field], true);
+        const count = dialogs.length;
+        await page.methods[method].call(model, false);
+        assert.equal(repository.load(directory)[field], false);
+        assert.equal(dialogs.length, count);
+    }
+});
+
+test("Security editors save scoped exceptions and preserve existing settings on invalid internal or external edits", async t => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "cfw-scoped-settings-"));
+    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+    const repository = createSettingsRepository({ fs, path, yaml });
+    let settings = repository.load(directory), code;
+    const dialogs = [];
+    const page = createPage({ showMessageBox: async options => { dialogs.push(options); return { response: 0 }; },
+        externalEditor: { edit: async () => code } });
+    const model = { ...page.methods,
+        settings: createSettingsProxy({ getSettings: () => settings, cloneDeep: structuredClone,
+            saveSettings(value) { repository.save(directory, value); settings = value; } }),
+        async $code() { return { code }; }
+    };
+    for (const editor of [0, 1]) {
+        model.settings.editor = editor;
+        for (const [method, field, valid, invalid] of [
+            ["handleEditUnsafeOrigins", "unsafeURLOriginsText", "origins:\n  - https://trusted.test:8443\n", "origins:\n  - https://*.trusted.test\n"],
+            ["handleEditDownloadExceptions", "profileDownloadExceptionsText", "exceptions:\n  - url: https://trusted.test/profile\n    maxSizeMiB: 64\n", "exceptions:\n  - url: https://trusted.test/profile\n    maxSizeMiB: 0\n"]
+        ]) {
+            code = valid;
+            await page.methods[method].call(model);
+            assert.equal(repository.load(directory)[field], valid);
+            code = invalid;
+            await page.methods[method].call(model);
+            assert.equal(repository.load(directory)[field], valid);
+            assert.equal(dialogs.at(-1).type, "error");
+            assert.equal(model.isEditingExternal, false);
+            code = "";
+            await page.methods[method].call(model);
+            assert.equal(repository.load(directory)[field], "", "clearing an exception must revoke it without retaining the old setting");
+        }
+    }
+});
 
 test("language dropdown updates page text, saved settings and tray without a window reload", async () => {
     const calls = [], storage = new Map([["language", 0]]);
@@ -92,6 +210,10 @@ test("Settings navigator binds the scrolling action and default tray style expos
         for (const child of node.children || node.componentOptions?.children || []) visit(child);
     }
     visit(vm._render());
+    const renderedText = nodes.map(node => node.text || "").join("");
+    for (const label of ["trustedCertificateOrigins", "profileDownloadExceptions", "allowRemoteProfileParsers", "allowHttpExternalLinks"]) {
+        assert.ok(renderedText.includes(label), `Security control must render its label: ${label}`);
+    }
     const navigator = nodes.find(node => node.componentOptions?.tag === "navigator");
     assert.equal(navigator.componentOptions.listeners.select, vm.handleNavigateToGroup);
     assert.ok(nodes.some(node => node.text?.includes("showTrayProxyDelayIndicator")));

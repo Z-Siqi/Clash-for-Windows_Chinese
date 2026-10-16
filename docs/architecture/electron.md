@@ -2,6 +2,11 @@
 
 ## Runtime model
 
+The repository maintains an unpacked Electron application without the complete
+original Vue/Webpack source project. The files under `app/main/dist/electron`
+are maintained source. The build emits browser assets under `app/build/generated`
+without regenerating these maintained entries.
+
 ```text
 main.js (Electron main process)
   |-- BrowserWindow, tray, native menus, and application lifecycle
@@ -16,7 +21,7 @@ renderer.js (Vue 2 renderer process)
 
 The dashboard runs with `sandbox: true`, `nodeIntegration: false` and `contextIsolation: true`. Its small sandboxed preload requires only Electron and keeps its IPC object private to isolated world 999. After DOM readiness, the main process injects the fixed local Monaco asset and the browser renderer into that world, checking the renderer's SHA-256 manifest first. The renderer is built from the readable CommonJS source with browser-targeted esbuild; Node built-ins are rejected during compilation. The page main world receives no generic Node or IPC bridge and cannot access `process`, `require`, runtime paths or Monaco. Both worlds' CSP disallows string evaluation. User JavaScript executes in separate utility workers rather than the renderer. Native controller transport and fixed public-content requests run in the host; Chromium CORS enforcement remains enabled.
 
-`main.js` and `renderer.js` are small executable CommonJS entry points. They delegate to named composition modules below `entry/main` and `entry/renderer`; numeric webpack module tables and numeric loaders are not permitted in production source.
+`main.js` composes the Electron main process, and `renderer.js` starts the composition root under `entry/renderer`. Both are executable CommonJS source files. Product behavior belongs in `core/` or its owning feature, with cross-feature composition under `entry/`; numeric webpack module tables and loaders are not permitted in production source.
 
 ## Module layers
 
@@ -77,7 +82,9 @@ retain their intentional Node capabilities; the utility process is not an OS san
 for those user-authored programs. Saved Mixin and tray scripts use the same worker;
 Mixin validation compiles syntax without executing the submitted source. Profile
 downloads and configured parsers use a separate worker with saved settings and
-profile metadata, a two-minute deadline, and cancellation by its requesting frame.
+profile metadata, a two-minute default deadline, and cancellation by its requesting frame.
+Saved per-URL download exceptions can raise finite size/time limits for trusted
+subscriptions; the host and utility worker resolve the same shared policy.
 The Router page also delegates DHCP startup, stop and live gateway/DNS policy to
 the main process. The host validates the selected local interface and subnet,
 owns the fixed UDP port 67 listener and its power-save blocker, and releases both
@@ -141,7 +148,7 @@ are validated by the host before opening.
 
 Shared components live under `features/renderer-ui/components/`. Each exports a named factory accepting its runtime dependencies. `entry/renderer/create-shared-components.js` constructs them and publishes the stable dialog names. Styles are stored separately in `dist/electron/styles.css`.
 
-`features/renderer-ui/component.js` attaches render functions and preserves the original Vue scope IDs. The migrated render functions retain the established DOM, classes, slots, and event contracts so packaged CSS and existing page callers remain compatible. Vue and Babel helpers are loaded as ordinary declared dependencies. Monaco is an exact, lockfile-controlled build-time dependency compiled into a browser-only asset under `app/build/generated/monaco/` and injected into packages before ASAR creation.
+`features/renderer-ui/component.js` attaches render functions and preserves the original Vue scope IDs. Render functions retain the established DOM, classes, slots, and event contracts so packaged CSS and existing page callers remain compatible. Vue and Babel helpers are loaded as ordinary declared dependencies. Monaco is an exact, lockfile-controlled build-time dependency compiled into a browser-only asset under `app/build/generated/monaco/` and injected into packages before ASAR creation.
 
 The singleton dialog names (`$alert`, `$code`, `$diff`, `$dns`, `$input`, `$menu`, `$script`, `$select`, and `$toast`) remain stable. Install the global mixin before constructing these instances so dialogs receive the same settings, semantic Clash API, and platform computed properties as routed pages. Platform and native capabilities are composed at renderer entry points rather than imported across feature boundaries. Monaco link detection is disabled in embedded editors so an editor upgrade cannot bypass the application's public external-navigation policy through a private Monaco opener API.
 
@@ -151,4 +158,4 @@ Settings and profile-list writes use same-directory atomic replacement. Store mu
 
 ## How to trace runtime behavior
 
-Start from `main.js` or `renderer.js`, follow the named composition root, and then open the owning feature. Cross-feature wiring belongs in `entry/`; product behavior belongs in the corresponding feature. Architecture tests reject numeric webpack loaders and verify that the entries continue to delegate to named modules.
+Start from `main.js` or `renderer.js`, follow the named composition, and then open the owning feature. Architecture tests enforce dependency direction and named delegation, reject numeric webpack loaders and regenerator state machines, and require descriptive production bindings.

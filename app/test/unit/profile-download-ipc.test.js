@@ -18,12 +18,14 @@ test("profile download host authenticates frames and loads only saved parser pol
     const folder = path.join(home, "profiles");
     fs.mkdirSync(folder, { recursive: true });
     fs.writeFileSync(path.join(home, "config.yaml"), "mixed-port: 12345");
-    fs.writeFileSync(path.join(home, "cfw-settings.yaml"), yaml.stringify({ profileParsersText: "saved policy" }));
+    fs.writeFileSync(path.join(home, "cfw-settings.yaml"), yaml.stringify({ profileParsersText: "saved policy",
+        profileDownloadExceptionsText: yaml.stringify({ exceptions: [{ url: "https://example.test/profile", timeoutSeconds: 180, processingTimeoutSeconds: 600 }] }) }));
     fs.writeFileSync(path.join(folder, "list.yml"), "files: []\nindex: -1");
     const mainFrame = {};
     const webContents = { mainFrame };
     const handlers = {};
     let message; let kills = 0;
+    const timers = [];
     const worker = Object.assign(new EventEmitter(), {
         postMessage(value) { message = value; queueMicrotask(() => worker.emit("message", { type: "result", ok: true, value: { result: { success: true }, mutations: [] } })); },
         kill() { kills++; }
@@ -32,6 +34,7 @@ test("profile download host authenticates frames and loads only saved parser pol
         ipcMain: { handle: (channel, callback) => { handlers[channel] = callback; }, on: (channel, callback) => { handlers[channel] = callback; } },
         app: { getPath: name => name === "home" || name === "temp" ? root : path.join(root, "app.exe"), once() {} },
         getMainWindow: () => ({ webContents }), fs, path, yaml, workerPath: "/fixed/profile-worker.js",
+        schedule(callback, delay) { const timer = { callback, delay }; timers.push(timer); return timer; }, cancelTimer() {},
         forkWorker(file, args, options) { assert.equal(file, "/fixed/profile-worker.js"); assert.deepEqual(args, []); assert.equal(options.stdio, "ignore"); return worker; }
     });
     const event = { sender: webContents, senderFrame: mainFrame };
@@ -43,6 +46,17 @@ test("profile download host authenticates frames and loads only saved parser pol
     assert.equal(message.app.settings.profileParsersText, "saved policy");
     assert.equal(message.app.profilesPath, folder);
     assert.equal(kills, 1);
+    assert.equal(timers[0].delay, 600000, "the host must use the saved URL exception, not the default two-minute deadline");
+    await handlers["profile-download"](event, { ...request, id: 2, url: "https://example.test/other",
+        settings: { profileDownloadExceptionsText: "renderer override" } });
+    assert.equal(timers[1].delay, 120000, "unlisted URLs cannot inherit a saved or renderer-supplied exception");
+    const timeout = handlers["profile-download"](event, { ...request, id: 3, language: 1 });
+    timers[2].callback();
+    const timedOut = await timeout;
+    assert.equal(timedOut.result.success, false);
+    assert.match(timedOut.result.message, /Settings.*Security.*Subscription Download Exceptions/);
+    assert.deepEqual(timedOut.mutations, []);
+    assert.equal(kills, 3);
     fs.writeFileSync(path.join(folder, "list.yml"), yaml.stringify({ files: [{ time: "../outside.yml" }], index: 0 }));
     assert.throws(() => handlers["profile-download"](event, request), /filename/);
 });

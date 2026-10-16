@@ -112,6 +112,15 @@ function cloneSort(comparator) {
   return templateFn(comparator);
 }
 
+let isEvalAllowed = (function () {
+  try {
+    new Function('return 0')();
+    return true;
+  } catch {
+    return false;
+  }
+})();
+
 /**
  * Sort the given array in-place with the given comparator function.
  *
@@ -123,7 +132,7 @@ function cloneSort(comparator) {
 
 let sortCache = new WeakMap();
 exports.quickSort = function (ary, comparator, start = 0) {
-  let doQuickSort = sortCache.get(comparator);
+  let doQuickSort = isEvalAllowed ? sortCache.get(comparator) : SortTemplate(comparator);
   if (doQuickSort === void 0) {
     doQuickSort = cloneSort(comparator);
     sortCache.set(comparator, doQuickSort);

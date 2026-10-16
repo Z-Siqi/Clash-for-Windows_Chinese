@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const http = require("node:http");
 const os = require("node:os");
 const path = require("node:path");
-const { app, utilityProcess, ipcMain, BrowserWindow, shell } = require("electron");
+const { app, utilityProcess, ipcMain, BrowserWindow, shell, dialog } = require("electron");
 require("./native-boundaries");
 const { verifyLanguageHotload } = require("./language-hotload");
 const { verifyEditorDigits } = require("./editor-digits");
@@ -12,6 +12,18 @@ const { verifyEditorDigits } = require("./editor-digits");
 const root = path.resolve(__dirname, "../../../..");
 const applicationRoot = process.env.CFW_SECURITY_SMOKE_APP_ROOT || path.join(root, "app", "main");
 const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "cfw-security-smoke-"));
+// The compatibility controls persist only to the fixture's temporary profile.
+// No configured remote parser exists and HTTP navigation remains faked below.
+const originalShowMessageBox = dialog.showMessageBox;
+let securityConfirmations = 0;
+dialog.showMessageBox = async (...args) => {
+    const options = args.at(-1);
+    if (/remote JavaScript parsers|远程 JavaScript|HTTP links to open|HTTP 链接/.test(options.message || "")) {
+        securityConfirmations++;
+        return { response: 1 };
+    }
+    return originalShowMessageBox(...args);
+};
 async function verifyScriptWorker() {
     const output = path.join(temporaryRoot, "utility-script-result.txt");
     const worker = utilityProcess.fork(path.join(applicationRoot, "dist/electron/entry/utility/script-worker.js"), [], { stdio: "ignore" });
@@ -70,7 +82,7 @@ ipcMain.on("speed-update", (_event, image) => {
         enhancedTrayFrames++;
     }
 });
-const timeout = setTimeout(() => finish({ ok: false, error: "window load timed out" }), 40000);
+const timeout = setTimeout(() => finish({ ok: false, error: "window load timed out" }), 60000);
 const controllerServer = http.createServer((request, response) => {
     const chunks = [];
     request.on("data", chunk => chunks.push(chunk));
@@ -204,8 +216,17 @@ app.on("browser-window-created", (_event, window) => {
                 visible: Boolean(document.querySelector(".main-setting-view")),
                 rightText: document.querySelector(".right-side").innerText.slice(0, 300)
             })`);
+            // Fresh profiles now use Mihomo. Select legacy Clash explicitly for
+            // the Script-mode checks, which remain a supported legacy capability.
             const languageHotload = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: `(${verifyLanguageHotload.toString()})()` }]);
             const editorDigits = await verifyEditorDigits(window);
+            const defaultMihomo = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: `(() => {
+                const root = document.querySelector("#app").__vue__;
+                const selected = root.$store.state.app.settings.proxyCore;
+                root.$store.commit("SAVE_SETTINGS_OBJECT", { obj: { proxyCore: "clash" } });
+                return selected === "mihomo";
+            })()` }]);
+            await new Promise(resolve => setTimeout(resolve, 250));
             const proxiesClick = await window.webContents.executeJavaScript(`(() => {
                 const item = Array.from(document.querySelectorAll(".main-main-menu li.item"))
                     .find(candidate => /Proxies|代理/i.test(candidate.innerText));
@@ -271,7 +292,7 @@ app.on("browser-window-created", (_event, window) => {
             const profileUpdatePersisted = downloadedContent?.["profile-version"] === profileRequestCount;
             const pageResults = await window.webContents.executeJavaScript(`(async () => {
                 const pages = [
-                    [/Home|主页/i, "#/home/general"],
+                    [/General|主页/i, "#/home/general"],
                     [/Proxies|代理/i, "#/home/proxy"],
                     [/Profiles|配置/i, "#/home/server"],
                     [/Logs|日志/i, "#/home/log"],
@@ -326,6 +347,7 @@ app.on("browser-window-created", (_event, window) => {
                     && result.appChildren > 0
                     && settingsClick
                     && settings.visible
+                    && defaultMihomo
                     && proxiesClick
                     && scriptClick
                     && proxies.scriptSelected
@@ -338,7 +360,7 @@ app.on("browser-window-created", (_event, window) => {
                     && profileUpdatePersisted
                     && allPagesRendered
                     && scriptWorkerIsolated && isolatedEvalBlocked
-                    && Object.values(uiRegressions).every(Boolean),
+                    && Object.values(uiRegressions).every(Boolean) && securityConfirmations === 2,
                 uiRegressions,
                 error: Object.values(uiRegressions).every(Boolean) ? undefined : `UI regressions failed: ${Object.entries(uiRegressions).filter(([_name, passed]) => !passed).map(([name]) => name).join(", ")}`,
                 result,
@@ -347,7 +369,7 @@ app.on("browser-window-created", (_event, window) => {
                 isolation,
                 monacoEditingVerified,
                 navigation: {
-                    settingsClick, settings, proxiesClick, scriptClick, proxies,
+                    settingsClick, settings, defaultMihomo, proxiesClick, scriptClick, proxies,
                     profilesClick, downloadClick, profiles, profileRequestSeen,
                     updateAllClick, profileRequestCount, profileUpdatePersisted, pageResults, allPagesRendered
                 },

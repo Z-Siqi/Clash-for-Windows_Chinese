@@ -25,8 +25,7 @@ function startRenderer({
     const modifyState = Vue.observable({
         language: -1,
         isTun: false,
-        isMixin: false,
-        adImages: ""
+        isMixin: false
     });
     const runtime = createRendererRuntime({
         Vue, Vuex, modifyState, windowObject, staticRoot, processObject, electronHost

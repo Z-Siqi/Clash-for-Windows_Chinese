@@ -1,11 +1,11 @@
 {
   "html_url": "https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/0.20.39.4",
   "tag_name": "0.20.39.4",
-  "display_version": "Opt-4",
+  "display_version": "Opt-4.test",
   "assets": [
     {
-      "name": "Clash.for.Windows.Setup_Opt-4.exe",
-      "browser_download_url": "https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/download/0.20.39.4/Clash.for.Windows.Setup_Opt-4.exe"
+      "name": "Clash.for.Windows.Setup_Opt-4.test.exe",
+      "browser_download_url": "https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/download/0.20.39.4/Clash.for.Windows.Setup_Opt-4.test.exe"
     }
   ],
   "body": "- **新版本已发布!**",
