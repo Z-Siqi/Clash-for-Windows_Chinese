@@ -6,6 +6,11 @@ const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 
 const repositoryRoot = path.resolve(__dirname, "../..");
+const preparation = spawnSync(process.execPath, [path.join(__dirname, "mihomo.js"),
+    "prepare", "--target", "mac-x64", "--target", "mac-arm64"], {
+    cwd: repositoryRoot, stdio: "inherit", windowsHide: true
+});
+if (preparation.status !== 0) throw new Error("Failed to prepare locked Mihomo dependencies");
 // The helper is portable POSIX Go code; keep one audited implementation for
 // Linux and macOS even though its historical source directory names Linux.
 const sourceRoot = path.join(repositoryRoot, "scripts/native/linux-service-helper");

@@ -3,6 +3,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
+const { prepareMihomo } = require("./build/mihomo-dependency");
 
 const allowedGroups = new Set(["unit", "integration", "architecture", "application", "all"]);
 const group = process.argv[2];
@@ -21,14 +22,13 @@ const files = groups.flatMap(name => {
         .sort()
         .map(file => path.join(directory, file));
 });
-const result = spawnSync(process.execPath, [
-    "--test",
-    "--test-concurrency=1",
-    ...files
-], {
-    cwd: root,
-    stdio: "inherit",
-    windowsHide: true
-});
+async function main() {
+    // Asset and Service Mode tests inspect every package, including foreign CPUs.
+    await prepareMihomo();
+    const result = spawnSync(process.execPath, [
+        "--test", "--test-concurrency=1", ...files
+    ], { cwd: root, stdio: "inherit", windowsHide: true });
+    process.exitCode = result.status === null ? 1 : result.status;
+}
 
-process.exit(result.status === null ? 1 : result.status);
+main().catch(error => { console.error(error.message); process.exitCode = 1; });

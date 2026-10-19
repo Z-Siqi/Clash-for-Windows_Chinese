@@ -12,6 +12,11 @@ version mentioned in credits are independent of this release version.
 
 ## Preparing a release
 
+Mihomo is prepared automatically from its pinned dependency manifest during tests
+and platform packaging. To change its version, run `npm run mihomo:update --
+<exact-version>` and review the lockfile, notices and service allow-lists before
+running the release checks. See [native dependencies](native-dependencies.md).
+
 1. Increase `version` in the release configuration, and set `displayVersion`
    independently. For example, `version: "0.2039.4.1"` and
    `displayVersion: "Opt-4.1"`. Labels use letters, digits, dots, underscores

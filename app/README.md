@@ -37,7 +37,32 @@ npm run test:application
 ```
 
 The test commands rebuild the pinned Monaco assets in
-`app/build/generated/monaco` before running.
+`app/build/generated/monaco` before running, and automatically prepare and verify
+the locked Mihomo binaries for all six targets. A fresh checkout needs network
+access on the first run; later runs reuse verified local files or the cache.
+
+## Mihomo dependency
+
+`app/clash_core/mihomo-core-manifest.json` locks the exact upstream version,
+official release URLs and extracted binary SHA-256 hashes. Mihomo binaries are
+ignored by Git. Tests and packaging restore them to their existing platform paths;
+the resulting application includes its core and needs no runtime download.
+
+```powershell
+# Optional: prefetch every platform, for example before going offline.
+npm run mihomo:prepare -- --all
+# Explicit offline verification/restoration (also available with --target win-x64).
+npm run mihomo:prepare -- --all --offline
+# Deliberate upgrade: resolve all platforms, then update the text lock and allow-lists.
+npm run mihomo:update -- 1.19.32
+```
+
+The update command requires an exact version. Review and commit the manifest,
+`MIHOMO_NOTICE.txt` files and `service/core-hashes.json` changes, then run `npm test`.
+Ordinary builds never discover a newer version or rewrite those tracked files.
+The historical `update_mihomo_cores.ps1 -Version <version>` entry point delegates to
+the same Node implementation. See [native dependency management](../docs/development/native-dependencies.md)
+for cache, proxy and failure behavior.
 
 ## Packaging
 
@@ -71,10 +96,10 @@ Unsupported operating systems and architectures stop with an explanatory error i
 of building a package for the wrong device. The explicit PowerShell wrappers in this
 directory remain available when a particular target must be selected manually.
 
-macOS packaging must run on a Mac. Before using either macOS target, add the audited
-platform assets under `app/clash_core/darwin-x64/static` or
-`app/clash_core/darwin-arm64/static`. Each target must contain `Country.mmdb` plus
-the matching `clash-darwin`, Mihomo, `sysproxy`, and Service Mode helper binaries.
+macOS packaging must run on a Mac. Its audited platform assets live under
+`app/clash_core/darwin-x64/static` or `app/clash_core/darwin-arm64/static`.
+Each target contains `Country.mmdb`, `clash-darwin`, `sysproxy`, and Service Mode
+helper binaries; the locked Mihomo dependency is prepared automatically.
 The packager validates those files and marks native executables as executable; an
 incomplete target fails with an explicit list instead of producing a broken app.
 Code signing, notarization, and DMG creation are separate release steps and are not
@@ -93,10 +118,11 @@ when you want to delete their old build directories manually.
 
 The packaging pipeline performs these steps:
 
-1. Build the locked Monaco browser runtime into `app/build/generated/monaco`.
-2. Copy the readable application from `app/main` into Electron Packager's staging area.
-3. Inject Monaco before ASAR creation.
-4. Prune production dependencies and create the ASAR.
-5. Copy renderer UI assets and the selected platform's Clash/Mihomo and service files into `resources/static`.
+1. Verify the service allow-list and prepare the locked Mihomo for the selected target.
+2. Build the locked Monaco browser runtime into `app/build/generated/monaco`.
+3. Copy the readable application from `app/main` into Electron Packager's staging area.
+4. Inject Monaco before ASAR creation.
+5. Prune production dependencies and create the ASAR.
+6. Copy renderer UI assets and the selected platform's Clash/Mihomo and service files into `resources/static`.
 
 Build failures return a non-zero exit code and do not replace `latest.json`.

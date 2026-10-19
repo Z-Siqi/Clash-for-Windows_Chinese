@@ -8,7 +8,7 @@ const path = require("node:path");
 
 const root = path.resolve(__dirname, "../../..");
 const source = ["main.go", "policy.go"].map(name => fs.readFileSync(path.join(root, "scripts/native/linux-service-helper", name), "utf8")).join("\n");
-const updater = fs.readFileSync(path.join(root, "app/update_mihomo_cores.ps1"), "utf8");
+const { targetSpec, readManifest, verifyServiceManifest } = require("../../../scripts/build/mihomo-dependency");
 const targets = [
     {
         directory: "app/clash_core/darwin-x64/static/files/darwin/x64",
@@ -30,9 +30,12 @@ test("macOS Service Mode uses the loopback-only hash allow-list helper", () => {
     assert.doesNotMatch(source, /HandleFunc\("\/command"/);
     assert.match(source, /HandleFunc\("\/system-proxy"/);
     assert.match(source, /validSystemProxyArgs/);
-    assert.match(updater, /darwin-x64\/static\/files\/darwin\/x64/);
-    assert.match(updater, /darwin-arm64\/static\/files\/darwin\/arm64/);
-    assert.match(updater, /service\/core-hashes\.json/);
+    const locked = readManifest(root);
+    for (const name of ["mac-x64", "mac-arm64"]) {
+        const spec = targetSpec(name, locked.version);
+        const digest = locked.targets.find(entry => entry.output === spec.output).sha256;
+        assert.doesNotThrow(() => verifyServiceManifest(root, spec, digest));
+    }
 });
 
 for (const target of targets) {

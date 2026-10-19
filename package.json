@@ -2,6 +2,8 @@
   "name": "clash-for-windows-chinese-maintenance",
   "private": true,
   "scripts": {
+    "mihomo:prepare": "node scripts/build/mihomo.js prepare",
+    "mihomo:update": "node scripts/build/mihomo.js update",
     "build:release": "node CFW/BuildRelease/build-release.js",
     "release:sync": "node scripts/build/sync-release.js",
     "release:check": "node scripts/build/sync-release.js --check",
@@ -36,7 +38,9 @@
     "@electron/asar": "4.3.0",
     "@electron/packager": "20.3.0",
     "esbuild": "0.28.2",
-    "monaco-editor": "0.57.0"
+    "https-proxy-agent": "7.0.6",
+    "monaco-editor": "0.57.0",
+    "yauzl": "3.4.0"
   },
   "overrides": {
     "dompurify": "3.4.17"

@@ -5,3 +5,7 @@
 /app/.electron-*
 /node_modules
 .DS_Store
+# Mihomo is restored from the pinned manifest by tests and packaging.
+/app/clash_core/*/static/files/win/*/mihomo-*.exe
+/app/clash_core/*/static/files/linux/*/mihomo-*
+/app/clash_core/*/static/files/darwin/*/mihomo-*

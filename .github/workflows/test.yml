@@ -21,4 +21,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - uses: actions/cache@v4
+        with:
+          path: app/build/dependencies/mihomo
+          key: mihomo-${{ runner.os }}-${{ hashFiles('app/clash_core/mihomo-core-manifest.json') }}
       - run: npm test

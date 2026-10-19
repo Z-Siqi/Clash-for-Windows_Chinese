@@ -5,6 +5,7 @@ const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { config: releaseConfig } = require("../../app/main/dist/electron/core/release/release-info");
 const { synchronizeRelease } = require("./sync-release");
+const { prepareMihomo } = require("./mihomo-dependency");
 
 const repositoryRoot = path.resolve(__dirname, "../..");
 const applicationRoot = path.join(repositoryRoot, "app");
@@ -173,6 +174,8 @@ async function main() {
     if (target.hostPlatform && process.platform !== target.hostPlatform) {
         throw new Error(`${targetName} must be packaged on a ${target.hostPlatform} host`);
     }
+
+    await prepareMihomo({ targetNames: [targetName] });
 
     const staticRoot = path.join(applicationRoot, "clash_core", target.staticRoot, "static");
     const targetRoot = path.join(buildRoot, "packages", targetName);

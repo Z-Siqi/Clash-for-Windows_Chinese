@@ -9,6 +9,7 @@ This directory documents the architecture, product invariants, decisions, and de
 - [`decisions/dual-core-support.md`](decisions/dual-core-support.md): How legacy Clash and Mihomo coexist.
 - [`development/testing.md`](development/testing.md): Cross-platform test commands, test layers, and contribution rules.
 - [`development/releases.md`](development/releases.md): Release metadata, packaging, and update delivery.
+- [`development/native-dependencies.md`](development/native-dependencies.md): Locked Mihomo downloads, caches, offline builds, and deliberate upgrades.
 - [`development/macos-packaging.md`](development/macos-packaging.md): macOS app, DMG, signing, notarization, and release verification workflow.
 - [`security-checks.md`](security-checks.md): CI security gates, coverage, and platform verification limits.
 
