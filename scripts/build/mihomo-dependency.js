@@ -22,13 +22,19 @@ function validateVersion(version) {
     if (typeof version !== "string" || !/^\d+\.\d+\.\d+$/.test(version)) {
         throw new Error("Expected an exact Mihomo version, for example 1.19.31");
     }
-    return version;
+    const components = version.split(".").map(component => Number(component));
+    const canonical = components.join(".");
+    if (!components.every(Number.isSafeInteger) || canonical !== version) {
+        throw new Error("Expected an exact canonical Mihomo version with safe integer components");
+    }
+    // Build request paths from numeric version components, never raw file data.
+    return canonical;
 }
 
 function targetSpec(name, version) {
     const target = targets[name];
     if (!target) throw new Error(`Unsupported Mihomo target: ${name}`);
-    validateVersion(version);
+    version = validateVersion(version);
     const filesPath = `clash_core/${target.directory}/static/files`;
     const output = resolveCoreBinaryPath({ path: path.posix, filesPath, ...target, coreType: "mihomo" });
     const legacy = resolveCoreBinaryPath({ path: path.posix, filesPath, ...target, coreType: "clash" });
@@ -67,7 +73,17 @@ function sha256(file) {
 }
 
 function matches(file, digest) {
-    return fs.existsSync(file) && fs.statSync(file).isFile() && sha256(file) === digest;
+    let descriptor;
+    try {
+        descriptor = fs.openSync(file, "r");
+        // Check and hash the same opened file, even if its path is replaced.
+        return fs.fstatSync(descriptor).isFile() && sha256(descriptor) === digest;
+    } catch (error) {
+        if (["ENOENT", "ENOTDIR", "EISDIR"].includes(error.code)) return false;
+        throw error;
+    } finally {
+        if (descriptor !== undefined) fs.closeSync(descriptor);
+    }
 }
 
 function verifyBinary(file, spec) {
@@ -208,7 +224,7 @@ async function prepareMihomo({ root = repositoryRoot, targetNames = Object.keys(
                 log(`Downloading Mihomo ${manifest.version} for ${spec.name}...`);
                 const archive = path.join(work, spec.asset);
                 source = path.join(work, spec.name);
-                await download(entry.source, archive);
+                await download(spec.source, archive);
                 await extract(archive, source, spec);
                 if (!matches(source, entry.sha256)) throw new Error(`Mihomo SHA-256 mismatch for ${spec.name}`);
                 verifyBinary(source, spec);
@@ -225,7 +241,7 @@ async function prepareMihomo({ root = repositoryRoot, targetNames = Object.keys(
 async function updateMihomo(version, { root = repositoryRoot,
     cacheRoot = process.env.CFW_MIHOMO_CACHE || path.join(root, "app/build/dependencies/mihomo"),
     download = downloadFile, extract = extractBinary, log = console.log } = {}) {
-    validateVersion(version);
+    version = validateVersion(version);
     return withLock(root, async work => {
         const previous = readManifest(root);
         for (const name of Object.keys(targets)) {
@@ -263,5 +279,5 @@ async function updateMihomo(version, { root = repositoryRoot,
     });
 }
 
-module.exports = { targets, targetSpec, readManifest, sha256, verifyBinary, serviceManifest,
+module.exports = { targets, targetSpec, readManifest, sha256, matches, verifyBinary, serviceManifest,
     verifyServiceManifest, prepareMihomo, updateMihomo };

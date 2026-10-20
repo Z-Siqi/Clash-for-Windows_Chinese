@@ -5,7 +5,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { fixture, binaryFor } = require("../fixtures/mihomo-dependency");
-const { targets, targetSpec, readManifest, sha256, verifyServiceManifest,
+const { targets, targetSpec, readManifest, sha256, matches, verifyServiceManifest,
     prepareMihomo, updateMihomo } = require("../../../scripts/build/mihomo-dependency");
 
 function snapshot(f) {
@@ -106,6 +106,46 @@ test("manifest validation rejects path traversal, untrusted sources, duplicates 
         mutate(candidate);
         fs.writeFileSync(f.manifestPath, JSON.stringify(candidate));
         assert.throws(() => readManifest(f.root), /Mihomo/);
+    }
+});
+
+test("dependency hashes and type checks use the same descriptor and always close it", t => {
+    const f = fixture(t, { materialized: true });
+    const file = path.join(f.root, "app", f.manifest.targets[0].output);
+    const digest = f.manifest.targets[0].sha256;
+    const stat = fs.fstatSync, read = fs.readFileSync, close = fs.closeSync;
+    let checked, closed = 0, failRead = false;
+    t.mock.method(fs, "fstatSync", descriptor => { checked = descriptor; return stat(descriptor); });
+    t.mock.method(fs, "readFileSync", (source, ...args) => {
+        assert.equal(source, checked, "hashing must not reopen the checked pathname");
+        if (failRead) throw Object.assign(Error("read failed"), { code: "EIO" });
+        return read(source, ...args);
+    });
+    t.mock.method(fs, "closeSync", descriptor => { closed++; return close(descriptor); });
+    assert.equal(matches(file, digest), true);
+    assert.equal(closed, 1);
+    assert.equal(matches(file, "0".repeat(64)), false);
+    assert.equal(closed, 2);
+    assert.equal(matches(path.join(f.root, "missing"), digest), false);
+    assert.equal(matches(f.root, digest), false);
+    failRead = true;
+    const before = closed;
+    assert.throws(() => matches(file, digest), /read failed/);
+    assert.equal(closed, before + 1);
+    t.mock.restoreAll();
+});
+
+test("download URLs are canonical release assets and invalid manifest sources never reach the network", async t => {
+    const f = fixture(t);
+    await prepareMihomo({ ...f, targetNames: ["linux-x64"] });
+    assert.deepEqual(f.requests, [targetSpec("linux-x64", f.manifest.version).source]);
+    const candidate = structuredClone(f.manifest);
+    candidate.targets[0].source = "https://example.org/private-file-data";
+    fs.writeFileSync(f.manifestPath, JSON.stringify(candidate));
+    await assert.rejects(prepareMihomo({ ...f, targetNames: ["win-x64"] }), /dependency lock/);
+    assert.equal(f.requests.length, 1);
+    for (const version of ["01.2.3", "1.02.3", "1.2.03", "1.2.9007199254740992", "1.2.3?private=data"]) {
+        assert.throws(() => targetSpec("linux-x64", version), /Mihomo version/);
     }
 });
 
