@@ -10,8 +10,9 @@ const yaml = require("../../main/node_modules/yaml");
 const { registerRepositoryIpc } = require("../../main/dist/electron/entry/main/register-repository-ipc");
 const { createRepositoryClients } = require("../../main/dist/electron/core/native/repository-client");
 const { createCoreConfigClient } = require("../../main/dist/electron/core/native/core-config-client");
+const { createTranslator } = require("../../main/dist/electron/core/i18n/language");
 
-function harness(t, injectedFs = fs, coreConfig = false) {
+function harness(t, injectedFs = fs, coreConfig = false, overrides = {}) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "cfw-repo-ipc-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
     const home = path.join(root, ".config", "clash");
@@ -41,7 +42,7 @@ function harness(t, injectedFs = fs, coreConfig = false) {
         app: { isPackaged: true, getPath: name => name === "home" ? root : path.join(root, "app.exe") },
         getMainWindow: () => ({ webContents }), fs: injectedFs, path, yaml,
         filesPath: coreConfig ? assets : undefined, platform: "linux", arch: "x64",
-        getPort: async () => 23456, uuid: () => ""
+        getPort: async () => 23456, uuid: () => "", ...overrides
     });
     const event = { sender: webContents, senderFrame: mainFrame };
     const clients = createRepositoryClients({ getHome: () => home, ipcRenderer: {
@@ -56,6 +57,22 @@ function harness(t, injectedFs = fs, coreConfig = false) {
     } });
     return { root, home, handler, coreHandler, fileHandler, event, clients };
 }
+
+test("profile import native dialog translates its title and open button while keeping YAML filters", async t => {
+    let language = 0;
+    const labels = createTranslator(() => language), dialogs = [];
+    const host = harness(t, fs, false, { getLanguage: () => labels, dialog: {
+        showOpenDialog: async (_window, options) => { dialogs.push(options); return { canceled: true }; }
+    } });
+    const folder = path.join(host.home, "profiles");
+    host.clients.profiles.initialize(folder);
+    for (language of [0, 1, 0]) {
+        assert.deepEqual(await host.fileHandler(host.event, "import-dialog", { home: host.home, profilesPath: folder }), { ok: true, value: [] });
+        assert.equal(dialogs.at(-1).title, labels.import());
+        assert.equal(dialogs.at(-1).buttonLabel, labels.open());
+        assert.deepEqual(dialogs.at(-1).filters, [{ name: "YAML", extensions: ["yml", "yaml"] }]);
+    }
+});
 
 test("profile file IPC reads only saved profile identities and cleans only old inactive generated profiles", async t => {
     const { clients, home, fileHandler, event } = harness(t);

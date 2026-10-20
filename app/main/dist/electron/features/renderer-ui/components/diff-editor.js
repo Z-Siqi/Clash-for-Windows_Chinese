@@ -143,7 +143,7 @@ function createDiffEditor({
                 createElement("Hint", {
                     staticClass: "change-btn-off clickable",
                     class: { "change-btn-on": viewModel.renderSideBySide },
-                    attrs: { hint: "并排模式" },
+                    attrs: { hint: labels.sideBySideMode() },
                     on: { click: viewModel.handleChangeStyle }
                 }, [createElement("span", {
                     staticClass: "icon text-[20px] text-white"

@@ -3,6 +3,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const { createTranslator } = require("../../main/dist/electron/core/i18n/language");
 
 const root = path.resolve(__dirname, "../../..");
 const mainPath = path.join(root, "app/main/dist/electron/main.js");
@@ -38,6 +39,8 @@ async function main() {
         }
     }
     let crashChoice = 0;
+    let language = 0;
+    const labels = createTranslator(() => language);
     const app = {
         getVersion: () => "1.2.3",
         quit: () => calls.push(["quit"])
@@ -52,13 +55,13 @@ async function main() {
         app,
         dialog: {
             showMessageBox: async (_window, options) => {
-                calls.push(["crash-dialog", options.message]);
+                calls.push(["crash-dialog", options.message, options.buttons]);
                 return { response: crashChoice };
             }
         },
         platform: "win32",
         url: "file:///index.html",
-        localize: (english, chinese) => `${english}|${chinese}`,
+        getLanguage: () => labels,
         onRelaunch: () => calls.push(["relaunch"])
     });
     assert.equal(createdWindow.options.width, 850);
@@ -97,11 +100,14 @@ async function main() {
         reason: "crashed"
     });
     assert.deepEqual(calls.at(-1), ["relaunch"]);
+    assert.deepEqual(calls.at(-2), ["crash-dialog", "仪表盘崩溃了！", ["重新加载", "退出"]]);
     crashChoice = 1;
+    language = 1;
     await createdWindow.webContents.listeners.get("render-process-gone")(null, {
         reason: "crashed"
     });
     assert.deepEqual(calls.at(-1), ["quit"]);
+    assert.deepEqual(calls.at(-2), ["crash-dialog", "Dashboard has crashed!", ["Reload", "Exit"]]);
 
     const showWindow = {
         isMinimized: () => true,

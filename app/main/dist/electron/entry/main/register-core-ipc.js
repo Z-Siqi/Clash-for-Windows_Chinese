@@ -49,11 +49,12 @@ function registerCoreIpc({
     clashApi,
     clashClientRegistry,
     staticRoot,
-    unsafeUrlPolicy
+    unsafeUrlPolicy,
+    getLanguage
 }) {
     registerApplicationIpc({ ipcMain, app, getMainWindow, fs: require("fs"), path: require("path"), os: require("os") });
     registerWindowIpc({ ipcMain, getMainWindow, app });
-    registerDialogIpc({ ipcMain, dialog, getMainWindow });
+    registerDialogIpc({ ipcMain, dialog, getMainWindow, getLanguage });
     registerGlobalShortcutIpc({ ipcMain, globalShortcut, getMainWindow });
     registerNativeThemeIpc({ ipcMain, nativeTheme, getMainWindow });
     registerPowerSaveIpc({ ipcMain, powerSaveBlocker });
@@ -61,7 +62,7 @@ function registerCoreIpc({
     registerRepositoryIpc({
         ipcMain, app, getMainWindow, fs: require("fs"), path: require("path"), yaml: require("yaml"),
         filesPath: staticRoot && (app.isPackaged ? require("path").join(staticRoot, "files") : require("path").resolve("static", "files")),
-        getPort: require("get-port"), uuid: require("crypto").randomUUID, Koa: require("koa"), dialog, shell,
+        getPort: require("get-port"), uuid: require("crypto").randomUUID, Koa: require("koa"), dialog, shell, getLanguage,
         got: require("got"), zlib: require("zlib"), tarStream: require("tar-stream")
     });
     registerNetworkInfoIpc({
@@ -90,7 +91,7 @@ function registerCoreIpc({
                 for (const kind of ["proxy-providers", "rule-providers"]) appliedProviders[kind] = payload?.[kind] || {};
             } catch { /* Failed or path-based configurations cannot grant provider file access. */ }
         } });
-        registerProviderFileIpc({ ipcMain, app, getMainWindow, fs: require("fs"), path: require("path"), dialog, shell, getProviders: () => appliedProviders });
+        registerProviderFileIpc({ ipcMain, app, getMainWindow, fs: require("fs"), path: require("path"), dialog, shell, getLanguage, getProviders: () => appliedProviders });
         registerCoreStreamIpc({ ipcMain, getMainWindow, getConnectionInfo: clashClientRegistry.getConnectionInfo, WebSocket: require("ws") });
         const fs = require("fs");
         const path = require("path");
@@ -103,7 +104,7 @@ function registerCoreIpc({
             workerPath: path.resolve(__dirname, "../utility/profile-worker.js")
         });
         registerUserScriptIpc({
-            ipcMain, app, getMainWindow, fs, path, yaml: require("yaml"), dialog,
+            ipcMain, app, getMainWindow, fs, path, yaml: require("yaml"), dialog, getLanguage,
             Notification: require("electron").Notification, clashApi,
             forkWorker: (...args) => require("electron").utilityProcess.fork(...args),
             workerPath: path.resolve(__dirname, "../utility/script-worker.js")

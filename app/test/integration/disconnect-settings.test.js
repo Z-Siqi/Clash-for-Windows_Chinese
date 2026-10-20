@@ -13,7 +13,7 @@ function fixture() {
     const control = { status: 204, source: "proxies: []" };
     const vm = {
         profiles: { index: 0, files: [{ time: "test.yaml" }] }, profilesPath: "/temporary",
-        settings: {}, confData: {}, menuItems: [], tunSettings: {},
+        settings: { legacyTapMode: "enabled" }, confData: {}, menuItems: [], tunSettings: {},
         clashApi: {
             isReady: () => true,
             async getConnections() { events.push("snapshot"); return { status: 200, data: { connections: [
@@ -43,8 +43,10 @@ test("Disconnect settings: TUN refresh closes only after successful disable, ret
     assert.equal((await f.refresh()).success, false);
     assert.deepEqual(f.events, ["snapshot", "apply"]);
     f.events.length = 0; f.control.status = 204;
-    await Promise.all([f.refresh(), f.refresh()]);
-    assert.deepEqual(f.events, ["snapshot", "apply", "close:tun", "apply"]);
+    const results = await Promise.all([f.refresh(), f.refresh()]);
+    assert.equal(results[0].superseded, true);
+    assert.equal(results[1].success, true);
+    assert.deepEqual(f.events, ["snapshot", "apply", "close:tun"]);
 });
 
 test("Disconnect settings: Mixin needs an effective TUN/TAP shutdown; opt-out and retained tunnels are respected", async () => {
@@ -93,12 +95,29 @@ test("Disconnect settings: disabling TUN preserves System Proxy, and TAP ambigui
         assert.equal((await f.refresh()).success, true);
         f.events.length = 0;
         if (mode === "tun") f.vm.isTunEnable = false;
-        else f.vm.settings.legacyTapEnabled = false;
+        else f.vm.settings.legacyTapMode = "disabled";
         assert.equal((await f.refresh()).success, true);
         assert.equal(f.events.includes("close:http"), false);
         assert.equal(f.events.includes("close:socks"), false);
         assert.equal(f.events.includes("close:unknown"), false);
         assert.equal(f.events.includes("close:tun"), true);
+    }
+});
+
+test("restricting enabled TAP to local Mixin stops subscription-owned TAP and cleans only existing tunnel connections", async () => {
+    for (const success of [true, false]) {
+        const f = fixture();
+        f.control.source = "dns:\n  enable: true\n  listen: :53";
+        assert.equal((await f.refresh()).success, true);
+        assert.ok(f.vm.tun2socks);
+        f.events.length = 0;
+        f.control.status = success ? 204 : 400;
+        f.vm.settings.legacyTapMode = "mixin";
+        assert.equal((await f.refresh()).success, success);
+        assert.equal(f.events.includes("close:tun"), success);
+        assert.equal(f.events.includes("close:socks"), success);
+        assert.equal(f.events.includes("close:http"), false);
+        assert.equal(!!f.vm.tun2socks, !success);
     }
 });
 

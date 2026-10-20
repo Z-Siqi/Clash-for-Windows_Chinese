@@ -28,6 +28,7 @@ function createTrayProxyProgress({ state, nativeImage, sendRenderer, getMenus, r
     let timer = null, frame = 0;
     let requestSequence = 0, reservedRequest = null;
     const icons = [];
+    let choicesEnabled;
     function getIcon() {
         if (!icons[frame]) {
             const pixels = Buffer.alloc(16 * 16 * 4);
@@ -45,8 +46,16 @@ function createTrayProxyProgress({ state, nativeImage, sendRenderer, getMenus, r
     }
     function refresh() {
         const pending = state.proxyBusy ? pendingId(state) : "";
+        const enabled = state.isReady && !state.proxyBusy;
+        function updateChoices(items = []) {
+            for (const item of items) {
+                if (item.id?.startsWith("tray-proxy-")) item.enabled = enabled;
+                if (item.submenu?.items) updateChoices(item.submenu.items);
+            }
+        }
         for (const menu of getMenus()) {
             if (!menu) continue;
+            if (choicesEnabled !== enabled) updateChoices(menu.items);
             for (const id of IDS) {
                 const item = menu.getMenuItemById(id), progress = menu.getMenuItemById(`${id}-pending`);
                 if (!item) continue;
@@ -60,6 +69,7 @@ function createTrayProxyProgress({ state, nativeImage, sendRenderer, getMenus, r
                 if (progress) { progress.visible = supported && id === pending; progress.icon = getIcon(); }
             }
         }
+        choicesEnabled = enabled;
         refreshMenu();
     }
     function apply(snapshot) {

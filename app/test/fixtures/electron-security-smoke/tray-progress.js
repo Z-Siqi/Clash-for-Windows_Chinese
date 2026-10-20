@@ -10,7 +10,9 @@ function verifyTrayProgress({ Menu, nativeImage }) {
     let progress, tick;
     const actions = { requestProxyOperation: (...args) => progress.request(...args), getProxyProgressIcon: () => progress?.getIcon() };
     const menu = buildStaticTrayMenu({ Menu, locale: "en", state, actions });
-    progress = createTrayProxyProgress({ state, nativeImage, getMenus: () => [menu], refreshMenu() {},
+    const nodes = Menu.buildFromTemplate([{ label: "Fixture group", submenu: [{ id: "tray-proxy-fixture-node", label: "Fixture node", type: "radio", checked: true }] }]);
+    const node = nodes.getMenuItemById("tray-proxy-fixture-node");
+    progress = createTrayProxyProgress({ state, nativeImage, getMenus: () => [menu, nodes], refreshMenu() {},
         sendRenderer: (...args) => requests.push(args), repeat: callback => { tick = callback; return 1; }, cancel() {} });
     try {
         menu.getMenuItemById("tun").click({ checked: false });
@@ -22,7 +24,11 @@ function verifyTrayProgress({ Menu, nativeImage }) {
         tick();
         const animated = !firstFrame.equals(item.icon.toPNG());
         progress.update({ busy: false, operation: "", target: null, requestId: requests[0][2] });
-        return pending && animated && !item.visible && menu.getMenuItemById("tun").checked && menu.getMenuItemById("mixin").enabled;
+        const restored = !item.visible && menu.getMenuItemById("tun").checked && menu.getMenuItemById("mixin").enabled;
+        progress.update({ busy: true, operation: "profile", target: null });
+        const lockedNode = !node.enabled && node.checked;
+        progress.update({ busy: false, operation: "", target: null });
+        return pending && animated && restored && lockedNode && node.enabled && node.checked;
     } finally { progress.update({ busy: false, operation: "", target: null, requestId: requests[0]?.[2] }); }
 }
 

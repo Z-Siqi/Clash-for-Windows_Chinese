@@ -57,7 +57,7 @@ function createInput({ Vuex, escCaptureComponent, getLanguage } = {}) {
             handleDone() {
                 const missingRequiredValue = this.data.some(item => item.required && item.value === "");
                 if (missingRequiredValue) {
-                    this.error = "required key(*) must have a value";
+                    this.error = labels.requiredFieldMissing();
                     return;
                 }
 

@@ -247,11 +247,11 @@ function createDns({ Vuex, escCaptureComponent, getLanguage } = {}) {
                     ])
                 ]),
                 viewModel._v(" "),
-                renderRecordGrid("Answer", viewModel.answerMixed),
+                renderRecordGrid(labels.dnsAnswer(), viewModel.answerMixed),
                 viewModel._v(" "),
                 renderRecordGrid(labels.authority(), viewModel.authorityMixed),
                 viewModel._v(" "),
-                renderRecordGrid("Additional", viewModel.additionalMixed)
+                renderRecordGrid(labels.dnsAdditional(), viewModel.additionalMixed)
             ]) : viewModel._e(),
             viewModel._v(" "),
             viewModel.status === "" && viewModel.error !== ""

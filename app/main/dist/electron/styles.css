@@ -2606,3 +2606,19 @@ input[data-v-2ddf36e7]::-webkit-outer-spin-button,input[data-v-2ddf36e7]::-webki
 @keyframes cfw-operation-spin{to{transform:rotate(360deg)}}
 .main[aria-disabled="true"][data-v-37d0be30] *{cursor:wait}
 .cfw-operation-disabled{opacity:.45;filter:grayscale(1);cursor:wait!important}
+.cfw-tap-status{position:relative;display:inline-flex;width:24px;height:24px;align-items:center;justify-content:center;margin-left:5px;vertical-align:middle}
+.cfw-tap-status>.icon{font-size:22px}.cfw-tap-status-home .cfw-tap-status{transform:scale(.9)}.cfw-tap-status .cfw-tap-lock{position:absolute;right:-4px;bottom:-2px;font-size:11px;line-height:13px;padding:1px}
+/* Reserve the lock corner in the Router glyph so hover transitions and translucent themes show through without overlapping strokes. */
+.cfw-tap-status>.cfw-tap-router-locked{clip-path:polygon(0 0,100% 0,100% 12px,16px 12px,16px 100%,0 100%)}
+.cfw-tap-dialog{position:fixed;inset:25px 0 0;z-index:10;display:flex;align-items:center;justify-content:center;background:var(--mask-c);color:var(--fgc)}
+.cfw-tap-card{background:var(--bgc);border:1px solid var(--bc);border-radius:10px;padding:20px;width:520px;max-width:calc(100vw - 40px);max-height:calc(100vh - 65px);overflow:auto;box-shadow:0 12px 40px #0003;font-weight:400;line-height:1.5}
+.cfw-tap-card header{display:flex;align-items:center;gap:4px;font-size:18px;font-weight:600}.cfw-tap-summary{font-size:12px;opacity:.7;margin:8px 0 16px;white-space:pre-line}
+.cfw-tap-segments{display:flex;border:1px solid var(--bc);border-radius:8px;overflow:hidden}.cfw-tap-segments button{flex:1;padding:9px 10px;color:var(--fgc);background:transparent;border:0;cursor:pointer;font:inherit}.cfw-tap-segments button+button{border-left:1px solid var(--bc)}.cfw-tap-segments .selected{color:white;background:#179bbb}.cfw-tap-card button:disabled{opacity:.45;cursor:wait}.cfw-tap-card button:focus-visible{outline:2px solid #179bbb;outline-offset:-3px}
+.cfw-tap-description{font-size:13px;line-height:1.65;margin:14px 0;min-height:64px}.cfw-tap-examples{font-size:12px;margin:12px 0}.cfw-tap-examples summary{cursor:pointer}.cfw-tap-examples p{margin:10px 0 6px}.cfw-tap-examples pre{white-space:pre-wrap;user-select:text;background:var(--general-item-bgc);padding:10px;border-radius:6px;font-family:monospace}
+.cfw-tap-actions{display:flex;gap:8px}.cfw-tap-actions button,.cfw-tap-card footer button{font:inherit;color:var(--fgc);border:1px solid var(--bc);background:var(--general-item-bgc);border-radius:6px;padding:7px 16px;cursor:pointer}.cfw-tap-actions button{flex:1}.cfw-tap-card footer{display:flex;justify-content:flex-end;margin-top:18px}
+/* Lock input immediately; cancel the delayed fade entirely for fast switches. */
+.list-item[data-v-820f0efe]{transition:opacity .2s ease}
+.cfw-profile-switch-blocked{cursor:wait!important}
+.cfw-profile-switch-blocked:not(.item-cur){opacity:.55;transition-delay:.5s}
+/* Dialog surfaces share TAP's radius, including selection, input and alert flows. */
+.main-select-view-plugin .card-main[data-v-0826c2c0],.main-input-view-plugin .card-main[data-v-15034054],.main-alert-view-plugin .card-main[data-v-12619986],.card-main[data-v-6e0989c7]{border-radius:10px}

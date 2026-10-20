@@ -32,7 +32,8 @@ function createNativeAdminClient({ ipcRenderer, getBinaryPath, getClashPath, get
         },
         tun: {
             setup: (install, tapInfo) => invoke("tun", "setup", { install, tapInfo }),
-            start: (mixedPort, tapInfo) => invoke("tun", "start", { mixedPort, tapInfo }),
+            start: (mixedPort, tapInfo, requestId) => invoke("tun", "start", { mixedPort, tapInfo, requestId }),
+            cancel: requestId => invoke("tun", "cancel", { requestId }),
             stop: () => invoke("tun", "stop")
         },
         service: {

@@ -10,8 +10,9 @@ const { readBoundedText } = require("../../core/storage/read-bounded-text");
 const { updateYamlValue } = require("../../core/storage/yaml-file");
 const { parsePort } = require("../../core/network/tcp-port");
 const { createGeoipRuntime } = require("../../features/clash-core/geoip-runtime");
+const { createTranslator } = require("../../core/i18n/language");
 
-function registerRepositoryIpc({ ipcMain, app, getMainWindow, fs, path, yaml, filesPath, getPort, uuid, Koa, dialog, shell, got, zlib, tarStream, platform = process.platform, arch = process.arch }) {
+function registerRepositoryIpc({ ipcMain, app, getMainWindow, fs, path, yaml, filesPath, getPort, uuid, Koa, dialog, shell, got, zlib, tarStream, platform = process.platform, arch = process.arch, getLanguage = () => createTranslator(1) }) {
     const settings = createSettingsRepository({ fs, path, yaml });
     const profiles = createProfilesRepository({ fs, path, yaml });
     const allowedHomes = [path.resolve(app.getPath("home"), ".config", "clash"), path.resolve(app.getPath("exe"), "..", "data")];
@@ -131,7 +132,7 @@ function registerRepositoryIpc({ ipcMain, app, getMainWindow, fs, path, yaml, fi
                 }
                 value = createLocal(source);
             } else if (operation === "import-dialog") {
-                const result = await dialog.showOpenDialog(window, { properties: ["openFile"], filters: [{ name: "YAML", extensions: ["yml", "yaml"] }] });
+                const result = await dialog.showOpenDialog(window, { title: getLanguage().import(), buttonLabel: getLanguage().open(), properties: ["openFile"], filters: [{ name: "YAML", extensions: ["yml", "yaml"] }] });
                 value = [];
                 if (!result.canceled) for (const file of result.filePaths) {
                     const name = path.basename(file);

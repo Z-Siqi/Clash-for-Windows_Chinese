@@ -1,5 +1,7 @@
 "use strict";
 
+const { createTapViews } = require("./tap-management-view");
+
 function createGeneralPage({
     defineComponent,
     Vuex,
@@ -24,6 +26,7 @@ function createGeneralPage({
         InfoIcon,
         Hint
     } = components;
+    const { TapManagementView, TapStatusIcon } = createTapViews({ defineComponent, EscCapture, Hint, getLanguage });
 
     const ErrorView = defineComponent({
         data() {
@@ -466,13 +469,7 @@ function createGeneralPage({
         }, [viewModel._v(labels.resetDNSSettings())]), viewModel._v(" "), createElement("div", {
             staticClass: "font-normal mb-1 text-sm hint"
         }, [
-            viewModel._v("\n      If "),
-            createElement("span", [viewModel._v(labels.enabled())]),
-            viewModel._v(", "),
-            createElement("span", [viewModel._v(labels.customServers())]),
-            viewModel._v(" will be used to\n      reset the system DNS after TUN mode is disabled. Otherwise,\n      "),
-            createElement("span", [viewModel._v("Detected Servers")]),
-            viewModel._v("\n      will be used.\n    ")
+            viewModel._v(labels.resetDNSSettingsDescribe())
         ]), viewModel._v(" "), createElement("div", {
             staticClass: "pannel"
         }, [createElement("div", {
@@ -486,13 +483,13 @@ function createGeneralPage({
                 expression: "isUsingCustom"
             }
         })], 1), viewModel._v(" "), createElement("div", [
-            createElement("div", [viewModel._v("Custom Servers:")]),
+            createElement("div", [viewModel._v(`${labels.customServers()}:`)]),
             viewModel._v(" "),
             renderList("servers")
         ], 1)]), viewModel._v(" "), createElement("div", {
             staticClass: "right border-[1px] border-[color:var(--bc)]"
         }, [createElement("div", [
-            createElement("div", [viewModel._v("Detected Servers:")]),
+            createElement("div", [viewModel._v(`${labels.detectedServers()}:`)]),
             viewModel._v(" "),
             renderList("userDNS", true)
         ], 1)])]), viewModel._v(" "), createElement("div", {
@@ -531,13 +528,13 @@ function createGeneralPage({
             style: { color: address.internal ? "#D44545" : "#13AF42" }
         }, [
             createElement("div", { staticClass: "flex" }, [
-                createElement("span", { staticClass: "w-[80px]" }, [viewModel._v("Address:")]),
+                createElement("span", { staticClass: "w-[80px]" }, [viewModel._v(`${labels.IPaddress()}:`)]),
                 viewModel._v(" "),
                 createElement("span", [viewModel._v(viewModel._s(address.address))])
             ]),
             viewModel._v(" "),
             createElement("div", { staticClass: "flex" }, [
-                createElement("span", { staticClass: "w-[80px]" }, [viewModel._v("Netmask:")]),
+                createElement("span", { staticClass: "w-[80px]" }, [viewModel._v(`${labels.subnetMask()}:`)]),
                 viewModel._v(" "),
                 createElement("span", [
                     viewModel._v(`${viewModel._s(address.netmask)}\n              `),
@@ -590,6 +587,8 @@ function createGeneralPage({
             TunSettingsView,
             ResetDNSSettingsView,
             InterfacesView,
+            TapManagementView,
+            TapStatusIcon,
             SwitchView,
             SelectView,
             InfoIcon,
@@ -799,14 +798,14 @@ function createGeneralPage({
             }, [viewModel._v(`\n        ${labels.launchHelper()}\n      `)])) : viewModel._e(),
             viewModel._v(" "),
             viewModel.isWindows ? renderItem([
-                viewModel._v(labels.legacyTap()),
-                createElement("info-icon", [viewModel._v(labels.legacyTapDescribe())])
+                viewModel._v(labels.tapAdapter()),
+                createElement("info-icon", [viewModel._v(labels.tapPermissionDescribe())]),
+                createElement("TapStatusIcon", { staticClass: "cfw-tap-status-home", props: { installed: viewModel.tapInstalled, mode: viewModel.legacyTapMode } })
             ], [
                 createElement("div", {
-                    staticClass: "clickable mr-2",
+                    staticClass: "clickable",
                     on: { click: event => { if (!viewModel.proxyBusy) viewModel.installTapDevice(event); } }
-                }, [viewModel._v(labels.manage())]),
-                renderSwitch(viewModel.settings.legacyTapEnabled !== false, viewModel.handleLegacyTapSwitchClick, viewModel.tapLoading)
+                }, [viewModel._v(labels.manage())])
             ]) : viewModel._e(),
             viewModel._v(" "),
             createElement("div", { staticClass: "item" }, [
@@ -844,7 +843,7 @@ function createGeneralPage({
                     }),
                     viewModel._v(" "),
                     viewModel.isMacOS ? renderHintIcon({
-                        hint: "System DNS servers that will be set after TUN Mode is disabled",
+                        hint: labels.resetDNSSettingsHint(),
                         icon: "manage_history",
                         onClick: stopAndRun(() => {
                             viewModel.isResetDNSSettingsVisible = !viewModel.isResetDNSSettingsVisible;
@@ -929,6 +928,10 @@ function createGeneralPage({
             viewModel._v(" "),
             viewModel.isResetDNSSettingsVisible ? createElement("ResetDNSSettingsView", {
                 on: { close: () => { viewModel.isResetDNSSettingsVisible = false; } }
+            }) : viewModel._e(),
+            viewModel.isTapManagementVisible ? createElement("TapManagementView", {
+                props: { mode: viewModel.legacyTapMode, installed: viewModel.tapInstalled, busy: viewModel.proxyBusy },
+                on: { close: () => { viewModel.isTapManagementVisible = false; }, "change-mode": viewModel.handleTapModeChange, action: viewModel.handleTapManagementAction }
             }) : viewModel._e(),
             viewModel._v(" "),
             viewModel.isTunSettingsVisible ? createElement("tun-settings-view", {

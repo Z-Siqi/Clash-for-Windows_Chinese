@@ -15,13 +15,14 @@ function fixture(sendError = false) {
         ...proxyMenuEntries({ state, actions, operation: "mixin", item: { id: "mixin", label: "Mixin", type: "checkbox" } }),
         ...proxyMenuEntries({ state, actions, operation: "mode", item: { id: "mode-global", label: "Global", type: "radio" } })
     ];
-    const menu = { getMenuItemById: id => entries.find(item => item.id === id) };
+    const node = { id: "tray-proxy-fixture-node", enabled: true, checked: true };
+    const menu = { items: [...entries, { submenu: { items: [node] } }], getMenuItemById: id => entries.find(item => item.id === id) };
     progress = createTrayProxyProgress({ state, getMenus: () => [menu], refreshMenu() {},
         sendRenderer(...args) { calls.push(args); if (sendError) throw Error("renderer gone"); },
         nativeImage: { createFromBitmap: (pixels, size) => ({ pixels: [...pixels], size }) },
         repeat(fn) { timers.set(1, fn); return 1; }, cancel(id) { timers.delete(id); }
     });
-    return { state, calls, timers, menu, progress };
+    return { state, calls, timers, menu, progress, node };
 }
 
 test("tray reserves before IPC, rejects burst/stale clicks and ignores an old idle snapshot", () => {
@@ -51,6 +52,11 @@ test("tray reserves before IPC, rejects burst/stale clicks and ignores an old id
     assert.equal(h.menu.getMenuItemById("tun-pending").visible, false);
     assert.equal(h.menu.getMenuItemById("mixin").enabled, true);
     assert.equal(h.timers.size, 0);
+    h.progress.update({ busy: true, operation: "profile", target: null });
+    assert.equal(h.node.enabled, false);
+    assert.equal(h.node.checked, true);
+    h.progress.update({ busy: false, operation: "", target: null });
+    assert.equal(h.node.enabled, true);
 });
 
 test("tray routing-mode progress uses the selected mode's check column and clears after success", () => {

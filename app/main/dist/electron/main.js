@@ -37,7 +37,7 @@ const { registerClashClientInfo } = require("./entry/main/register-clash-client-
 const { registerCoreIpc } = require("./entry/main/register-core-ipc");
 const { installSandboxedRenderer } = require("./entry/main/load-sandboxed-renderer");
 const { createAuthorizedIpcMain } = require("./core/native/authorized-ipc");
-const { getSystemLanguage } = require("./core/i18n/language");
+const { getSystemLanguage, createTranslator, initialLanguageIndex } = require("./core/i18n/language");
 
 function selectLanguage(language, chinese, english) {
     return language === 0 ? chinese : english;
@@ -48,6 +48,8 @@ function startApplication() {
     let tray;
     let trayState;
     let speedIndicator;
+    const labels = createTranslator(() => trayState?.language ?? initialLanguageIndex(null, getSystemLanguage(electron.app)));
+    const getLanguage = () => labels;
     const authorizedIpcMain = createAuthorizedIpcMain({
         ipcMain: electron.ipcMain,
         getMainWindow: () => mainWindow,
@@ -115,7 +117,7 @@ function startApplication() {
             app: electron.app,
             dialog: electron.dialog,
             url: dashboardUrl,
-            localize,
+            getLanguage,
             onRelaunch: relaunchApplication
         });
 
@@ -137,6 +139,7 @@ function startApplication() {
             clashClientRegistry,
             unsafeUrlPolicy,
             staticRoot,
+            getLanguage,
             getMainWindow: () => mainWindow
         });
         registerMainWindowLifecycle({
@@ -178,6 +181,7 @@ function startApplication() {
         const trayActions = {
             requestProxyOperation: (operation, target) => trayProgress.request(operation, target),
             getProxyProgressIcon: () => trayProgress?.getIcon(),
+            updateProxyIcons: items => trayLifecycle.updateProxyIcons(items),
             showDashboard: showMainWindow,
             sendRenderer(channel, ...args) {
                 return mainWindow.webContents.send(channel, ...args);
@@ -281,6 +285,7 @@ function startApplication() {
     registerAppLifecycle({
         app: electron.app,
         dialog: electron.dialog,
+        getLanguage,
         getMainWindow: () => mainWindow,
         createMainWindow: createApplicationWindow,
         showMainWindow,

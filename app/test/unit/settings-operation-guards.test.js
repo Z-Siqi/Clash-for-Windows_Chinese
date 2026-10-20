@@ -4,6 +4,8 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { settingsElement, guardSettingsMethods, isProxySetting } = require("../../main/dist/electron/features/settings/proxy-operation-guards");
 const { createSettingsProxy } = require("../../main/dist/electron/features/settings/settings-proxy");
+const { createGlobalMixin } = require("../../main/dist/electron/entry/renderer/global-mixin");
+const Vuex = require("../../main/node_modules/vuex");
 
 test("busy settings disable only network controls and reject stale model callbacks", () => {
     const changes = [];
@@ -38,4 +40,18 @@ test("settings actions and an existing settings proxy respect the live operation
     assert.equal(executions, 0);
     busy = false; proxy.proxyCore = "clash";
     assert.equal(saved.proxyCore, "clash");
+});
+
+test("only the TAP operation owner can persist its mode while the shared operation guard is held", () => {
+    const mixin = createGlobalMixin({ Vuex, cloneDeep: structuredClone });
+    for (const [name, operation, allowed] of [["landing-page", "tap", true], ["landing-page", "tun", false], ["settings-page", "tap", false]]) {
+        let saved = { legacyTapMode: "enabled", proxyCore: "mihomo" };
+        const context = { $options: { name }, $store: { state: { app: { proxyOperationState: { busy: true, operation } } } },
+            get sts() { return saved; }, saveSettingsObject({ obj }) { saved = obj; } };
+        const settings = mixin.computed.settings.call(context);
+        settings.legacyTapMode = "mixin";
+        settings.proxyCore = "clash";
+        assert.equal(saved.legacyTapMode, allowed ? "mixin" : "enabled");
+        assert.equal(saved.proxyCore, "mihomo");
+    }
 });

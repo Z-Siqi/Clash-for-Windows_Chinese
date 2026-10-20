@@ -6,6 +6,7 @@ const path = require("node:path");
 const yaml = require("../../main/node_modules/yaml");
 const { createProfileApplication, dnsHijackAddresses } = require("../../main/dist/electron/features/profiles/profile-application");
 const { normalizeLegacyDnsFilters } = require("../../main/dist/electron/features/profiles/prepare-profile");
+const { createTranslator } = require("../../main/dist/electron/core/i18n/language");
 
 function harness(overrides = {}) {
     const calls = [];
@@ -101,6 +102,47 @@ test("read, parse, mixin and transport failures return errors without applying s
     }
 });
 
+test("invalid profile values, Mixin results and owned apply errors follow the current language", async () => {
+    let language = 0, source;
+    const labels = createTranslator(() => language);
+    const h = harness({ getLanguage: () => labels, fs: { readFileSync: () => source } });
+    for (language of [0, 1, 0]) {
+        for (source of ["invalid configuration", "null", "", "[]", "42"]) {
+            assert.deepEqual(await h.apply(h.input), { success: false,
+                message: labels.profileApplyError({ reason: labels.profileNotMapping(), location: "" }) });
+            assert.deepEqual(h.calls, []);
+        }
+        source = "rules: []";
+        h.input.profiles.index = 9;
+        assert.equal((await h.apply(h.input)).message, labels.profileApplyError({ reason: labels.selectedProfileMissing(), location: "" }));
+        h.input.profiles.index = 0;
+        h.input.mixinEnabled = true;
+        h.input.settings = { mixinType: 1, mixinCode: "invalid mixin" };
+        const mixin = harness({ getLanguage: () => labels, compileMixin: () => ({ parse: () => null }) });
+        assert.equal((await mixin.apply(h.input)).message, labels.profileApplyError({ reason: labels.mixinNotMapping(), location: "" }));
+        h.input.mixinEnabled = false;
+        const rejected = harness({ getLanguage: () => labels, clashApi: { putConfig: async () => ({ status: 400, data: {} }) } });
+        assert.equal((await rejected.apply(rejected.input)).message, labels.profileSwitchStatus({ status: 400 }));
+    }
+});
+
+test("YAML errors add localized context and position while preserving parser and core diagnostics", async () => {
+    for (const language of [0, 1]) {
+        const labels = createTranslator(language);
+        const parse = harness({ getLanguage: () => labels, fs: { readFileSync: () => "rules: [\n" } });
+        const error = (() => { try { yaml.parse("rules: [\n", { prettyErrors: true, strict: false }); } catch (error) { return error; } })();
+        const result = await parse.apply(parse.input);
+        assert.ok(result.message.includes(labels.profileInvalidYaml()));
+        assert.ok(result.message.includes(error.message));
+        assert.ok(result.message.includes(labels.profileErrorLocation({ line: error.linePos[0].line, column: error.linePos[0].col })));
+        assert.deepEqual(parse.calls, []);
+        const raw = "core-specific validation diagnostic";
+        const core = harness({ getLanguage: () => labels, clashApi: { putConfig: async () => ({ status: 400, data: { message: raw } }) } });
+        assert.deepEqual(await core.apply(core.input), { success: false, message: raw });
+        assert.deepEqual(core.calls, []);
+    }
+});
+
 test("no selection stops old TAP; missing selected entry is reported", async () => {
     const h = harness(); h.input.profiles.index = -1;
     assert.deepEqual(await h.apply(h.input), { success: false, message: null });
@@ -120,6 +162,7 @@ test("Windows TUN requires an interface unless automatic detection is enabled", 
 test("Windows TAP DNS listener activates TAP after a successful apply", async () => {
     const h = harness({ platform: "win32", fs: { readFileSync: () => "dns:\n  enable: true\n  listen: 0.0.0.0:53" } });
     h.deps.effects.hasTap = () => true;
+    h.input.settings.legacyTapMode = "enabled";
     assert.equal((await h.apply(h.input)).success, true);
     assert.equal(h.calls[0][1]["interface-name"], "eth0");
     assert.equal(h.calls.at(-1)[0], "startTap");
@@ -127,7 +170,7 @@ test("Windows TAP DNS listener activates TAP after a successful apply", async ()
 
 test("explicit legacy TAP opt-out skips adapter detection and stops TAP without changing DNS", async () => {
     const h = harness({ platform: "win32", fs: { readFileSync: () => "dns:\n  enable: true\n  listen: :53" } });
-    h.input.settings.legacyTapEnabled = false;
+    h.input.settings.legacyTapMode = "disabled";
     h.deps.effects.hasTap = () => assert.fail("opt-out must not query installed adapters");
     h.deps.effects.detectInterface = () => assert.fail("opt-out must not detect a route");
     assert.equal((await h.apply(h.input)).success, true);
@@ -141,6 +184,7 @@ test("DNS hijacks preserve supported IPv4 and any forms", () => {
 
 test("async TAP absence cannot be mistaken for a present interface", async () => {
     const h = harness({ platform: "win32", fs: { readFileSync: () => "dns:\n  enable: true\n  listen: 0.0.0.0:53" } });
+    h.input.settings.legacyTapMode = "enabled";
     h.deps.effects.hasTap = async () => false;
     assert.equal((await h.apply(h.input)).success, true);
     assert.equal(h.calls.at(-1)[0], "stopTap");
@@ -204,7 +248,7 @@ test("renderer interface discovery suppresses only its own watcher flush and rel
     }
 });
 
-test("renderer refreshes serialize async mixins and recover after a failed apply", async () => {
+test("renderer refreshes retire obsolete async mixins and recover after the latest apply fails", async () => {
     const { refreshProfile } = require("../../main/dist/electron/entry/renderer/refresh-profile");
     let release; let started;
     const entered = new Promise(resolve => { started = resolve; });
@@ -230,13 +274,17 @@ test("renderer refreshes serialize async mixins and recover after a failed apply
     let selectionRead = false;
     const reading = readStableProfileState(model.clashApi, async () => {
         selectionRead = true;
-        return payloads.at(-1).number;
+        return payloads.at(-1)?.number || 0;
     });
     await Promise.resolve();
     assert.equal(selectionRead, false);
     assert.equal(count, 1); release();
     const results = await Promise.all([first, second, third]);
-    assert.deepEqual(results.map(value => value.success), [true, false, true]);
-    assert.deepEqual(payloads.map(value => value.number), [1, 3]);
-    assert.equal(await reading, 3);
+    assert.deepEqual(results.map(value => value.success), [false, false, false]);
+    assert.deepEqual(results.map(value => value.superseded === true), [true, true, false]);
+    assert.match(results[2].message, /mixin failed/);
+    assert.deepEqual(payloads, []);
+    assert.equal(await reading, 0);
+    assert.equal((await refreshProfile(model, dependencies)).success, true);
+    assert.deepEqual(payloads.map(value => value.number), [3]);
 });

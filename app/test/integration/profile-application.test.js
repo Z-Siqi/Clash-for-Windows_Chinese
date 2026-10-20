@@ -55,7 +55,15 @@ for (const locale of [0, 1]) {
         await page.handleProfileClick(0);
         assert.equal(apiCalls, 0); assert.equal(dialogs.length, 1);
         assert.equal(dialogs[0].message, (rendererLanguage())(locale).couldNotSwitchProfile());
-        assert.match(dialogs[0].detail, /Error:/);
+        const labels = (rendererLanguage())(locale);
+        assert.ok(dialogs[0].detail.includes(labels.profileInvalidYaml()));
+        assert.equal(store.state.app.profiles.index, -1);
+        assert.equal(page.loadingProfileIndex.length, 0);
+        fs.writeFileSync(path.join(home, "broken.yaml"), "not a configuration");
+        await page.handleProfileClick(0);
+        assert.equal(dialogs.length, 2);
+        assert.equal(dialogs[1].detail, labels.profileApplyError({ reason: labels.profileNotMapping(), location: "" }));
+        assert.equal(apiCalls, 0);
         assert.equal(store.state.app.profiles.index, -1);
         assert.equal(page.loadingProfileIndex.length, 0);
     });
@@ -65,7 +73,7 @@ for (const locale of [0, 1]) {
         t.after(() => fs.rmSync(home, { recursive: true, force: true }));
         fs.writeFileSync(path.join(home, "profile.yaml"), "dns:\n  enable: true\n  listen: 0.0.0.0:53\n");
         const result = await bundledRefresh("win32", locale).call({
-            profilesPath: home, profiles: { index: 0, files: [{ time: "profile.yaml" }] }, settings: {},
+            profilesPath: home, profiles: { index: 0, files: [{ time: "profile.yaml" }] }, settings: { legacyTapMode: "enabled" },
             detectInterfaceName() {}, finalInterfaceName: "",
             clashApi: { putConfig() { throw Error("must not apply without an interface"); } }
         });

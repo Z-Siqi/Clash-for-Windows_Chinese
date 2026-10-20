@@ -9,6 +9,7 @@ const os = require("node:os");
 const yaml = require("../../main/node_modules/yaml");
 const { registerUserScriptIpc } = require("../../main/dist/electron/features/scripts/register-user-script-ipc");
 const { createScriptWorkerRuntime } = require("../../main/dist/electron/features/scripts/script-worker-runtime");
+const { createTranslator } = require("../../main/dist/electron/core/i18n/language");
 
 test("user script IPC reads saved script sources and forks a fixed utility entry instead of running renderer code", async t => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "cfw-script-ipc-"));
@@ -22,9 +23,20 @@ test("user script IPC reads saved script sources and forks a fixed utility entry
     const webContents = { mainFrame };
     const event = { sender: webContents, senderFrame: mainFrame };
     const messages = [];
+    const dialogs = [];
+    let language = 0, currentJob;
+    const labels = createTranslator(() => language);
     let forks = 0;
     const worker = Object.assign(new EventEmitter(), {
-        postMessage(message) { messages.push(message); if (message.type === "run") queueMicrotask(() => worker.emit("message", { type: "result", job: message.job, ok: true })); },
+        postMessage(message) {
+            messages.push(message);
+            if (message.type === "run") {
+                currentJob = message.job;
+                queueMicrotask(() => worker.emit("message", { type: "effect", job: currentJob, id: 1, method: "dialog", args: [{ message: "user script text" }] }));
+            } else if (message.type === "effect-result") {
+                queueMicrotask(() => worker.emit("message", { type: "result", job: currentJob, ok: true }));
+            }
+        },
         kill() {}
     });
     registerUserScriptIpc({
@@ -32,7 +44,8 @@ test("user script IPC reads saved script sources and forks a fixed utility entry
         app: { getPath: name => name === "home" ? root : name === "temp" ? root : path.join(root, "app.exe"), once() {} },
         getMainWindow: () => ({ webContents }), fs, path, yaml, workerPath: "/fixed/script-worker.js",
         forkWorker(file, args, options) { forks++; assert.equal(file, "/fixed/script-worker.js"); assert.deepEqual(args, []); assert.equal(options.stdio, "ignore"); return worker; },
-        dialog: {}, Notification: class {}, clashApi: {}
+        dialog: { showMessageBox: async (_window, options) => { dialogs.push(options); return { response: 0 }; } },
+        getLanguage: () => labels, Notification: class {}, clashApi: {}
     });
     assert.throws(() => handler({ ...event, senderFrame: {} }, { home, scriptType: "proxy" }), /main frame/);
     assert.throws(() => handler(event, { home: root, scriptType: "proxy" }), /home/);
@@ -41,6 +54,11 @@ test("user script IPC reads saved script sources and forks a fixed utility entry
     assert.equal(forks, 1);
     assert.equal(yaml.parse(messages[0].scriptsText).scripts.proxy.code, saved);
     assert.equal(Object.hasOwn(messages[0], "code"), false);
+    assert.deepEqual(dialogs.at(-1).buttons, ["确定"]);
+    language = 1;
+    await handler(event, { home, scriptType: "proxy", payload: {} });
+    assert.deepEqual(dialogs.at(-1).buttons, ["OK"]);
+    assert.equal(dialogs.at(-1).message, "user script text");
 });
 
 test("script worker awaits asynchronous scripts and relays only named context operations", async () => {

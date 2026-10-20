@@ -26,7 +26,8 @@ function registerNativeAdminIpc({
     shell,
     platform = process.platform,
     arch = process.arch,
-    resourcesPath = process.resourcesPath
+    resourcesPath = process.resourcesPath,
+    createTapRuntime = createTunRuntime
 }) {
     const packagedResourcesPath = resourcesPath || path.dirname(app.getPath("exe"));
     const expectedFilesPath = app.isPackaged
@@ -39,6 +40,8 @@ function registerNativeAdminIpc({
     let tunProcess = null;
     let tunRuntime;
     let tunQueue = Promise.resolve();
+    const tunStarts = new Map();
+    let tunProcessRequestId;
     let cancelDhcp;
     let serviceMutation = false;
     app.once("will-quit", () => { tunRuntime?.killSpawned(tunProcess); cancelDhcp?.(); });
@@ -85,16 +88,36 @@ function registerNativeAdminIpc({
         });
         if (scope === "tun") {
             if (platform !== "win32") return null;
-            if (!["setup", "start", "stop"].includes(action)) throw new Error("Unsupported TAP operation");
+            if (!["setup", "start", "stop", "cancel"].includes(action)) throw new Error("Unsupported TAP operation");
+            const requestId = payload.requestId;
+            if (requestId !== undefined && (typeof requestId !== "string" || !/^\d{1,16}-\d{1,16}$/.test(requestId))) throw new Error("Invalid TAP request identity");
+            if (action === "cancel") {
+                if (requestId === undefined) throw new Error("Missing TAP request identity");
+                const startup = tunStarts.get(requestId);
+                if (startup) startup.cancelled = true;
+                else if (tunProcessRequestId === requestId) {
+                    tunRuntime?.killSpawned(tunProcess); tunProcess = null; tunProcessRequestId = undefined;
+                }
+                return null;
+            }
+            // Cancellation bypasses the native queue so an in-flight route poll can stop.
+            if (action === "stop") for (const startup of tunStarts.values()) startup.cancelled = true;
+            const startup = action === "start" ? { cancelled: false } : null;
+            if (startup) {
+                if (requestId !== undefined && tunStarts.has(requestId)) throw new Error("Duplicate TAP request identity");
+                tunStarts.set(requestId ?? startup, startup);
+            }
             const task = tunQueue.then(async () => {
+                if (startup?.cancelled) return null;
                 if (action === "stop") {
                     tunRuntime?.killSpawned(tunProcess);
                     tunProcess = null;
+                    tunProcessRequestId = undefined;
                     return null;
                 }
                 const tapInfo = payload.tapInfo || {};
                 if (typeof tapInfo !== "object" || Array.isArray(tapInfo)) throw new Error("Invalid TAP settings");
-                const runtime = createTunRuntime({ childProcess, sudoExec: sudoPrompt.exec, path, platform, arch, filesPath, tapInfo });
+                const runtime = createTapRuntime({ childProcess, sudoExec: sudoPrompt.exec, path, platform, arch, filesPath, tapInfo });
                 if (action === "setup") {
                     if (typeof payload.install !== "boolean") throw new Error("Invalid TAP setup request");
                     return runtime.setupTapDevice(payload.install);
@@ -103,10 +126,12 @@ function registerNativeAdminIpc({
                 if (mixedPort === null) throw new Error("Invalid TAP proxy port");
                 tunRuntime?.killSpawned(tunProcess);
                 tunProcess = null;
+                tunProcessRequestId = undefined;
                 tunRuntime = runtime;
-                tunProcess = await runtime.spawnTun2socks({ currentProcess: null, mixedPort });
+                tunProcess = await runtime.spawnTun2socks({ currentProcess: null, mixedPort, isCurrent: () => !startup.cancelled });
+                if (tunProcess) tunProcessRequestId = requestId;
                 return tunProcess ? { pid: tunProcess.pid } : null;
-            });
+            }).finally(() => { if (startup) tunStarts.delete(requestId ?? startup); });
             tunQueue = task.catch(() => {});
             return task;
         }

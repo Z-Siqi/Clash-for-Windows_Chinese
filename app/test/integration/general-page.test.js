@@ -9,6 +9,7 @@ const Vuex = require("../../main/node_modules/vuex");
 const { defineComponent } = require("../../main/dist/electron/features/renderer-ui/component");
 const { createGeneralPage } = require("../../main/dist/electron/features/clash-core/general-page");
 const { assertRendererComposition } = require("../fixtures/assert-renderer-composition");
+const { createTranslator } = require("../../main/dist/electron/core/i18n/language");
 
 Vue.use(Vuex);
 
@@ -50,6 +51,37 @@ function text(vnode) {
     const children = vnode.children || vnode.componentOptions?.children || [];
     return (vnode.text || "") + children.map(text).join("");
 }
+
+test("macOS TUN DNS tooltip and reset dialog follow both languages and preserve DNS edits", async () => {
+    const selection = Vue.observable({ language: 0 });
+    const labels = createTranslator(() => selection.language);
+    const page = createPage({ getLanguage: () => labels });
+    const store = new Vuex.Store({ state: { app: { userDNS: ["1.1.1.1"], confData: {}, currentProfilePayload: {} } },
+        getters: { controllerPort: () => 9090 } });
+    const settings = { isUsingResetDNSServers: true, resetDNSServers: ["8.8.8.8"] };
+    const dns = new (Vue.extend({ mixins: [page.components.ResetDNSSettingsView], computed: { settings: () => settings } }))({ store });
+    dns.setupComponent();
+    const general = new (Vue.extend({ mixins: [page], computed: {
+        settings: () => settings, isWindows: () => false, isMacOS: () => true, isLinux: () => false
+    } }))({ store });
+    const hints = node => !node ? [] : [node.data?.attrs?.hint, ...(node.children || node.componentOptions?.children || []).flatMap(hints)].filter(Boolean);
+    for (const language of [0, 1, 0]) {
+        selection.language = language;
+        await Vue.nextTick();
+        const rendered = text(dns._render());
+        for (const key of ["resetDNSSettings", "resetDNSSettingsDescribe", "customServers", "detectedServers", "enable", "save"]) {
+            assert.ok(rendered.includes(labels[key]()), `${language}/${key}`);
+        }
+        assert.ok(hints(general._render()).includes(labels.resetDNSSettingsHint()));
+        assert.deepEqual(dns.servers, ["8.8.8.8"]);
+    }
+    dns.servers = ["9.9.9.9"];
+    dns.handleSave();
+    assert.deepEqual(settings.resetDNSServers, ["9.9.9.9"]);
+    assert.equal(settings.isUsingResetDNSServers, true);
+    assert.deepEqual(store.state.app.userDNS, ["1.1.1.1"]);
+    dns.$destroy(); general.$destroy();
+});
 
 test("General page: extracted production component constructs and renders with real Vue", () => {
     const appState = {

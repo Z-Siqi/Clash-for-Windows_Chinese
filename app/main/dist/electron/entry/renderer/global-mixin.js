@@ -19,10 +19,11 @@ function createGlobalMixin({ Vuex, platform, ipcRenderer, fs, path, yaml, cloneD
                     saveSettings: obj => this.saveSettingsObject({ obj }), cloneDeep,
                     canWrite: key => {
                         const operation = this.$store?.state.app.proxyOperationState;
-                        // The operation owner may initialize its own Mixin defaults.
+                        // Only the operation owner may write the preference being applied.
                         return !operation?.busy || !isProxySetting(key)
                             || (this.$options.name === "landing-page" && operation.operation === "mixin"
-                                && ["mixinType", "mixinText", "mixinCode"].includes(key));
+                                && ["mixinType", "mixinText", "mixinCode"].includes(key))
+                            || (this.$options.name === "landing-page" && operation.operation === "tap" && key === "legacyTapMode");
                     }
                 });
             }

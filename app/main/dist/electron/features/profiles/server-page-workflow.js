@@ -22,6 +22,7 @@ function createServerPageWorkflow({
     formatBytes,
     schedule = setTimeout
 }) {
+    const profileSelections = new WeakMap();
     const data = () => ({
         btnType: 0,
         resultHint: labels.downloadFromURL(),
@@ -41,9 +42,10 @@ function createServerPageWorkflow({
     });
 
     const computed = {
+        profileSwitchBlocked() { return !!this.$parent?.proxyBusy; },
         profiles: {
             get() { return this.pfs.files || []; },
-            set(profiles) { this.changeProfiles({ profiles }); }
+            set(profiles) { if (!this.profileSwitchBlocked) this.changeProfiles({ profiles }); }
         },
         getBtnText() {
             return this.btnType === 3 ? labels.downloading()
@@ -156,10 +158,12 @@ function createServerPageWorkflow({
         },
         handleQrcodeOpen({ url }) { if (url) this.qrcodeURL = url; },
         handleDragStart() {
+            if (this.$parent?.proxyBusy) { this.dragSelectedName = ""; return; }
             const index = this.pfs.index ?? -1;
             if (index >= 0) this.dragSelectedName = this.pfs.files[index].time;
         },
         handleDragEnd() {
+            if (this.$parent?.proxyBusy) return;
             if (this.dragSelectedName === "") return;
             const index = this.pfs.files.findIndex(profile => profile.time === this.dragSelectedName);
             this.changeProfilesIndex({ index });
@@ -246,6 +250,7 @@ function createServerPageWorkflow({
             await this.refreshModificationTimes();
         },
         async handleDeleteProfile(index) {
+            if (this.$parent?.proxyBusy) return false;
             const language = getLanguage();
             const profile = this.pfs.files[index];
             const response = await showMessageBox({
@@ -253,7 +258,7 @@ function createServerPageWorkflow({
                 message: `${language.askDelete()}"${profile.name}"?`,
                 buttons: [language.no(), language.yes()]
             });
-            if (response.response !== 1) return;
+            if (response.response !== 1 || this.$parent?.proxyBusy) return;
             try {
                 await profileFiles.deleteProfile(this.profilesPath, profile.time);
             } catch (_error) {}
@@ -276,31 +281,47 @@ function createServerPageWorkflow({
             } catch (_error) {}
         },
         async handleProfileClick(index) {
-            this.loadingProfileIndex = [...this.loadingProfileIndex, index];
-            try { await this.switchProfile(index); }
-            catch (error) {
-                this.changeProfilesIndex({ index: -1 });
-                await showMessageBox({
-                    type: "error", message: labels.couldNotSwitchProfile(),
-                    detail: error.message || String(error), buttons: [labels.ok()]
-                });
-            }
-            this.loadingProfileIndex = this.loadingProfileIndex.filter(value => value !== index);
+            return this.$parent.requestProfileSelection(async () => {
+                this.loadingProfileIndex = [...this.loadingProfileIndex, index];
+                try { return await this.switchProfile(index); }
+                finally { this.loadingProfileIndex = this.loadingProfileIndex.filter(value => value !== index); }
+            });
         },
         async switchProfile(index) {
             if (index === -1) return;
             const previous = this.pfs.index;
-            this.changeProfilesIndex({ index });
-            const { success, message } = await this.$parent.refreshProfile();
-            if (!success) {
-                const response = await showMessageBox({
-                    type: "error", message: labels.couldNotSwitchProfile(), detail: message || "",
-                    buttons: labels.editInTextMode()
+            const profile = this.pfs.files?.[index];
+            const request = {};
+            profileSelections.set(this, request);
+            let selected = false;
+            const isCurrent = () => profileSelections.get(this) === request && (!selected ||
+                (this.pfs.index === index && this.pfs.files?.[index]?.time === profile?.time));
+            try {
+                this.changeProfilesIndex({ index });
+                selected = true;
+                const { success, message, superseded } = await this.$parent.refreshProfile();
+                if (superseded || !isCurrent()) return false;
+                if (!success) {
+                    const response = await showMessageBox({
+                        type: "error", message: labels.couldNotSwitchProfile(), detail: message || "",
+                        buttons: labels.editInTextMode()
+                    });
+                    // An open error dialog must not clear a newer A -> B -> A selection.
+                    if (!isCurrent()) return false;
+                    this.changeProfilesIndex({ index: -1 });
+                    if (response.response === 1) this.openProfile(profile);
+                    return false;
+                }
+                if (index !== previous && (this.settings.connProfile ?? false)) await this.clashApi.closeConnections();
+                return true;
+            } catch (error) {
+                if (!isCurrent()) return false;
+                if (selected) this.changeProfilesIndex({ index: -1 });
+                await showMessageBox({
+                    type: "error", message: labels.couldNotSwitchProfile(),
+                    detail: error.message || String(error), buttons: [labels.ok()]
                 });
-                if (response.response === 1) this.openProfile(this.pfs.files[index]);
-                this.changeProfilesIndex({ index: -1 });
-            } else if (index !== previous && (this.settings.connProfile ?? false)) {
-                await this.clashApi.closeConnections();
+                return false;
             }
         },
         async refreshProfile(profile, { ignoreSelectAfterUpdated = false } = {}) {
@@ -389,7 +410,7 @@ function createServerPageWorkflow({
             const items = initialized ? language.makeChangesAndDelete() : [language.initDiffFiles()];
             const itemStyles = initialized ? [{}, { color: "mc" }] : [];
             const [selection] = await this.$select({
-                title: "Diff",
+                title: language.diffTitle(),
                 html: `${language.diffDescribe()} <a href="https://web.archive.org/web/20230304232259/docs.cfw.lbyczf.com/contents/diff.html">${language.docs()}</a>`,
                 items,
                 itemStyles

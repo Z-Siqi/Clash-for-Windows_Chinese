@@ -90,7 +90,7 @@ function createRouterPage({
             createElement("div", { staticClass: "title" }, [viewModel._v(labels.profiles())]),
             viewModel._v(" "),
             createElement("div", { staticClass: "sec" }, [
-                createElement("span", [viewModel._v("Interface")]),
+                createElement("span", [viewModel._v(labels.interfaceName())]),
                 viewModel._v(" "),
                 createElement("input", {
                     staticClass: "clickable",
@@ -107,17 +107,17 @@ function createRouterPage({
             ]),
             viewModel._v(" "),
             createElement("div", { staticClass: "sec" }, [
-                createElement("span", [viewModel._v("DHCP IP Range")]),
+                createElement("span", [viewModel._v(labels.dhcpIPRange())]),
                 viewModel._v(" "),
                 createElement("div", { staticClass: "flex" }, [
                     createElement("div", [
-                        createElement("span", [viewModel._v("From")]),
+                        createElement("span", [viewModel._v(labels.rangeFrom())]),
                         viewModel._v(" "),
                         modelInput("rangeFrom")
                     ]),
                     viewModel._v(" "),
                     createElement("div", [
-                        createElement("span", [viewModel._v("To")]),
+                        createElement("span", [viewModel._v(labels.rangeTo())]),
                         viewModel._v(" "),
                         modelInput("rangeTo")
                     ])
@@ -125,13 +125,13 @@ function createRouterPage({
             ]),
             viewModel._v(" "),
             createElement("div", { staticClass: "sec" }, [
-                createElement("span", [viewModel._v("Netmask")]),
+                createElement("span", [viewModel._v(labels.subnetMask())]),
                 viewModel._v(" "),
                 modelInput("netmask")
             ]),
             viewModel._v(" "),
             createElement("div", { staticClass: "sec" }, [
-                createElement("span", [viewModel._v("Default Router")]),
+                createElement("span", [viewModel._v(labels.defaultGateway())]),
                 viewModel._v(" "),
                 modelInput("defaultRouter")
             ]),
@@ -141,13 +141,13 @@ function createRouterPage({
                 viewModel._v(" "),
                 createElement("div", { staticClass: "flex" }, [
                     createElement("div", [
-                        createElement("span", [viewModel._v("Primary")]),
+                        createElement("span", [viewModel._v(labels.primaryDNS())]),
                         viewModel._v(" "),
                         modelInput("primaryDns")
                     ]),
                     viewModel._v(" "),
                     createElement("div", [
-                        createElement("span", [viewModel._v("Alternative")]),
+                        createElement("span", [viewModel._v(labels.alternativeDNS())]),
                         viewModel._v(" "),
                         modelInput("secondlyDns")
                     ])
@@ -157,7 +157,7 @@ function createRouterPage({
             createElement("div", {
                 staticClass: "btn clickable",
                 on: { click: viewModel.handleContinueClick }
-            }, [viewModel._v("Continue")])
+            }, [viewModel._v(labels.continueAction())])
         ])]);
     }, "0ffa25f2");
 
@@ -233,7 +233,7 @@ function createRouterPage({
                     this.server = true;
                 } catch {
                     this.server = null;
-                    await this.$alert({ title: "DHCP", message: "DHCP service is unavailable" });
+                    await this.$alert({ title: "DHCP", content: getLanguage().dhcpServiceUnavailable() });
                 } finally { this.starting = false; }
             },
             handleMacToHijack(address) {

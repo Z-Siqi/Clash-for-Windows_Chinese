@@ -2,7 +2,7 @@
 
 const { defineComponent } = require("../component");
 
-function createSelect({ Vuex, escCaptureComponent, selectViewComponent, utilities } = {}) {
+function createSelect({ Vuex, escCaptureComponent, selectViewComponent, utilities, getLanguage } = {}) {
     const CheckBox = defineComponent({
         name: "CheckBox",
         model: { prop: "checked", event: "change" },
@@ -77,7 +77,7 @@ function createSelect({ Vuex, escCaptureComponent, selectViewComponent, utilitie
         methods: {
             show({
                 items = [],
-                title = "Select",
+                title = getLanguage().select(),
                 message = "",
                 checkList = [],
                 itemStyles = [],
@@ -100,7 +100,7 @@ function createSelect({ Vuex, escCaptureComponent, selectViewComponent, utilitie
                 this.subSelectItems = subSelectItems;
                 this.subSelectTitle = subSelectTitle;
                 this.isLastDifferent = isLastDifferent === undefined
-                    ? items[items.length - 1] === "Cancel"
+                    ? items[items.length - 1] === getLanguage().cancel()
                     : isLastDifferent;
                 return new Promise((resolve, reject) => {
                     this.resolve = resolve;

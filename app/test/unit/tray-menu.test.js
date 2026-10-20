@@ -59,6 +59,8 @@ const chinese = buildStaticTrayMenu({
 
 assert.equal(english.template[0].label, "Dashboard");
 assert.equal(chinese.template[0].label, "仪表盘");
+assert.equal(english.getMenuItemById("mixin").label, "Mixin");
+assert.equal(chinese.getMenuItemById("mixin").label, "配置覆写（Mixin）");
 assert.equal(english.getMenuItemById("mode-rule").enabled, true);
 assert.equal(english.getMenuItemById("mode-rule").checked, true);
 assert.equal(english.getMenuItemById("mode-script").visible, false);

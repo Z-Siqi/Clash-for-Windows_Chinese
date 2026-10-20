@@ -2,12 +2,13 @@
 
 const { supportsScriptMode } = require("../../core/clash-core/core-capabilities");
 const { proxyMenuEntries } = require("./proxy-operation-progress");
+const { createTranslator } = require("../../core/i18n/language");
 
 const LABELS = {
     en: {
         dashboard: "Dashboard",
         tun: "TUN Mode",
-        mixin: "Mixin",
+        mixin: createTranslator(1).mixin(),
         proxyMode: "Proxy Mode",
         global: "Global",
         rule: "Rule",
@@ -23,7 +24,7 @@ const LABELS = {
     cn: {
         dashboard: "仪表盘",
         tun: "TUN 模式",
-        mixin: "混合配置",
+        mixin: createTranslator(0).mixin(),
         proxyMode: "代理模式",
         global: "全局",
         rule: "规则",

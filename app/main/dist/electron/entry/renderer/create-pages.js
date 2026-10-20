@@ -100,6 +100,7 @@ function createRendererPages({ Vuex, modifyState, runtime, components, version }
     const generalWorkflow = createGeneralPageWorkflow({
         getLanguage: language, path, moment, yaml, electron, cache, keys,
         getNetworkInterfaces,
+        getTapInstalled: runtime.profileNetworkEffects.hasTap,
         getNetworkDiagnostics: vm => networkModeDiagnostics({
             config: vm.currentProfilePayload, tunRequested: vm.isTunEnable,
             tunConfig: buildTunConfig(vm.$parent.tunSettings, runtime.processObject.platform),

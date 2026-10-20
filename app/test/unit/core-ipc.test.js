@@ -179,7 +179,7 @@ async function main() {
     assert.equal(await invoke("webContent", "toggleDevTools"), "devtools");
 
     assert.equal(await invoke("dialog", "showMessageBox", { title: "test" }), "showMessageBox-result");
-    assert.deepEqual(calls.at(-1), ["showMessageBox", mainWindow, { title: "test" }]);
+    assert.deepEqual(calls.at(-1), ["showMessageBox", mainWindow, { buttons: ["OK"], title: "test" }]);
 
     assert.equal(await invoke("globalShortcut", "register", "Ctrl+Shift+X"), true);
     shortcutCallback();

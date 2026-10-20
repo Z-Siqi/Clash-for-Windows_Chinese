@@ -14,7 +14,7 @@ function fixture(bits, tapAllowed = true, tapInstalled = true) {
     const closed = [], payloads = [];
     const vm = {
         isTunEnable: !!(bits & 4), isMixinEnable: !!(bits & 2), isSystemProxyOn: !!(bits & 1),
-        settings: { mixinType: 0, mixinText: DEFAULT_MIXIN, legacyTapEnabled: tapAllowed }, tunSettings: {},
+        settings: { mixinType: 0, mixinText: DEFAULT_MIXIN, legacyTapMode: tapAllowed ? "enabled" : "disabled" }, tunSettings: {},
         profiles: { index: 0, files: [{ time: "test.yaml" }] }, profilesPath: "/temporary", confData: {}, menuItems: [],
         clashApi: {
             isReady: () => true,

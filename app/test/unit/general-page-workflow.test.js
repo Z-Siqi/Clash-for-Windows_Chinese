@@ -3,6 +3,7 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { createGeneralPageWorkflow } = require("../../main/dist/electron/features/clash-core/general-page-workflow");
+const { createTranslator } = require("../../main/dist/electron/core/i18n/language");
 
 function createWorkflow(overrides = {}) {
     const labels = new Proxy({}, { get(_target, key) { return () => String(key); } });
@@ -33,6 +34,34 @@ function createWorkflow(overrides = {}) {
     };
     return { workflow: createGeneralPageWorkflow(dependencies), calls, cacheValues };
 }
+
+test("General dialogs localize service status, later/copy buttons, port validation and GeoIP fields", async () => {
+    for (const language of [0, 1]) {
+        const labels = createTranslator(language), dialogs = [], inputs = [], alerts = [];
+        const { workflow } = createWorkflow({ getLanguage: () => labels,
+            platform: { isMacOS: () => true, isWindows: () => false, isLinux: () => false },
+            utilities: { showMessageBox: async options => { dialogs.push(options); return { response: 1 }; } } });
+        const page = { ...workflow.data(), ...workflow.methods, isLocalMode: false, proxyBusy: false,
+            $parent: { requestSystemProxy: async () => false },
+            $select: async () => [0], $input: async options => { inputs.push(options); throw Error("cancel"); },
+            setupComponent() {}, $alert: options => alerts.push(options) };
+        await page.installService();
+        assert.equal(dialogs.at(-1).message, labels.serviceAlreadyInstalled());
+        page.isLocalMode = true;
+        await page.handleSystemProxySwitchClick();
+        assert.equal(dialogs.at(-1).buttons[1], labels.later());
+        await page.handleEditMixedPort();
+        assert.equal(inputs.at(-1).data[0].validate("0"), labels.invalidPort());
+        assert.equal(inputs.at(-1).data[0].validate("7890"), "");
+        await page.handlePortClick();
+        assert.equal(inputs.at(-1).confirmText, labels.copy());
+        await page.updateGeoipDB();
+        assert.equal(inputs.at(-1).data[0].name, labels.maxMindLicenseKey());
+        const windows = createWorkflow({ getLanguage: () => labels, platform: { isWindows: () => true } }).workflow;
+        await windows.methods.updateGeoipDB.call({ $alert: options => alerts.push(options) });
+        assert.equal(alerts.at(-1).title, labels.note());
+    }
+});
 
 test("core switching clears the old version and discards an in-flight response", async () => {
     const { workflow } = createWorkflow();

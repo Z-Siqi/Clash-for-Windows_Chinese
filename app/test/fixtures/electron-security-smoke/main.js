@@ -325,6 +325,7 @@ app.on("browser-window-created", (_event, window) => {
             const { verifyUiRegressions } = require("./ui-regressions");
             const uiRegressions = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: `(${verifyUiRegressions.toString()})()` }]);
             uiRegressions.trayProxyProgress = require("./tray-progress").verifyTrayProgress(require("electron"));
+            uiRegressions.trayNodeMetadata = await require("./tray-node-metadata").verifyTrayNodeMetadata(require("electron"));
             uiRegressions.mihomoVersionNavigation = dashboardOpened;
             uiRegressions.languageHotload = languageHotload;
             uiRegressions.editorDigits = editorDigits;

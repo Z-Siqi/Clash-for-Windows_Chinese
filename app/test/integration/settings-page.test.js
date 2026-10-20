@@ -16,6 +16,7 @@ const { createRendererLanguage } = require("../../main/dist/electron/entry/rende
 const { createSettingsRepository } = require("../../main/dist/electron/features/settings/settings-repository");
 const { createSettingsProxy } = require("../../main/dist/electron/features/settings/settings-proxy");
 const { updateYamlValue } = require("../../main/dist/electron/core/storage/yaml-file");
+const { createTranslator } = require("../../main/dist/electron/core/i18n/language");
 
 const EmptyComponent = { render: h => h("span") };
 const labels = new Proxy({}, { get: (_target, key) => () => String(key) });
@@ -38,6 +39,44 @@ function createPage(overrides = {}) {
         ...overrides
     });
 }
+
+test("settings native file choices and Fake IP cache results use the selected language", async () => {
+    let language = 0, status = 204;
+    const labels = createTranslator(() => language), dialogs = [], choices = [];
+    const page = createPage({ getLanguage: () => labels,
+        showMessageBox: async options => { dialogs.push(options); },
+        electron: { ipcRenderer: { invoke: async (...args) => { choices.push(args); return ["chosen"]; } } } });
+    const context = { clashApi: { flushFakeIpCache: async () => ({ status, data: { message: "core diagnostic" } }) } };
+    for (language of [0, 1, 0]) {
+        status = 204;
+        await page.methods.handlerClearFakeIPCache.call(context);
+        assert.equal(dialogs.at(-1).message, labels.fakeIPCacheCleared());
+        status = 500;
+        await page.methods.handlerClearFakeIPCache.call(context);
+        assert.equal(dialogs.at(-1).message, labels.fakeIPCacheClearFailed({ reason: "core diagnostic" }));
+        for (const file of [true, false]) {
+            assert.equal(await page.methods.chooseFileOrPath(file), "chosen");
+            const options = choices.at(-1)[2];
+            assert.equal(options.title, file ? labels.openFile() : labels.openFolder());
+            assert.equal(options.buttonLabel, labels.open());
+            assert.deepEqual(options.properties, [file ? "openFile" : "openDirectory"]);
+        }
+    }
+});
+
+test("external editor waiting dialog translates the sentence while keeping the editor name", () => {
+    Vue.use(Vuex);
+    for (const locale of [0, 1]) {
+        const labels = createTranslator(locale);
+        const store = new Vuex.Store({ state: { app: { settings: {}, confData: {} } }, getters: { secret: () => "" } });
+        const vm = new (Vue.extend(createPage({ getLanguage: () => labels })))({ store });
+        vm.settings = { editor: 1 }; vm.isEditingExternal = true;
+        vm.isLinux = false; vm.isMacOS = false; vm.isWindows = true;
+        const text = node => !node ? "" : (node.text || "") + (node.children || node.componentOptions?.children || []).map(text).join("");
+        assert.ok(text(vm._render()).includes(labels.externalEditorLaunching({ editor: "Visual Studio Code" })));
+        vm.$destroy();
+    }
+});
 
 test("Security Core Secret changes only after confirmation, preserves configuration, and waits for saving before restart", async t => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), "cfw-secret-settings-"));

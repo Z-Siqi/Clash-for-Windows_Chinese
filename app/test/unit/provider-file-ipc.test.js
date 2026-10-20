@@ -6,8 +6,9 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { registerProviderFileIpc } = require("../../main/dist/electron/features/providers/register-provider-file-ipc");
+const { createTranslator } = require("../../main/dist/electron/core/i18n/language");
 
-function harness(t) {
+function harness(t, getLanguage) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "cfw-provider-file-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
     const home = path.join(root, ".config", "clash"), hash = "a".repeat(32);
@@ -16,16 +17,17 @@ function harness(t) {
     fs.writeFileSync(target, "proxies: []");
     const owner = { mainFrame: {} }, providers = { "proxy-providers": { cached: { path: `./providers/proxy/${hash}.yaml` } } };
     const calls = [];
+    const dialogs = [];
     let handler, selected = [];
     registerProviderFileIpc({
         ipcMain: { handle(channel, callback) { assert.equal(channel, "provider-file"); handler = callback; } },
         app: { getPath: name => name === "home" ? root : path.join(root, "app.exe") }, getMainWindow: () => ({ webContents: owner }),
-        fs, path, platform: "linux", getProviders: () => providers,
-        dialog: { async showOpenDialog() { calls.push("dialog"); return { canceled: selected.length === 0, filePaths: selected }; } },
+        fs, path, platform: "linux", getProviders: () => providers, getLanguage,
+        dialog: { async showOpenDialog(_window, options) { calls.push("dialog"); dialogs.push(options); return { canceled: selected.length === 0, filePaths: selected }; } },
         shell: { openPath: file => calls.push(file), showItemInFolder: file => calls.push(file) }
     });
     const event = { sender: owner, senderFrame: owner.mainFrame };
-    return { root, home, target, hash, calls, providers, handler, event, select: files => { selected = files; } };
+    return { root, home, target, hash, calls, dialogs, providers, handler, event, select: files => { selected = files; } };
 }
 
 test("provider files resolve active names and fixed hashes without accepting caller paths", async t => {
@@ -56,4 +58,18 @@ test("a file provider outside the fixed cache requires a matching native selecti
     assert.equal((await host.handler(host.event, "write", { ...request, source: "updated" })).ok, true);
     assert.equal(fs.readFileSync(outside, "utf8"), "updated");
     assert.equal(host.calls.filter(value => value === "dialog").length, 3);
+});
+
+test("provider file consent title and open button follow the app language without granting access on cancel", async t => {
+    let language = 0;
+    const labels = createTranslator(() => language), host = harness(t, () => labels);
+    const file = path.join(host.root, "local.yaml");
+    fs.writeFileSync(file, "local");
+    host.providers["proxy-providers"].local = { path: file };
+    for (language of [0, 1, 0]) {
+        assert.equal((await host.handler(host.event, "read", { home: host.home, kind: "proxy", name: "local" })).ok, false);
+        assert.equal(host.dialogs.at(-1).title, labels.selectProviderFile());
+        assert.equal(host.dialogs.at(-1).buttonLabel, labels.open());
+        assert.equal(host.dialogs.at(-1).defaultPath, file);
+    }
 });

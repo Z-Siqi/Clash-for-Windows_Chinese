@@ -250,6 +250,8 @@ function createSettingsPageOptions({
             },
             async chooseFileOrPath(chooseFile = true) {
                 const selectedPaths = await electron.ipcRenderer.invoke("dialog", "showOpenDialogSync", {
+                    title: chooseFile ? getLanguage().openFile() : getLanguage().openFolder(),
+                    buttonLabel: getLanguage().open(),
                     properties: [chooseFile ? "openFile" : "openDirectory"]
                 });
                 return selectedPaths?.[0];
@@ -288,7 +290,7 @@ function createSettingsPageOptions({
                 const response = await this.clashApi.flushFakeIpCache({ validateStatus: () => true });
                 const message = response.data?.message || "";
                 await showMessageBox({
-                    message: response.status === 204 ? "Fake IP cache cleared" : `Failed with reason: ${message}`
+                    message: response.status === 204 ? getLanguage().fakeIPCacheCleared() : getLanguage().fakeIPCacheClearFailed({ reason: message })
                 });
             },
             async handleGenerateUUIDSecret() {

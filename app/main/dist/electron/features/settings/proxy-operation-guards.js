@@ -3,7 +3,7 @@
 const NETWORK_SETTINGS = new Set([
     "proxyCore", "profilePath", "childProcessText", "interfaceName", "clashAuthentication",
     "systemProxyTypeIndex", "pacContentText", "bypassText", "specifyHttpProxyProtocol", "staticSystemProxyHost",
-    "mixinType", "mixinText", "mixinCode", "isUsingResetDNSServers", "resetDNSServers",
+    "mixinType", "mixinText", "mixinCode", "legacyTapMode", "isUsingResetDNSServers", "resetDNSServers",
     "ssidStrategyText", "connMode", "connProxyDisconnect", "enableDHCPServer", "randomMixedPort", "randomControllerPort"
 ]);
 const NETWORK_ACTIONS = new Set([

@@ -50,7 +50,7 @@ for (const [name, index] of [["Mihomo", 2], ["Clash", 3]]) {
         for (let bits = 0; bits < 8; bits++) {
             const { config } = await prepareProfile({
                 source: "mode: direct\nproxies: []\nrules: []\n", profile: {},
-                settings: { mixinType: 0, mixinText: DEFAULT_MIXIN, legacyTapEnabled: false },
+                settings: { mixinType: 0, mixinText: DEFAULT_MIXIN, legacyTapMode: "disabled" },
                 tunConfig: bits & 4 ? buildTunConfig({}, process.platform) : null, mixinEnabled: !!(bits & 2)
             }, { yaml });
             const file = path.join(directory, "config.yaml");

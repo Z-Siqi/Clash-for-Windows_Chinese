@@ -53,8 +53,9 @@ function createTunRuntime({
         return sudoRun(`"${script}" ${tapArch} ${ip} ${subnet} ${gateway}`);
     }
 
-    async function spawnTun2socks({ currentProcess, mixedPort }) {
+    async function spawnTun2socks({ currentProcess, mixedPort, isCurrent = () => true }) {
         if (platform === "darwin" || platform === "linux") return currentProcess;
+        if (!isCurrent()) return currentProcess;
         logger.info("Spawn go-tun2socks");
         if (currentProcess) killSpawned(currentProcess);
         if (!mixedPort) return null;
@@ -80,6 +81,8 @@ function createTunRuntime({
         });
 
         for (let remaining = 10; remaining > 0; remaining -= 1) {
+            // A profile switch may supersede startup while the adapter route is pending.
+            if (!isCurrent()) { killSpawned(processHandle); return null; }
             try {
                 const routes = childProcess.execFileSync(
                     "route", ["print", gateway, "mask", subnet],
@@ -99,6 +102,7 @@ function createTunRuntime({
             } catch (_error) {}
             await sleep(1000);
         }
+        if (!isCurrent()) { killSpawned(processHandle); return null; }
         return processHandle;
     }
 

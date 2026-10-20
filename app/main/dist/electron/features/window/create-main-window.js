@@ -1,6 +1,7 @@
 "use strict";
 
 const { installEditShortcuts } = require("./install-edit-shortcuts");
+const { createTranslator } = require("../../core/i18n/language");
 
 function createMainWindow({
     BrowserWindow,
@@ -13,7 +14,7 @@ function createMainWindow({
     dialog,
     platform = process.platform,
     url,
-    localize,
+    getLanguage = () => createTranslator(1),
     onRelaunch,
     initializeRenderer
 }) {
@@ -52,11 +53,12 @@ function createMainWindow({
     mainWindow.webContents.on("render-process-gone", async function(_event, details) {
         if (platform === "darwin" || details.reason !== "crashed") return;
 
+        const labels = getLanguage();
         const result = await dialog.showMessageBox(mainWindow, {
             type: "error",
             title: "Clash for Windows",
-            message: localize("Dashboard has crashed!", "仪表盘崩溃了!"),
-            buttons: localize(["Reload", "Exit"], ["重新加载", "退出"])
+            message: labels.dashboardCrashed(),
+            buttons: [labels.reloadDashboard(), labels.exitApplication()]
         });
         if (result.response === 0) onRelaunch();
         else app.quit();

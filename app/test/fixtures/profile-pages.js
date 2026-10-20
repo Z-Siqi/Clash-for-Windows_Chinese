@@ -9,7 +9,8 @@ const lodash = require("../../main/node_modules/lodash");
 
 const EmptyComponent = { render: h => h("span") };
 
-function profilePage({ store, parent, dialogs, locale = 1, downloadProfile = async () => ({}) }) {
+function profilePage({ store, parent, dialogs, locale = 1, downloadProfile = async () => ({}), respondToDialog = async () => ({ response: 0 }) }) {
+    parent.requestProfileSelection ||= action => action();
     const labels = (rendererLanguage())(locale);
     const { methods } = createServerPageWorkflow({
         labels,
@@ -19,7 +20,7 @@ function profilePage({ store, parent, dialogs, locale = 1, downloadProfile = asy
         fs: {}, path: {}, electron: {}, lodash: {}, CancelToken: class {},
         downloadProfile, runUserScript() {}, profileScriptType: "profile",
         scheduler: {}, confirmOpenExternal() {}, cloneJson: value => value,
-        showMessageBox: async options => { dialogs.push(options); return { response: 0 }; },
+        showMessageBox: async options => { dialogs.push(options); return respondToDialog(options); },
         formatBytes: String
     });
     return {

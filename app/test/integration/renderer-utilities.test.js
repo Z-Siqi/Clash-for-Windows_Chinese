@@ -87,6 +87,7 @@ test("Renderer utilities: value helpers and version cache use a restricted confi
 
 test("Editor foundation: production bridge registers YAML completion, provider lenses, commands and scroll state", async () => {
     const providers = {}, commands = {}, calls = [];
+    let locale = 1;
     let fail = false;
     const monaco = {
         languages: {
@@ -106,7 +107,7 @@ test("Editor foundation: production bridge registers YAML completion, provider l
             if (fail) throw Error("offline");
             return { status: 200, data: { rule: { prefix: "MATCH", body: ["MATCH,${1:policy}"] } } };
         } },
-        labels: require("../../main/dist/electron/core/i18n/language").createTranslator(1)
+        labels: require("../../main/dist/electron/core/i18n/language").createTranslator(() => locale)
     });
     const model = {
         getValue: () => 'proxies:\n  - name: "node"\nrules:\n  ',
@@ -126,6 +127,10 @@ test("Editor foundation: production bridge registers YAML completion, provider l
     assert.equal(calls.at(-1), file);
     await commands.copyURLMD5(null, "hash");
     assert.equal(calls.at(-2), "hash.yaml");
+    assert.equal(calls.at(-1).title, "MD5 Copied");
+    locale = 0;
+    await commands.copyURLMD5(null, "hash");
+    assert.deepEqual(calls.at(-1), { title: "MD5 已复制", message: "MD5: hash" });
     api.saveScrollPosition("document", 84);
     assert.equal(api.getScrollPosition("document"), 84);
     assert.equal(api.getScrollPosition("new"), 0);

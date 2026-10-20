@@ -113,7 +113,7 @@ function createScriptEditor({
                     });
                     this.editorCode.addAction({
                         id: "test",
-                        label: "Test",
+                        label: getLanguage().scriptTest(),
                         run: () => this.test(),
                         keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS]
                     });
@@ -148,7 +148,7 @@ function createScriptEditor({
                     });
                     utilities.showMessageBox({
                         type: "none",
-                        message: `${labels.success()}, 结果: ${data.result}`
+                        message: labels.scriptTestResult({ result: data.result })
                     });
                 } catch (error) {
                     utilities.showMessageBox({
@@ -281,7 +281,7 @@ function createScriptEditor({
                 viewModel._v(" "),
                 viewModel.isLoading ? createElement("Hint", {
                     staticClass: "bg-gray-500 clickable",
-                    attrs: { hint: "Please wait" }
+                    attrs: { hint: labels.pleaseWait() }
                 }, [createElement("span", {
                     staticClass: "icon text-[20px] text-white"
                 }, [viewModel._v("pending")])]) : createElement("Hint", {

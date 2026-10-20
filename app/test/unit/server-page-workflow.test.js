@@ -37,16 +37,36 @@ test("server page profile selection owns loading and failure recovery", async ()
     const page = {
         ...workflow.methods,
         loadingProfileIndex: [],
-        async switchProfile() { throw new Error("invalid profile"); },
-        changeProfilesIndex: payload => selected.push(payload)
+        pfs: { index: -1, files: [] },
+        $parent: { requestProfileSelection: action => action(), async refreshProfile() { throw new Error("invalid profile"); } },
+        changeProfilesIndex(payload) { selected.push(payload); this.pfs.index = payload.index; }
     };
 
     await page.handleProfileClick(4);
 
     assert.deepEqual(page.loadingProfileIndex, []);
-    assert.deepEqual(selected, [{ index: -1 }]);
+    assert.deepEqual(selected, [{ index: 4 }, { index: -1 }]);
     assert.equal(dialogs.length, 1);
     assert.equal(dialogs[0].detail, "invalid profile");
+});
+
+test("profile switching blocks manual reorder and deletion, including a confirmation opened before the operation", async () => {
+    let confirm;
+    const { workflow } = createWorkflow({ showMessageBox: () => new Promise(resolve => { confirm = resolve; }) });
+    const parent = { proxyBusy: true };
+    const page = { ...workflow.methods, $parent: parent, profileSwitchBlocked: true, dragSelectedName: "old",
+        pfs: { index: 0, files: [{ time: "active" }] },
+        changeProfiles() { assert.fail("reorder during apply"); }, changeProfilesIndex() { assert.fail("delete during apply"); }
+    };
+    workflow.computed.profiles.set.call(page, []);
+    page.handleDragStart(); page.handleDragEnd();
+    assert.equal(page.dragSelectedName, "");
+    assert.equal(await page.handleDeleteProfile(0), false);
+    parent.proxyBusy = false;
+    const deleting = page.handleDeleteProfile(0);
+    parent.proxyBusy = true;
+    confirm({ response: 1 });
+    await deleting;
 });
 
 test("server page update delegates to the profile downloader and selects its result", async () => {

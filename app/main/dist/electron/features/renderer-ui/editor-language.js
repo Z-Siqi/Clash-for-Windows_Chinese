@@ -59,7 +59,7 @@ function installEditorLanguage({ monaco, publicContent, providerFiles, hashText,
     monaco.editor.registerCommand("openFile", async (_commandContext, hash) => { await providerFiles.revealCache(hash); });
     monaco.editor.registerCommand("copyURLMD5", async (_commandContext, hash) => {
         clipboard.writeText(`${hash}.yaml`);
-        showMessageBox({ title: "MD5 Copied", message: `MD5: ${hash}` });
+        showMessageBox({ title: labels.md5Copied(), message: `MD5: ${hash}` });
     });
     return {
         saveScrollPosition: (key, value) => scrollPositions.set(key, value),

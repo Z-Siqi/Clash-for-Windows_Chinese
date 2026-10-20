@@ -108,9 +108,18 @@ function createServerPage({
 
             return createElement("div", {
                 key: index,
-                class: ["list-item", index === viewModel.pfs.index ? "item-cur" : ""],
+                class: ["list-item", index === viewModel.pfs.index ? "item-cur" : "", { "cfw-profile-switch-blocked": viewModel.profileSwitchBlocked }],
+                attrs: { role: "button", tabindex: viewModel.profileSwitchBlocked ? -1 : 0,
+                    "aria-disabled": String(!!viewModel.profileSwitchBlocked),
+                    "aria-busy": String(viewModel.loadingProfileIndex.includes(index)),
+                    title: viewModel.profileSwitchBlocked ? labels.profileSwitching() : undefined },
                 on: {
                     click: () => viewModel.handleProfileClick(index),
+                    keydown: event => {
+                        if (event.target !== event.currentTarget || !["Enter", " "].includes(event.key)) return;
+                        event.preventDefault();
+                        viewModel.handleProfileClick(index);
+                    },
                     contextmenu: event => viewModel.handleProfileRightClick(event, profile, index)
                 }
             }, [
@@ -233,7 +242,7 @@ function createServerPage({
         }, [viewModel._v(labels.import())])])]), viewModel._v(" "), createElement("draggable", {
             ref: "mixin-scroll-content",
             staticClass: "list-view",
-            attrs: { delay: 300, animation: 200, "delay-on-touch-only": true },
+            attrs: { delay: 300, animation: 200, "delay-on-touch-only": true, disabled: !!viewModel.profileSwitchBlocked },
             on: { start: viewModel.handleDragStart, end: viewModel.handleDragEnd },
             model: {
                 value: viewModel.profiles,

@@ -165,10 +165,10 @@ function createProfileEditor({
         }), viewModel._v(" "), createElement("label", { attrs: { for: id } }, [viewModel._v(text)])]);
         const groupForm = createElement("div", { staticClass: "input-view" }, [
             createElement("div", { staticClass: "title" }, [
-                viewModel._v(`${viewModel._s(viewModel.data ? "Edit" : "New")} Proxy Group`)
+                viewModel._v(viewModel.data ? labels.editProxyGroupTitle() : labels.newProxyGroupTitle())
             ]),
             viewModel._v(" "),
-            input("groupName", { placeholder: "Group Name" }),
+            input("groupName", { placeholder: labels.proxyGroupName() }),
             viewModel._v(" "),
             radios(viewModel.gType, "groupType", "group-type-list"),
             viewModel._v(" "),
@@ -177,21 +177,21 @@ function createProfileEditor({
                 : viewModel._e(),
             viewModel._v(" "),
             viewModel.groupType !== "select"
-                ? input("groupInterval", { placeholder: "Interval ( Second )" })
+                ? input("groupInterval", { placeholder: labels.intervalSeconds() })
                 : viewModel._e()
         ]);
         const anyTlsOptions = createElement("div", { staticClass: "input-view" }, [
-            input("proxyClientFingerprint", { placeholder: "Client fingerprint (for example: chrome)" }),
+            input("proxyClientFingerprint", { placeholder: labels.clientFingerprintPlaceholder() }),
             viewModel._v(" "),
             input("proxySni", { placeholder: "SNI" }),
             viewModel._v(" "),
-            input("proxyAlpn", { placeholder: "ALPN (comma separated)" }),
+            input("proxyAlpn", { placeholder: labels.alpnPlaceholder() }),
             viewModel._v(" "),
-            input("proxyIdleSessionCheckInterval", { type: "number", placeholder: "Idle session check interval" }),
+            input("proxyIdleSessionCheckInterval", { type: "number", placeholder: labels.idleSessionCheckInterval() }),
             viewModel._v(" "),
-            input("proxyIdleSessionTimeout", { type: "number", placeholder: "Idle session timeout" }),
+            input("proxyIdleSessionTimeout", { type: "number", placeholder: labels.idleSessionTimeout() }),
             viewModel._v(" "),
-            input("proxyMinIdleSession", { type: "number", placeholder: "Minimum idle sessions" }),
+            input("proxyMinIdleSession", { type: "number", placeholder: labels.minimumIdleSessions() }),
             viewModel._v(" "),
             createElement("label", [createElement("input", {
                 directives: [{ name: "model", rawName: "v-model", value: viewModel.proxyUdp, expression: "proxyUdp" }],
@@ -214,7 +214,7 @@ function createProfileEditor({
         ]);
         const proxyForm = createElement("div", { staticClass: "input-view" }, [
             createElement("div", { staticClass: "title" }, [
-                viewModel._v(`${viewModel._s(viewModel.data ? "Edit" : "New")} Proxy`)
+                viewModel._v(viewModel.data ? labels.editProxyTitle() : labels.newProxyTitle())
             ]),
             viewModel._v(" "),
             input("proxyName", { placeholder: labels.proxyName() }),
@@ -226,7 +226,7 @@ function createProfileEditor({
             input("proxyPort", { placeholder: labels.port() }),
             viewModel._v(" "),
             ["ss", "anytls"].includes(viewModel.proxyType)
-                ? input("proxyPassword", { placeholder: "Password" })
+                ? input("proxyPassword", { placeholder: labels.password() })
                 : viewModel._e(),
             viewModel._v(" "),
             viewModel.proxyType === "anytls" ? anyTlsOptions : viewModel._e(),
@@ -238,9 +238,9 @@ function createProfileEditor({
                     : viewModel._e(),
             viewModel._v(" "),
             viewModel.proxyType === "ss" ? createElement("div", { staticClass: "ss-list" }, [
-                input("proxyObfs", { placeholder: "Obfs (Optional, tls or http)" }),
+                input("proxyObfs", { placeholder: labels.obfsPlaceholder() }),
                 viewModel._v(" "),
-                input("proxyObfshost", { placeholder: "Obfs-host (Optional)" })
+                input("proxyObfshost", { placeholder: labels.obfsHostPlaceholder() })
             ]) : viewModel._e(),
             viewModel._v(" "),
             viewModel.proxyType === "vmess" ? createElement("div", { staticClass: "vmess-list" }, [
@@ -254,17 +254,17 @@ function createProfileEditor({
             ["http", "socks5"].includes(viewModel.proxyType) ? createElement("div", {
                 staticClass: "input-view"
             }, [
-                input("proxyUsername", { placeholder: "User Name (Optional)" }),
+                input("proxyUsername", { placeholder: labels.optionalUsername() }),
                 viewModel._v(" "),
-                input("proxyPassword", { placeholder: "Password (Optional)" })
+                input("proxyPassword", { placeholder: labels.optionalPassword() })
             ]) : viewModel._e(),
             viewModel._v(" "),
             viewModel.proxyType === "vmess" && viewModel.proxyNetwork === "ws"
-                ? input("proxyWsPath", { placeholder: "ws path" })
+                ? input("proxyWsPath", { placeholder: labels.webSocketPath() })
                 : viewModel._e(),
             viewModel._v(" "),
             viewModel.proxyType === "vmess" && viewModel.proxyNetwork === "ws"
-                ? input("proxyWsHeaders", { placeholder: "ws headers (JSON)" })
+                ? input("proxyWsHeaders", { placeholder: labels.webSocketHeaders() })
                 : viewModel._e(),
             viewModel._v(" "),
             ["vmess", "socks5", "http"].includes(viewModel.proxyType) ? createElement("div", [

@@ -8,6 +8,7 @@ const { bindMenuShortcuts } = require("./menu-shortcuts");
 const { supportsScriptMode } = require("../../core/clash-core/core-capabilities");
 const { parsePort } = require("../../core/network/tcp-port");
 const { waitForProfileRefresh } = require("../../core/network/profile-refresh-state");
+const { TAP_MODES, resolveTapMode } = require("../../core/network/legacy-tap-policy");
 const {
     isTcpPortAvailable,
     applyAndVerifyMixedPort,
@@ -216,7 +217,7 @@ function createHomePageOptions(dependencies) {
             "settings.mixinText"() { if (this.isMixinEnable && this.settings.mixinType === 0) this.refreshProfile(); },
             "settings.mixinCode"() { if (this.isMixinEnable && this.settings.mixinType === 1) this.refreshProfile(); },
             "settings.mixinType"() { this.refreshProfile(); },
-            "settings.legacyTapEnabled"(_value, previous) {
+            "settings.legacyTapMode"(_value, previous) {
                 // Initial settings are applied by core startup, without another queued reload.
                 if (previous !== undefined && !this.isLaunching) this.refreshProfile();
             },
@@ -247,12 +248,7 @@ function createHomePageOptions(dependencies) {
             tunSettings() { if (this.isTunEnable) this.refreshProfile(); },
             isAppSuspend(value) {
                 if (value) return;
-                if (this.tun2socks) {
-                    logger.info("system resume, restart tun2socks");
-                    this.killSpawned(this.tun2socks);
-                    this.tun2socks = null;
-                    this.spawnTun2socks();
-                }
+                // The refresh queue owns TAP restart and cancellation, including resume.
                 this.refreshProfile().catch(() => {});
             },
             innerServerPort(value) {
@@ -344,7 +340,7 @@ function createHomePageOptions(dependencies) {
                 this.publishProxyOperation();
                 try { return await action(); }
                 catch (error) {
-                    const title = name === "tun" ? "TUN Mode" : name === "mixin" ? "Mixin" : name === "tap" ? getLanguage().legacyTap() : name === "mode" ? getLanguage().proxyMode() : getLanguage().sysProxy();
+                    const title = name === "tun" ? "TUN Mode" : name === "mixin" ? getLanguage().mixin() : name === "tap" ? getLanguage().tapAdapter() : name === "mode" ? getLanguage().proxyMode() : name === "profile" ? getLanguage().profiles() : getLanguage().sysProxy();
                     // A failed explicit action must remain visible with notifications disabled.
                     if (this.$alert) {
                         try { await this.$alert({ title, content: error.message }); } catch (_dismissed) {}
@@ -363,14 +359,18 @@ function createHomePageOptions(dependencies) {
                     return success;
                 }, enabled, requestId);
             },
+            requestProfileSelection(action) {
+                return this.runProxyOperation("profile", action);
+            },
             requestProfileToggle(kind, enabled, requestId = null) {
+                if (kind === "tap" && !TAP_MODES.includes(enabled)) return Promise.resolve(false);
                 return this.runProxyOperation(kind, async () => {
                     if (kind === "mixin" && enabled) await dependencies.prepareMixin(this.settings);
-                    const previous = kind === "tun" ? this.isTunEnable : kind === "tap" ? this.settings.legacyTapEnabled !== false : this.isMixinEnable;
+                    const previous = kind === "tun" ? this.isTunEnable : kind === "tap" ? resolveTapMode(this.settings) : this.isMixinEnable;
                     if (previous === enabled) return true;
                     const commit = value => kind === "tun"
                         ? this.chagneIsTunEnable({ isTun: value }) : kind === "tap"
-                            ? this.settings.legacyTapEnabled = value : this.changeIsMixinEnable({ isMixin: value });
+                            ? this.settings.legacyTapMode = value : this.changeIsMixinEnable({ isMixin: value });
                     commit(enabled);
                     // Vue watchers own the reload. Wait for their flush before observing it.
                     await this.$nextTick();
@@ -603,6 +603,7 @@ function createHomePageOptions(dependencies) {
                         compileMixin: dependencies.requireFromString,
                         runMixin: dependencies.runMixin,
                         readProfileSource: dependencies.profileFiles?.readProfile,
+                        getLanguage,
                         hash,
                         setDns,
                         getPort,
@@ -685,10 +686,10 @@ function createHomePageOptions(dependencies) {
                 return createTunRuntime();
             },
             setupTapDevice(install = true) { return this.createTunRuntime().setupTapDevice(install); },
-            async spawnTun2socks() {
+            async spawnTun2socks({ isCurrent, signal } = {}) {
                 const previousProcess = this.tun2socks;
                 this.tun2socks = null;
-                this.tun2socks = await this.createTunRuntime().spawnTun2socks({ currentProcess: previousProcess, mixedPort: this.mixedPort });
+                this.tun2socks = await this.createTunRuntime().spawnTun2socks({ currentProcess: previousProcess, mixedPort: this.mixedPort, isCurrent, signal });
             },
             killSpawned(processHandle) { return this.createTunRuntime().killSpawned(processHandle); },
             async getClashStatus() {

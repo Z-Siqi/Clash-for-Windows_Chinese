@@ -11,7 +11,7 @@ function createAlert({ Vuex, escCaptureComponent, getLanguage } = {}) {
             return {
                 isShow: false,
                 content: "",
-                title: "错误",
+                title: null,
                 isShowErrorBtn: false,
                 resolve: null,
                 reject: null
@@ -22,7 +22,7 @@ function createAlert({ Vuex, escCaptureComponent, getLanguage } = {}) {
             ...Vuex.mapGetters(["theme"])
         },
         methods: {
-            show({ title = "错误", content = "", isShowErrorBtn = false }) {
+            show({ title = null, content = "", isShowErrorBtn = false }) {
                 this.isShow = true;
                 this.title = title;
                 this.content = content;
@@ -60,7 +60,7 @@ function createAlert({ Vuex, escCaptureComponent, getLanguage } = {}) {
             staticClass: "card-main bg-[color:var(--bgc)] text-[color:var(--fgc)]",
             on: { mousedown: event => event.stopPropagation() }
         }, [createElement("div", { staticClass: "card-content" }, [
-            createElement("div", { staticClass: "content-title" }, [viewModel._v(viewModel._s(viewModel.title))]),
+            createElement("div", { staticClass: "content-title" }, [viewModel._v(viewModel._s(viewModel.title ?? labels.error()))]),
             viewModel._v(" "),
             createElement("div", { staticClass: "content-content" }, [viewModel._v(viewModel._s(viewModel.content))]),
             viewModel._v(" "),

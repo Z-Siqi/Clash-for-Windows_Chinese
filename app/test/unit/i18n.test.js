@@ -26,27 +26,59 @@ test("native language selection uses the first preferred UI language rather than
     assert.equal(getSystemLanguage({}), "en");
 });
 
-test("i18n preserves every original message and array in both packaged catalogs", () => {
+test("i18n preserves migrated catalogs apart from reviewed additions and copy updates", () => {
     const hashes = {
         "zh-CN": "16d6071946c5b48f3d11d77cfd2cd8115e71f4fa4827b63d4b1c8ad061cfe1d6",
         "en-US": "197485eb13322bf35d48cbcba405828e21b5d420ae2ca24385e30e2c88b79170"
     };
     const chinese = require("../../main/dist/electron/core/i18n/locales/zh-CN.json");
+    const renamedChineseMessages = {
+        TAPdeviceManagement: "虚拟网卡设置管理",
+        mixin: "混合配置",
+        mixinAllowsDescribe: "Mixin允许您覆盖原始配置文件",
+        customizeTrayIconInProxyDescribe: "设置当 系统代理/TUN/混合配置 开启时的任务栏图标",
+        titleBarTextDescribeFifth: "Mixin 状态，开或关",
+        breakWhenModeChangeDescribe: "在 Rule（规则）、Global（全局）、Direct（直连）或 Script（脚本）之间切换时，断开所有核心连接。此处不指 System Proxy、TUN 或 Mixin 开关。",
+        breakWhenProxyDisabledDescribe: "成功关闭 System Proxy，或关闭 TUN/Mixin 并实际停用 TUN/TAP 后，断开操作前已存在的核心连接。开启代理或普通配置刷新不会触发此选项，操作后新建的连接会保留。默认开启。",
+        interfaceNameDescribe: "像 Mixin 一样设置接口名覆盖，以后会移除",
+        editMixinContent: "编辑 Mixin 内容"
+    };
+    const clarifiedEnglishMessages = { mixinAllowsDescribe: "Mixin allows you to overwrite the original configuration file" };
     const additionalMessages = new Set([
+        "profileSwitching",
         "trustedCertificateOrigins", "trustedCertificateOriginsDescribe", "profileDownloadExceptions", "profileDownloadExceptionsDescribe",
         "allowRemoteProfileParsers", "allowRemoteProfileParsersDescribe", "confirmRemoteProfileParsers", "invalidSecuritySetting",
         "allowHttpExternalLinks", "allowHttpExternalLinksDescribe", "confirmHttpExternalLinks", "profileProcessingTimedOut",
         "serviceApplying", "serviceRestarting", "legacyTap", "legacyTapDescribe", "networkAppliedState", "networkEnabled", "networkDisabled",
         "networkTunOverridden", "networkTunFromProfile", "networkTunOptionsOverridden", "networkDnsOverridden", "networkTunDnsDisabled",
         "networkLegacyTapActive", "networkBypassHint", "networkDnsListen53", "breakWhenProxyDisabledScopedDescribe",
-        "networkConfiguration", "previewSubmittedConfiguration", "networkStateUnavailable", "networkApplying"
+        "networkConfiguration", "previewSubmittedConfiguration", "networkStateUnavailable", "networkApplying",
+        "resetDNSSettingsHint", "resetDNSSettingsDescribe", "detectedServers", "serviceAlreadyInstalled",
+        "later", "note", "maxMindLicenseKey", "fakeIPCacheCleared",
+        "fakeIPCacheClearFailed", "md5Copied", "scriptTestResult", "pleaseWait",
+        "requiredFieldMissing", "diffTitle", "externalEditorLaunching", "dhcpServiceUnavailable",
+        "trustCertificate", "certificateErrorTitle", "certificateErrorMessage", "certificateTrustMessage",
+        "dashboardCrashed", "reloadDashboard", "exitApplication", "selectProviderFile",
+        "editProxyGroupTitle", "newProxyGroupTitle", "editProxyTitle", "newProxyTitle",
+        "proxyGroupName", "intervalSeconds", "clientFingerprintPlaceholder", "alpnPlaceholder",
+        "idleSessionCheckInterval", "idleSessionTimeout", "minimumIdleSessions", "password",
+        "obfsPlaceholder", "obfsHostPlaceholder", "optionalUsername", "optionalPassword",
+        "webSocketPath", "webSocketHeaders",
+        "dnsAnswer", "dnsAdditional", "dhcpIPRange", "rangeFrom", "rangeTo", "primaryDNS", "alternativeDNS", "continueAction",
+        "profileNotMapping", "mixinNotMapping", "selectedProfileMissing", "profileSwitchStatus", "profileApplyError", "profileErrorLocation", "profileInvalidYaml",
+        "tapAdapter", "tapPermission", "tapPermissionDescribe", "tapMixinOnly", "tapDisable", "tapStatusUnknown", "tapNotInstalled", "tapDisabled", "tapRestricted", "tapEnabled", "tapEnabledDescribe", "tapMixinDescribe", "tapDisabledDescribe", "tapAuthorizationExample", "tapYamlAuthorization", "tapJsAuthorization"
     ]);
     for (const [locale, hash] of Object.entries(hashes)) {
         const catalog = require(`../../main/dist/electron/core/i18n/locales/${locale}.json`);
-        // Preserve the migration fingerprints while admitting these explicit additions.
-        const original = Object.fromEntries(Object.entries(catalog).filter(([key]) => !additionalMessages.has(key)));
+        // Preserve migration fingerprints across the reviewed Mixin naming update.
+        const original = Object.fromEntries(Object.entries(catalog).filter(([key]) => !additionalMessages.has(key))
+            .map(([key, value]) => [key, (locale === "zh-CN" ? renamedChineseMessages : clarifiedEnglishMessages)[key] ?? value]));
         assert.equal(createHash("sha256").update(JSON.stringify(original)).digest("hex"), hash);
-        for (const key of additionalMessages) assert.ok(typeof catalog[key] === "string" && catalog[key].length > 0);
+        for (const key of additionalMessages) {
+            assert.ok(typeof catalog[key] === "string" && catalog[key].length > 0);
+            const placeholders = message => [...message.matchAll(/\{\{(\w+)\}\}/g)].map(match => match[1]).sort();
+            assert.deepEqual(placeholders(catalog[key]), placeholders(chinese[key]), `${locale}/${key} interpolation`);
+        }
         assert.deepEqual(Object.keys(catalog), Object.keys(chinese));
         const labels = createTranslator(locale);
         for (const [key, value] of Object.entries(catalog)) {

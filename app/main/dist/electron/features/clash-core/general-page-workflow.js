@@ -2,6 +2,7 @@
 
 const { parsePort, buildDashboardUrl } = require("./general-settings");
 const { normalizeCoreVersion } = require("./core-api-compat");
+const { TAP_MODES, resolveTapMode } = require("../../core/network/legacy-tap-policy");
 
 const DEFAULT_MIXIN = `mixin: # object
   dns:
@@ -41,6 +42,7 @@ function createGeneralPageWorkflow({
     cache,
     keys,
     getNetworkInterfaces,
+    getTapInstalled = async () => false,
     getNetworkDiagnostics = () => [],
     platform,
     connectedStatus,
@@ -73,7 +75,8 @@ function createGeneralPageWorkflow({
         isTunSettingsVisible: false,
         isInterfacesVisible: false,
         isFetchingFirewallRule: false,
-        isResetDNSSettingsVisible: false
+        isResetDNSSettingsVisible: false,
+        isTapManagementVisible: false, tapInstalled: null, tapStatusRequest: 0
     });
 
     const watch = {
@@ -95,6 +98,7 @@ function createGeneralPageWorkflow({
         tunLoading() { return this.$parent.proxyOperation === "tun"; },
         mixinLoading() { return this.$parent.proxyOperation === "mixin"; },
         tapLoading() { return this.$parent.proxyOperation === "tap"; },
+        legacyTapMode() { return resolveTapMode(this.settings); },
         networkStateKnown() { return this.clashStatus === connectedStatus && Object.keys(this.currentProfilePayload || {}).length > 0; },
         networkWarnings() { return this.networkStateKnown ? getNetworkDiagnostics(this) : []; },
         systemProxyBusy() { return this.systemProxyLoading || this.$parent.proxyOperation === "system"; },
@@ -111,7 +115,18 @@ function createGeneralPageWorkflow({
     };
 
     const methods = {
-        handleLegacyTapSwitchClick() { return this.$parent.requestProfileToggle("tap", this.settings.legacyTapEnabled === false); },
+        handleTapModeChange(mode) {
+            if (this.proxyBusy || !TAP_MODES.includes(mode)) return false;
+            return this.$parent.requestProfileToggle("tap", mode);
+        },
+        async refreshTapStatus() {
+            if (!platform.isWindows()) return;
+            const request = this.tapStatusRequest = (this.tapStatusRequest || 0) + 1;
+            try {
+                const installed = await getTapInstalled();
+                if (request === this.tapStatusRequest) this.tapInstalled = installed === true;
+            } catch (_error) { if (request === this.tapStatusRequest) this.tapInstalled = null; }
+        },
         handleTitleClick() { electron.ipcRenderer.invoke("window", "reload"); },
         handleShowDNSQueryDialog() { this.$dns().catch(() => {}); },
         handleShowScriptTestDialog() { this.$script({}).catch(() => {}); },
@@ -180,7 +195,7 @@ function createGeneralPageWorkflow({
                 selection = selected;
                 if (selection === 0) {
                     if (!this.isLocalMode) {
-                        await utilities.showMessageBox({ type: "error", message: "The service is already installed." });
+                        await utilities.showMessageBox({ type: "error", message: labels.serviceAlreadyInstalled() });
                         return;
                     }
                     await this.applyServiceChange("install", method);
@@ -283,7 +298,7 @@ function createGeneralPageWorkflow({
                 const { response } = await utilities.showMessageBox({
                     type: "error",
                     message: `${labels.makeSureYouHave()}${this.serviceNeedUpdate ? labels.updated() : labels.installed()} ${labels.serviceModeCtrlSysProxy()}`,
-                    buttons: [`${this.serviceNeedUpdate ? labels.update() : labels.install()} ${labels.now()}`, "Later"]
+                    buttons: [`${this.serviceNeedUpdate ? labels.update() : labels.install()} ${labels.now()}`, labels.later()]
                 });
                 try {
                     if (response === 0) {
@@ -309,41 +324,43 @@ function createGeneralPageWorkflow({
             this.autoLaunchLoading = false;
         },
         async installTapDevice() {
-            if (!platform.isWindows()) return;
+            if (!platform.isWindows() || this.proxyBusy) return false;
+            this.isTapManagementVisible = true;
+            await this.refreshTapStatus();
+        },
+        async handleTapManagementAction(selection) {
+            if (!platform.isWindows() || this.proxyBusy || ![0, 1, 2].includes(selection)) return false;
             const labels = getLanguage();
-            try {
-                const [selection] = await this.$select({
-                    title: labels.TAPdeviceManagement(), message: labels.TAPinstallDescribe(),
-                    items: [labels.install(), labels.uninstall(), labels.customize()]
-                });
-                if (selection === 0) {
-                    try {
+            return this.$parent.runProxyOperation("tap", async () => {
+                try {
+                    if (selection === 0) {
                         await this.$parent.setupTapDevice(true);
                         utilities.notify(labels.success(), labels.tapDeviceInstalled(), true);
-                        if (this.isMixinEnable || this.isTunEnable) this.$parent.refreshProfile();
-                    } catch (_error) { utilities.notify(labels.failed(), labels.notInstallTapDevice(), true); }
-                } else if (selection === 1) {
-                    try {
+                    } else if (selection === 1) {
                         await this.$parent.setupTapDevice(false);
                         utilities.notify(labels.success(), labels.tapDeviceRemoved(), true);
-                    } catch (_error) { utilities.notify(labels.failed(), labels.notRemoveTapDevice(), true); }
-                } else if (selection === 2) {
-                    const { ip, subnet, gateway } = cache.get(keys.TAP_INFO) ?? {};
-                    try {
-                        const result = await this.$input({
-                            title: labels.deviceTAP(),
-                            data: [
-                                { name: labels.IPaddress(), key: "ip", placeholder: "10.0.0.1", value: ip ?? "" },
-                                { name: labels.subnetMask(), key: "subnet", placeholder: "255.255.255.0", value: subnet ?? "" },
-                                { name: labels.defaultGateway(), key: "gateway", placeholder: "10.0.0.0", value: gateway ?? "" }
-                            ],
-                            hint: labels.reinstallDescribeWithTAP()
-                        });
-                        cache.put(keys.TAP_INFO, result);
-                    } catch (_error) {}
-                    this.installTapDevice();
-                }
-            } catch (_error) {}
+                    } else if (selection === 2) {
+                        const { ip, subnet, gateway } = cache.get(keys.TAP_INFO) ?? {};
+                        try {
+                            const result = await this.$input({
+                                title: labels.deviceTAP(),
+                                data: [
+                                    { name: labels.IPaddress(), key: "ip", placeholder: "10.0.0.1", value: ip ?? "" },
+                                    { name: labels.subnetMask(), key: "subnet", placeholder: "255.255.255.0", value: subnet ?? "" },
+                                    { name: labels.defaultGateway(), key: "gateway", placeholder: "10.0.0.0", value: gateway ?? "" }
+                                ],
+                                hint: labels.reinstallDescribeWithTAP()
+                            });
+                            cache.put(keys.TAP_INFO, result);
+                        } catch (_error) {}
+                    }
+                    if (selection !== 2) {
+                        const result = await this.$parent.refreshProfile();
+                        if (!result.success && result.message) throw new Error(result.message);
+                    }
+                    return true;
+                } finally { await this.refreshTapStatus(); }
+            });
         },
         async openCmdWithProxy() {
             const labels = getLanguage();
@@ -370,7 +387,7 @@ function createGeneralPageWorkflow({
                     title: labels.changeMixedPort(),
                     data: [{
                         name: labels.newPort(), key: "port", placeholder: this.port, value: "",
-                        validate: value => parsePort(value) !== null ? "" : "Port must be an integer between 1 and 65535"
+                        validate: value => parsePort(value) !== null ? "" : labels.invalidPort()
                     }],
                     hint: "mixed = http + socks"
                 });
@@ -442,7 +459,7 @@ function createGeneralPageWorkflow({
                 const result = await this.$input({
                     title: labels.copyCommand(),
                     data: [{ name: "", key: "command", placeholder: "", value: cached || fallback }],
-                    hint: "", confirmText: "Copy"
+                    hint: "", confirmText: labels.copy()
                 }).catch(() => undefined);
                 if (!result) return "";
                 const command = result.command;
@@ -478,7 +495,7 @@ function createGeneralPageWorkflow({
         async updateGeoipDB() {
             const labels = getLanguage();
             if (platform.isWindows()) {
-                this.$alert({ content: labels.updatingDbNotAllowedCFW(), title: "Note" });
+                this.$alert({ content: labels.updatingDbNotAllowedCFW(), title: labels.note() });
                 return;
             }
             const originalTime = this.geoipUpdateTime;
@@ -487,7 +504,7 @@ function createGeneralPageWorkflow({
                 const { url = "", token = "" } = await this.$input({
                     title: labels.updateDbGeoIP(),
                     data: [
-                        { name: "MaxMind User License Key", key: "token", placeholder: "", value: cache.get(keys.GEOIP_TOKEN) || "" },
+                        { name: labels.maxMindLicenseKey(), key: "token", placeholder: "", value: cache.get(keys.GEOIP_TOKEN) || "" },
                         { name: "URL", key: "url", placeholder: "", value: cache.get(keys.GEOIP_URL) || "https://github.com/Dreamacro/maxmind-geoip/releases/latest/download/Country.mmdb" }
                     ],
                     hint: labels.inputFieldAlternative()
@@ -508,6 +525,7 @@ function createGeneralPageWorkflow({
         },
         setupSwitches() { this.autoLaunchLoading = false; this.systemProxyLoading = false; },
         async setupComponent() {
+            this.refreshTapStatus();
             if (!this.clashApi.isReady() || this.clashStatus !== connectedStatus) return;
             try {
                 const [{ status, data }] = await Promise.all([this.clashApi.getConfig(), this.fetchCoreVersion()]);

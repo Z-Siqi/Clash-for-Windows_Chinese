@@ -1,6 +1,8 @@
 "use strict";
 
-function registerUserScriptIpc({ ipcMain, app, getMainWindow, fs, path, yaml, forkWorker, workerPath, dialog, Notification, clashApi }) {
+const { createTranslator } = require("../../core/i18n/language");
+
+function registerUserScriptIpc({ ipcMain, app, getMainWindow, fs, path, yaml, forkWorker, workerPath, dialog, Notification, clashApi, getLanguage = () => createTranslator(1) }) {
     let worker;
     let sequence = 0;
     const jobs = new Map();
@@ -38,7 +40,7 @@ function registerUserScriptIpc({ ipcMain, app, getMainWindow, fs, path, yaml, fo
             if (!context) return;
             try {
                 let value;
-                if (message.method === "dialog") value = await dialog.showMessageBox(context.window, { title: "Clash for Windows", ...message.args[0] });
+                if (message.method === "dialog") value = await dialog.showMessageBox(context.window, { title: "Clash for Windows", buttons: [getLanguage().ok()], ...message.args[0] });
                 else if (message.method === "resolveHost") value = (await clashApi.queryDns(...message.args)).data;
                 else if (message.method === "notify") {
                     if (context.showNotifications) {

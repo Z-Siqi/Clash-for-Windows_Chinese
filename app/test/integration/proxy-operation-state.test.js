@@ -32,10 +32,10 @@ function model(overrides = {}) {
     const vm = new Vue({
         data: () => ({
             ...page.data(), isTunEnable: false, isMixinEnable: false, isSystemProxyOn: false,
-            isLaunching: false, settings: { legacyTapEnabled: true }, clashApi: {}, confData: {}
+            isLaunching: false, settings: { legacyTapMode: "enabled" }, clashApi: {}, confData: {}
         }),
         computed: { proxyBusy: page.computed.proxyBusy },
-        watch: { isTunEnable: page.watch.isTunEnable, isMixinEnable: page.watch.isMixinEnable, "settings.legacyTapEnabled": page.watch["settings.legacyTapEnabled"] },
+        watch: { isTunEnable: page.watch.isTunEnable, isMixinEnable: page.watch.isMixinEnable, "settings.legacyTapMode": page.watch["settings.legacyTapMode"] },
         methods: {
             ...page.methods,
             updateTrayIcon() {},
@@ -64,6 +64,33 @@ test("TUN burst clicks share one apply and remain locked through the Vue watcher
     h.vm.$destroy();
 });
 
+test("manual profile selection holds the shared lock through apply and cleanup, then releases on success or failure", async () => {
+    const state = model(), cleanup = deferred();
+    let blockedActions = 0;
+    const selecting = state.vm.requestProfileSelection(async () => {
+        await state.vm.refreshProfile();
+        await cleanup.promise;
+        return true;
+    });
+    assert.equal(state.vm.proxyOperation, "profile");
+    for (let index = 0; index < 20; index++) assert.equal(await state.vm.requestProfileSelection(() => blockedActions++), false);
+    assert.equal(blockedActions, 0);
+    assert.equal(await state.vm.requestProfileToggle("tun", true), false);
+    state.gate.resolve({ success: true });
+    await Vue.nextTick();
+    assert.equal(state.vm.proxyBusy, true);
+    cleanup.resolve();
+    assert.equal(await selecting, true);
+    assert.equal(state.vm.proxyBusy, false);
+    assert.equal(await state.vm.requestProfileSelection(() => { throw Error("selection failed"); }), false);
+    assert.equal(state.vm.proxyBusy, false);
+    assert.equal(await state.vm.requestProfileSelection(async () => true), true);
+    state.vm.profileApplyCount = 1;
+    assert.equal(await state.vm.requestProfileSelection(() => blockedActions++), false);
+    assert.equal(blockedActions, 0);
+    state.vm.$destroy();
+});
+
 test("failed TUN apply restores the saved switch and waits for rollback", async () => {
     const h = model();
     const request = h.vm.requestProfileToggle("tun", true);
@@ -80,14 +107,14 @@ test("failed TUN apply restores the saved switch and waits for rollback", async 
 test("legacy TAP opt-out shares the operation lock and rolls back a rejected configuration", async () => {
     for (const success of [true, false]) {
         const h = model();
-        const request = h.vm.requestProfileToggle("tap", false);
+        const request = h.vm.requestProfileToggle("tap", "disabled");
         assert.equal(h.vm.proxyOperation, "tap");
         assert.equal(await h.vm.requestProfileToggle("tun", true), false);
         await Vue.nextTick();
         assert.equal(h.vm.profileApplyCount, 1);
         h.gate.resolve({ success, message: "test rejection" });
         assert.equal(await request, success);
-        assert.equal(h.vm.settings.legacyTapEnabled, !success);
+        assert.equal(h.vm.settings.legacyTapMode, success ? "disabled" : "enabled");
         assert.equal(h.vm.proxyBusy, false);
         assert.equal(h.calls.length, success ? 1 : 2);
         h.vm.$destroy();
@@ -97,9 +124,22 @@ test("legacy TAP opt-out shares the operation lock and rolls back a rejected con
 test("initial TAP preference load does not add a startup profile refresh", () => {
     const page = homePage();
     const model = { isLaunching: false, refreshProfile: () => assert.fail("startup owns initial configuration") };
-    page.watch["settings.legacyTapEnabled"].call(model, true, undefined);
+    page.watch["settings.legacyTapMode"].call(model, "mixin", undefined);
     model.isLaunching = true;
-    page.watch["settings.legacyTapEnabled"].call(model, false, true);
+    page.watch["settings.legacyTapMode"].call(model, "disabled", "enabled");
+});
+
+test("resume restores TAP through the profile queue instead of starting an independent process", async () => {
+    const page = homePage();
+    let refreshes = 0;
+    const model = { tun2socks: { pid: 123 },
+        async refreshProfile() { refreshes++; },
+        spawnTun2socks() { assert.fail("TAP startup belongs to the refresh queue"); },
+        killSpawned() { assert.fail("the queued apply owns the existing TAP process"); }
+    };
+    page.watch.isAppSuspend.call(model, true);
+    page.watch.isAppSuspend.call(model, false);
+    assert.equal(refreshes, 1);
 });
 
 test("async mixin validation is guarded before state changes and unlocks on error", async () => {
@@ -124,7 +164,7 @@ test("Mixin failures use an in-app alert even with system notifications disabled
     h.vm.$alert = options => { message = options; opened.resolve(); return alert.promise; };
     const request = h.vm.requestProfileToggle("mixin", true);
     await opened.promise;
-    assert.equal(message.title, "Mixin");
+    assert.equal(message.title, "mixin");
     assert.equal(message.content, "invalid Mixin configuration");
     assert.deepEqual(h.notifications, []);
     assert.equal(h.vm.isMixinEnable, false);

@@ -2,8 +2,9 @@
 
 const { writeAtomic } = require("../../core/storage/atomic-file");
 const { readBoundedText } = require("../../core/storage/read-bounded-text");
+const { createTranslator } = require("../../core/i18n/language");
 
-function registerProviderFileIpc({ ipcMain, app, getMainWindow, fs, path, dialog, shell, getProviders, platform = process.platform }) {
+function registerProviderFileIpc({ ipcMain, app, getMainWindow, fs, path, dialog, shell, getProviders, platform = process.platform, getLanguage = () => createTranslator(1) }) {
     const normalize = value => platform === "win32" ? value.toLowerCase() : value;
     const homes = [path.resolve(app.getPath("home"), ".config", "clash"), path.resolve(app.getPath("exe"), "..", "data")];
     const grants = new Set();
@@ -45,7 +46,7 @@ function registerProviderFileIpc({ ipcMain, app, getMainWindow, fs, path, dialog
                     // File providers can point outside the cache. A native file selection grants
                     // this provider access without giving the renderer an arbitrary path API.
                     const selection = await dialog.showOpenDialog(window, {
-                        title: "Select the configured provider file", defaultPath: real, properties: ["openFile"]
+                        title: getLanguage().selectProviderFile(), buttonLabel: getLanguage().open(), defaultPath: real, properties: ["openFile"]
                     });
                     if (selection.canceled || selection.filePaths.length !== 1 || normalize(fs.realpathSync(selection.filePaths[0])) !== normalize(real)) throw new Error("Provider file was not selected");
                     grants.add(grant);

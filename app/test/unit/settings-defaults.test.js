@@ -24,7 +24,7 @@ assert.deepEqual(defaults, {
     hideTrayIcon: false,
     connShowProcess: true,
     connProxyDisconnect: true,
-    legacyTapEnabled: true,
+    legacyTapMode: "mixin",
     showTrayProxyDelayIndicator: true,
     checkForUpdates: true,
     disableLoadingAdsLink: true,
@@ -57,8 +57,8 @@ assert.equal(custom.runTimeFormat, "HH:mm:ss");
 assert.equal(custom.trayOrders, customTrayOrders);
 assert.equal(custom.preserved, "value");
 assert.equal(custom.connProxyDisconnect, false);
-assert.equal(mergeSettings({ legacyTapEnabled: false, proxyCore: "clash" }).legacyTapEnabled, false);
-assert.equal(mergeSettings({ proxyCore: "clash" }).legacyTapEnabled, true);
+assert.equal(mergeSettings({ legacyTapEnabled: false, proxyCore: "clash" }).legacyTapMode, "disabled");
+assert.equal(mergeSettings({ proxyCore: "clash" }).legacyTapMode, "mixin");
 assert.equal(custom.allowRemoteProfileParsers, true);
 assert.equal(custom.allowHttpExternalLinks, true);
 assert.equal(mergeSettings({ allowHttpExternalLinks: "true" }).allowHttpExternalLinks, false);
