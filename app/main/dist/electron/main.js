@@ -25,6 +25,7 @@ const { registerTrayStatusIpc } = require("./features/tray/register-tray-status-
 const { createTrayIconController } = require("./features/tray/tray-icon-controller");
 const { createTrayLifecycle } = require("./features/tray/tray-lifecycle");
 const { createTrayState, registerTrayStateIpc } = require("./features/tray/tray-state");
+const { createTrayProxyProgress } = require("./features/tray/proxy-operation-progress");
 const { createMainWindow: createMainWindowShell } = require("./features/window/create-main-window");
 const { registerMainWindowLifecycle } = require("./features/window/register-main-window-lifecycle");
 const { registerWindowControlIpc } = require("./features/window/register-window-control-ipc");
@@ -173,7 +174,10 @@ function startApplication() {
         });
 
         trayState = createTrayState();
+        let trayProgress;
         const trayActions = {
+            requestProxyOperation: (operation, target) => trayProgress.request(operation, target),
+            getProxyProgressIcon: () => trayProgress?.getIcon(),
             showDashboard: showMainWindow,
             sendRenderer(channel, ...args) {
                 return mainWindow.webContents.send(channel, ...args);
@@ -241,6 +245,10 @@ function startApplication() {
         };
 
         refreshLinuxTrayMenu();
+        trayProgress = createTrayProxyProgress({ state: trayState, nativeImage: electron.nativeImage,
+            sendRenderer: trayActions.sendRenderer,
+            getMenus: () => [englishTrayMenu, chineseTrayMenu, trayLifecycle.getOpenMenu()],
+            refreshMenu: refreshLinuxTrayMenu });
         registerTrayStateIpc({
             ipcMain: authorizedIpcMain,
             state: trayState,
@@ -248,6 +256,7 @@ function startApplication() {
             getLocalizedMenu: () => localize(englishTrayMenu, chineseTrayMenu),
             getMenus: () => [englishTrayMenu, chineseTrayMenu],
             refreshMenu: refreshLinuxTrayMenu,
+            proxyProgress: trayProgress,
             showMainWindow
         });
         speedIndicator = registerSpeedIndicator({

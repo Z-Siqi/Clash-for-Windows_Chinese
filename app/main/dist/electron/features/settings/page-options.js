@@ -3,6 +3,7 @@
 const { supportsScriptMode } = require("../../core/clash-core/core-capabilities");
 const { readDownloadExceptions } = require("../../core/network/profile-download-policy");
 const { normalizeCertificateExceptions } = require("../../core/network/certificate-exceptions");
+const { guardSettingsMethods, isProxySetting } = require("./proxy-operation-guards");
 
 const SECTION_KEYS = [
     "security", "general", "appearance", "sysProxy", "mixin", "proxies", "connections",
@@ -40,6 +41,7 @@ function createSettingsPageOptions({
             };
         },
         computed: {
+            proxyBusy() { return !!this.$parent?.proxyBusy; },
             sections() {
                 const labels = getLanguage();
                 // The experimental section currently renders only macOS DHCP controls.
@@ -57,7 +59,7 @@ function createSettingsPageOptions({
         watch: {
             "sts.profilePath"() { this.refreshCore(); }
         },
-        methods: {
+        methods: guardSettingsMethods({
             ...Vuex.mapMutations({
                 saveSettingsObject: "SAVE_SETTINGS_OBJECT",
                 setConfData: "SET_CONF_DATA"
@@ -66,12 +68,16 @@ function createSettingsPageOptions({
             async handleProxyCoreChange(index) {
                 const nextCore = index === 1 ? "mihomo" : "clash";
                 if (this.settings.proxyCore === nextCore) return;
-                if (!supportsScriptMode(nextCore) && this.$parent.mode === "script") {
-                    await this.$parent.switchMode("rule");
-                }
-                this.$set(this.settings, "proxyCore", nextCore);
-                electron.ipcRenderer.send("core-type-changed", nextCore);
-                return this.refreshCore();
+                const change = async () => {
+                    if (!supportsScriptMode(nextCore) && this.$parent.mode === "script") await this.$parent.switchMode("rule");
+                    // This write belongs to the acquired core operation, bypassing
+                    // only the UI settings guard; preserve all other current values.
+                    this.saveSettingsObject({ obj: { ...this.settings, proxyCore: nextCore } });
+                    electron.ipcRenderer.send("core-type-changed", nextCore);
+                    await this.$parent.handlerRestartClash();
+                    return true;
+                };
+                return this.$parent.runProxyOperation("core", change);
             },
             async refreshCore() {
                 await this.$parent.handlerRestartClash();
@@ -85,6 +91,7 @@ function createSettingsPageOptions({
                 externalEditor.cancel();
             },
             async edit(settingName, fallback = "", language = "yaml", validate) {
+                if (isProxySetting(settingName) && this.$parent?.proxyBusy) return false;
                 let changed = false;
                 try {
                     const currentValue = this.settings[settingName] || fallback;
@@ -97,6 +104,7 @@ function createSettingsPageOptions({
                                 fontSize: this.settings.editorFontSize
                             });
                             if (validate) await validate(code);
+                            if (isProxySetting(settingName) && this.$parent?.proxyBusy) return false;
                             this.settings[settingName] = code;
                             changed = code !== currentValue;
                         } catch (_error) {}
@@ -104,6 +112,7 @@ function createSettingsPageOptions({
                         this.isEditingExternal = true;
                         const value = await externalEditor.edit(language, currentValue);
                         if (validate) await validate(value);
+                        if (isProxySetting(settingName) && this.$parent?.proxyBusy) return false;
                         this.settings[settingName] = value;
                         changed = value !== currentValue;
                     }
@@ -253,6 +262,7 @@ function createSettingsPageOptions({
                         content: labels.askResetAllSettings(),
                         isShowErrorBtn: true
                     });
+                    if (this.$parent?.proxyBusy) return false;
                     this.saveSettingsObject({ obj: {} });
                     this.loadSettings();
                 } catch (_error) {}
@@ -289,11 +299,15 @@ function createSettingsPageOptions({
                     buttons: [labels.no(), labels.yes()]
                 });
                 if (result.response !== 1) return;
-                const secret = uuid.v4();
-                await updateYaml(path.join(this.clashPath, "config.yaml"), "secret", secret);
-                this.reloadElectron();
+                if (this.$parent?.proxyBusy) return false;
+                const save = async () => {
+                    const secret = uuid.v4();
+                    await updateYaml(path.join(this.clashPath, "config.yaml"), "secret", secret);
+                    await this.reloadElectron();
+                };
+                return this.$parent?.runProxyOperation ? this.$parent.runProxyOperation("core", save) : save();
             }
-        },
+        }),
         beforeRouteLeave(_route, _previousRoute, next) { next(); }
     };
 }

@@ -13,6 +13,7 @@ function createTrayLifecycle({
     onTrayChanged = function() {}
 }) {
     let tray = null;
+    let openMenu = null;
 
     function create() {
         if (tray) return tray;
@@ -31,7 +32,12 @@ function createTrayLifecycle({
         tray.setToolTip("Clash for Windows");
         tray.on("right-click", function() {
             buildContextMenu().then(function(template) {
-                if (tray) tray.popUpContextMenu(Menu.buildFromTemplate(template));
+                if (tray) {
+                    const menu = Menu.buildFromTemplate(template);
+                    openMenu = menu;
+                    menu.once?.("menu-will-close", () => { if (openMenu === menu) openMenu = null; });
+                    tray.popUpContextMenu(menu);
+                }
             });
         });
         tray.on("click", function() {
@@ -55,7 +61,7 @@ function createTrayLifecycle({
         if (operation === "destroy") destroy();
     });
 
-    return { create, destroy, getTray: () => tray };
+    return { create, destroy, getTray: () => tray, getOpenMenu: () => openMenu };
 }
 
 module.exports = { createTrayLifecycle };

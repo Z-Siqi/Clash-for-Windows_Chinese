@@ -16,7 +16,8 @@ function createTrayState() {
         menuStyle: 0,
         isShowDelayIcon: false,
         language: 0,
-        coreType: DEFAULT_CORE_TYPE
+        coreType: DEFAULT_CORE_TYPE,
+        proxyBusy: false, proxyOperation: "", proxyTarget: null
     };
 }
 
@@ -27,10 +28,11 @@ function registerTrayStateIpc({
     getLocalizedMenu,
     getMenus,
     refreshMenu,
-    showMainWindow
+    showMainWindow,
+    proxyProgress
 }) {
     ipcMain.on("clash-core-status-change", function(_event, coreStatus) {
-        state.isReady = true;
+        state.isReady = coreStatus !== 1;
         if (isLinux()) {
             const menu = getLocalizedMenu();
             setEnabled(menu, "system-proxy", coreStatus !== 1);
@@ -41,7 +43,9 @@ function registerTrayStateIpc({
             }
             refreshMenu();
         }
+        proxyProgress?.refresh();
     });
+    ipcMain.on("proxy-operation-state", (_event, snapshot) => proxyProgress?.update(snapshot));
     ipcMain.handle("tray-proxies-style", function(_event, style) {
         state.menuStyle = style === 0 ? 1 : style === 1 ? 0 : 2;
     });
@@ -56,6 +60,7 @@ function registerTrayStateIpc({
             if (item) item.checked = true;
             refreshMenu();
         }
+        proxyProgress?.refresh();
     });
     ipcMain.handle("cfw-language", function(_event, language) {
         state.language = languageIndex(language);
@@ -74,6 +79,7 @@ function registerTrayStateIpc({
     });
     ipcMain.on("system-proxy-changed", function(_event, checked) {
         state.systemProxyChecked = checked;
+        proxyProgress?.refresh();
     });
     ipcMain.on("mixin-changed", function(_event, checked) {
         state.mixinChecked = checked;

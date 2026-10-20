@@ -32,6 +32,8 @@ const { createSettingsPage } = require("../../features/settings/page");
 const { createRendererConfiguration } = require("./configuration");
 const { refreshProfile } = require("./refresh-profile");
 const { persistSelection } = require("../../features/profiles/persist-selection");
+const { networkModeDiagnostics } = require("../../features/profiles/network-mode-diagnostics");
+const { buildTunConfig } = require("../../features/tun/build-tun-config");
 
 function createRendererPages({ Vuex, modifyState, runtime, components, version }) {
     const language = runtime.getLanguage;
@@ -71,6 +73,11 @@ function createRendererPages({ Vuex, modifyState, runtime, components, version }
         }),
         profileNetworkEffects: runtime.profileNetworkEffects,
         runMixin: runtime.runMixin,
+        prepareMixin: async settings => {
+            ensureMixinDefaults(settings);
+            if (Number(settings.mixinType) === 1) await runtime.validateMixinCode(settings.mixinCode);
+            else await validateMixinSettings(settings, { parseYaml: yaml.parse });
+        },
         runTrayScript: runtime.runTrayScript,
         startUserProcesses: runtime.startUserProcesses,
         profileFiles: runtime.profilesRepository,
@@ -93,6 +100,11 @@ function createRendererPages({ Vuex, modifyState, runtime, components, version }
     const generalWorkflow = createGeneralPageWorkflow({
         getLanguage: language, path, moment, yaml, electron, cache, keys,
         getNetworkInterfaces,
+        getNetworkDiagnostics: vm => networkModeDiagnostics({
+            config: vm.currentProfilePayload, tunRequested: vm.isTunEnable,
+            tunConfig: buildTunConfig(vm.$parent.tunSettings, runtime.processObject.platform),
+            systemProxyOn: vm.isSystemProxyOn, tapActive: !!vm.$parent.tun2socks
+        }),
         terminal: runtime.terminal,
         coreConfigRepository: runtime.coreConfigRepository,
         platform: {
@@ -116,17 +128,14 @@ function createRendererPages({ Vuex, modifyState, runtime, components, version }
             updateYaml: utilities.updateYaml,
             showMessageBox: utilities.showMessageBox,
             notify: utilities.notify
-        },
-        ensureMixinDefaults,
-        validateMixinSettings: (settings, helpers) => Number(settings.mixinType) === 1
-            ? runtime.validateMixinCode(settings.mixinCode) : validateMixinSettings(settings, helpers)
+        }
     });
     const general = createGeneralPage({
         defineComponent, Vuex, getLanguage: language, version, workflow: generalWorkflow,
         components, shell: electron.shell, fs, yaml, readCoreLog: runtime.readCoreLog,
         platform: { isMacOS: platform.isMacOS, isWindows: platform.isWindows },
         utilities: {
-            buildTunConfig: utilities.buildTunConfig,
+            buildTunConfig: settings => buildTunConfig(settings, runtime.processObject.platform),
             showMessageBox: utilities.showMessageBox
         },
         scheduler,

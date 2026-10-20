@@ -18,4 +18,8 @@ async function readStableProfileState(api, read) {
     }
 }
 
-module.exports = { trackProfileRefresh, readStableProfileState };
+function waitForProfileRefresh(api) {
+    return readStableProfileState(api, () => refreshes.get(api));
+}
+
+module.exports = { trackProfileRefresh, readStableProfileState, waitForProfileRefresh };

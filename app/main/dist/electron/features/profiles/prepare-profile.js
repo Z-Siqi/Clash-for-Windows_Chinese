@@ -1,5 +1,20 @@
 "use strict";
 
+function normalizeLegacyDnsFilters(config) {
+    const filters = config.dns?.["fake-ip-filter"];
+    const legacyFilter = " *.n.n.srv.nintendo.net";
+    if (!Array.isArray(filters) || !filters.includes(legacyFilter)) return config;
+    // Older General templates included this space. Mihomo rejects it; repair
+    // the applied payload without rewriting the user's saved Mixin or profile.
+    return {
+        ...config,
+        dns: {
+            ...config.dns,
+            "fake-ip-filter": filters.map(value => value === legacyFilter ? value.slice(1) : value)
+        }
+    };
+}
+
 function secureProviderPaths(config, hash) {
     const providers = [];
     const redirects = [];
@@ -43,8 +58,9 @@ async function prepareProfile({ source, profile, settings, tunConfig, mixinEnabl
     if (!config || typeof config !== "object" || Array.isArray(config)) {
         throw new Error("Mixin must return a configuration object");
     }
+    config = normalizeLegacyDnsFilters(config);
     const hasProviders = secureProviderPaths(config, hash);
     return { config, hasProviders };
 }
 
-module.exports = { prepareProfile, secureProviderPaths };
+module.exports = { prepareProfile, secureProviderPaths, normalizeLegacyDnsFilters };

@@ -34,6 +34,7 @@ const Menu = {
     }
 };
 const actions = {
+    requestProxyOperation: (operation, target) => calls.push(["send", `${operation}-changed`, target]),
     showDashboard: () => calls.push(["dashboard"]),
     sendRenderer: (...args) => calls.push(["send", ...args]),
     toggleDevTools: () => calls.push(["devtools"]),
@@ -146,6 +147,7 @@ async function checkDynamicMenu() {
         actions: {
             ...actions,
             sendRenderer: (...args) => dynamicCalls.push(args),
+            requestProxyOperation: (operation, target) => dynamicCalls.push([operation === "system" ? "system-proxy-changed" : `${operation}-changed`, target]),
             runTrayScript: () => dynamicCalls.push(["run-tray-script"])
         }
     });

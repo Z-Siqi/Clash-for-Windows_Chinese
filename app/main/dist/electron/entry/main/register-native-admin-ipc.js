@@ -40,6 +40,7 @@ function registerNativeAdminIpc({
     let tunRuntime;
     let tunQueue = Promise.resolve();
     let cancelDhcp;
+    let serviceMutation = false;
     app.once("will-quit", () => { tunRuntime?.killSpawned(tunProcess); cancelDhcp?.(); });
 
     ipcMain.handle("native-admin", async function(event, scope, action, payload = {}) {
@@ -181,21 +182,23 @@ function registerNativeAdminIpc({
                 catch (error) { return error.code === "CFW_SERVICE_UPDATE_REQUIRED" || error.response?.status === 403; }
                 return false;
             }
-            if (action === "install") {
-                const method = payload.method === undefined ? 0 : Number(payload.method);
-                if (platform === "win32" && ![0, 1].includes(method)) {
-                    throw new Error("Unsupported Windows Service Mode install method");
-                }
-                await manager.installService(platform === "win32" ? method : undefined);
-                return true;
-            }
-            if (action === "uninstall") {
-                await manager.uninstallService();
-                return true;
-            }
-            if (action === "update") {
-                await manager.updateService();
-                return true;
+            if (["install", "uninstall", "update"].includes(action)) {
+                if (serviceMutation) throw new Error("A Service Mode operation is already in progress");
+                serviceMutation = true;
+                try {
+                    if (action === "install") {
+                        const method = payload.method === undefined ? 0 : Number(payload.method);
+                        if (platform === "win32" && ![0, 1].includes(method)) {
+                            throw new Error("Unsupported Windows Service Mode install method");
+                        }
+                        await manager.installService(platform === "win32" ? method : undefined);
+                    } else if (action === "uninstall") {
+                        await manager.uninstallService();
+                    } else {
+                        await manager.updateService();
+                    }
+                    return true;
+                } finally { serviceMutation = false; }
             }
             throw new Error("Unsupported Service Mode administrator action");
         }

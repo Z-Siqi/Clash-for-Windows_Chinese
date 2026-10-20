@@ -14,6 +14,8 @@ function mergeSettings(settings = {}) {
         hideTrayIcon: settings.hideTrayIcon === true,
         connShowProcess: settings.connShowProcess !== false,
         connProxyDisconnect: settings.connProxyDisconnect !== false,
+        // Keep installed legacy Clash/TAP configurations working after upgrade.
+        legacyTapEnabled: settings.legacyTapEnabled !== false,
         showTrayProxyDelayIndicator:
             settings.showTrayProxyDelayIndicator !== false,
         checkForUpdates: settings.checkForUpdates !== false,

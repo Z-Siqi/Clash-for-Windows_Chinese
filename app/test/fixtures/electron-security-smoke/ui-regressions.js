@@ -182,7 +182,155 @@ async function verifyUiRegressions() {
     if (!version) throw Error("Mihomo version action was not rendered");
     version.click();
     await wait(100);
-    return { connections, trafficUpdates, securitySettings, settingsNavigation, trayDelayVisible, enhancedTrayRounded, editorNavigationHeight, editorNavigationColor, editorNavigationExpandedContrast, diffSideBySide, minimizeCentered, pinControl };
+    const home = general.$parent;
+    await home.refreshProfile();
+    const tunRow = Array.from(general.$el.querySelectorAll(".item")).find(element => /TUN Mode|TUN 模式/.test(element.textContent));
+    const tunGear = Array.from(tunRow.querySelectorAll(".tun-settings-icon")).find(element => element.textContent.trim() === "settings");
+    tunGear.click();
+    await home.$nextTick();
+    const tunPanel = document.querySelector(".main-tun-settings-view");
+    const tunSettings = findComponent(component => component.$options.name === "TunSettingsView");
+    const tunSettingsDialog = !!tunPanel && !!tunSettings && /tun:/.test(tunPanel.querySelector("pre").textContent);
+    if (!tunSettingsDialog) throw Error("TUN settings icon did not open a working preview");
+    tunSettings.$emit("close");
+    await home.$nextTick();
+    const originalMixin = { enabled: home.isMixinEnable, type: home.settings.mixinType, text: home.settings.mixinText, code: home.settings.mixinCode };
+    let mixinSwitch = true, mixinErrorVisible = false, networkModeWarnings = false, legacyTapControl = false;
+    try {
+        if (home.isMixinEnable) await general.handleMixinSwitchClick();
+        home.settings.mixinType = 0;
+        home.settings.mixinText = "";
+        await home.$nextTick();
+        await home.refreshProfile();
+        if (!await general.handleMixinSwitchClick()) throw Error("Default YAML Mixin switch did not enable");
+        mixinSwitch = home.isMixinEnable && !home.proxyBusy;
+        if (!await general.handleMixinSwitchClick()) throw Error("Default YAML Mixin switch did not disable");
+        home.settings.mixinText = 'mixin:\n  dns:\n    enable: true\n    nameserver: [1.1.1.1]\n    fake-ip-filter: [" *.n.n.srv.nintendo.net"]\n';
+        await home.$nextTick();
+        if (!await general.handleMixinSwitchClick()) throw Error("Saved legacy YAML Mixin switch did not enable");
+        mixinSwitch = mixinSwitch && home.$store.state.app.currentProfilePayload.dns["fake-ip-filter"][0] === "*.n.n.srv.nintendo.net"
+            && home.settings.mixinText.includes('" *.n.n.srv.nintendo.net"');
+        if (!await general.handleMixinSwitchClick()) throw Error("Saved legacy YAML Mixin switch did not disable");
+        home.settings.mixinText = "mixin: []";
+        await home.$nextTick();
+        const invalid = general.handleMixinSwitchClick();
+        await wait(50);
+        const alert = document.querySelector(".main-alert-view-plugin");
+        mixinErrorVisible = !!alert && /Mixin/.test(alert.innerText) && !home.isMixinEnable;
+        if (!alert) throw Error("Invalid Mixin was not reported inside the app");
+        alert.querySelector(".btn-ok").click();
+        const invalidResult = await invalid;
+        mixinErrorVisible = mixinErrorVisible && invalidResult === false && !home.proxyBusy;
+        home.settings.mixinType = 1;
+        home.settings.mixinCode = 'module.exports.parse = ({ content }) => ({ ...content, "tcp-concurrent": true });';
+        await home.$nextTick();
+        await home.refreshProfile();
+        if (!await general.handleMixinSwitchClick()) throw Error("JavaScript Mixin switch did not enable");
+        mixinSwitch = mixinSwitch && home.isMixinEnable && home.$store.state.app.currentProfilePayload["tcp-concurrent"] === true;
+        if (!await general.handleMixinSwitchClick()) throw Error("JavaScript Mixin switch did not disable");
+        const savedTun = home.isTunEnable;
+        try {
+            if (!savedTun && !await general.handleTunSwitchClick()) throw Error("TUN did not enable for override verification");
+            home.settings.mixinType = 0;
+            home.settings.mixinText = "mixin:\n  tun:\n    enable: false\n  dns:\n    enable: false\n";
+            await home.$nextTick();
+            await home.refreshProfile();
+            if (!await general.handleMixinSwitchClick()) throw Error("Mixin override did not apply");
+            await home.$nextTick();
+            const memoryIcon = Array.from(general.$el.querySelectorAll(".tun-settings-icon")).find(element => element.textContent.trim() === "memory");
+            memoryIcon.click();
+            await home.$nextTick();
+            const statusDialog = document.querySelector(".main-select-view-plugin");
+            networkModeWarnings = home.isTunEnable && !home.$store.state.app.currentProfilePayload.tun.enable
+                && !!statusDialog && /Mixin/.test(statusDialog.innerText) && !general.$el.querySelector(".cfw-network-state");
+            statusDialog.querySelector(".btns .btn").click();
+            await wait(150);
+            let finalEditor = document.querySelector(".main-code-view")?.__vue__;
+            while (finalEditor && finalEditor.$options.name !== "CodeView") finalEditor = finalEditor.$parent;
+            networkModeWarnings = networkModeWarnings && !!document.querySelector(".main-code-view") && finalEditor.readOnly;
+            finalEditor.cancel();
+            await home.$nextTick();
+            if (!await general.handleMixinSwitchClick()) throw Error("Mixin override did not disable");
+        } finally {
+            if (home.isMixinEnable) await general.handleMixinSwitchClick();
+            if (home.isTunEnable !== savedTun) await general.handleTunSwitchClick();
+        }
+    } finally {
+        home.settings.mixinType = originalMixin.type;
+        home.settings.mixinText = originalMixin.text;
+        home.settings.mixinCode = originalMixin.code;
+        await home.$nextTick();
+        await home.refreshProfile();
+        if (home.isMixinEnable !== originalMixin.enabled) await general.handleMixinSwitchClick();
+    }
+    if (general.isWindows) {
+        const savedTap = home.settings.legacyTapEnabled !== false;
+        const row = Array.from(general.$el.querySelectorAll(".item")).find(element => /Auto-start TAP|自动启动 TAP/.test(element.textContent));
+        if (!row?.querySelector('[role="switch"]')) throw Error("Legacy TAP control was not rendered");
+        try {
+            if (!await general.handleLegacyTapSwitchClick()) throw Error("Legacy TAP permission did not change");
+            legacyTapControl = home.settings.legacyTapEnabled === !savedTap;
+        } finally {
+            if ((home.settings.legacyTapEnabled !== false) !== savedTap) await general.handleLegacyTapSwitchClick();
+        }
+    } else legacyTapControl = true;
+    const originalTun = home.isTunEnable;
+    const applying = general.handleTunSwitchClick();
+    let proxyProgress = false, serviceProgress = true;
+    try {
+        await home.$nextTick();
+        const spinner = general.$el.querySelector(".cfw-operation-spinner");
+        const toggles = Array.from(general.$el.querySelectorAll('[role="switch"]'));
+        const applyingTun = home.isTunEnable;
+        for (let i = 0; i < 100; i++) spinner.parentElement.click();
+        await home.$nextTick();
+        proxyProgress = getComputedStyle(spinner).animationName === "cfw-operation-spin"
+            && getComputedStyle(spinner).animationDuration === "1s"
+            && getComputedStyle(spinner).fontSize === "19.8px" && getComputedStyle(spinner).opacity === "0.15"
+            && getComputedStyle(spinner).position === "absolute" && getComputedStyle(spinner).zIndex === "-1"
+            && !!spinner.parentElement.querySelector(home.proxyTarget ? ".tint-left" : ".tint-right")
+            && getComputedStyle(spinner.parentElement.querySelector(home.proxyTarget ? ".tint-left" : ".tint-right")).backgroundColor === "rgb(139, 146, 153)"
+            && general.$el.querySelectorAll(".cfw-operation-spinner").length === 1
+            && general.tunLoading && !general.mixinLoading
+            && toggles.every(toggle => toggle.getAttribute("aria-disabled") === "true")
+            && home.isTunEnable === applyingTun;
+    } finally {
+        await applying;
+        if (home.isTunEnable !== originalTun) await general.handleTunSwitchClick();
+    }
+    let releaseOperation;
+    const heldOperation = home.runProxyOperation("tun", () => new Promise(resolve => { releaseOperation = resolve; }), true);
+    let settingsDuringProxy;
+    try {
+        await navigate(/Settings|设置/i);
+        const coreRow = Array.from(settings.$el.querySelectorAll(".item")).find(element => /Proxy Core|代理核心/.test(element.textContent));
+        const core = settings.settings.proxyCore;
+        const blocked = await settings.handleProxyCoreChange(core === "mihomo" ? 0 : 1);
+        settings.settings.proxyCore = core === "mihomo" ? "clash" : "mihomo";
+        settingsDuringProxy = home.$route.path === "/home/setting" && coreRow.querySelector('[aria-disabled="true"]')
+            && blocked === false && settings.settings.proxyCore === core;
+        const fontSize = settings.settings.editorFontSize;
+        settings.settings.editorFontSize = 15;
+        settingsDuringProxy = !!settingsDuringProxy && settings.settings.editorFontSize === 15;
+        settings.settings.editorFontSize = fontSize;
+    } finally { releaseOperation(true); await heldOperation; }
+    await home.$nextTick();
+    settingsDuringProxy = settingsDuringProxy && !settings.$el.querySelector(".cfw-operation-disabled");
+    await navigate(/General|主页/i);
+    try {
+        for (const state of ["applying", "restarting"]) {
+            home.serviceOperation = state;
+            await home.$nextTick();
+            const overlay = home.$el.querySelector('[role="status"][aria-busy="true"]');
+            const bounds = overlay.getBoundingClientRect();
+            const spinner = overlay.querySelector(".cfw-operation-spinner");
+            serviceProgress = serviceProgress && home.$el.querySelector("main").inert
+                && bounds.width === innerWidth && bounds.height === innerHeight
+                && getComputedStyle(spinner).animationName === "cfw-operation-spin"
+                && overlay.contains(document.elementFromPoint(innerWidth / 2, innerHeight / 2));
+        }
+    } finally { home.serviceOperation = ""; await home.$nextTick(); }
+    return { connections, trafficUpdates, securitySettings, settingsNavigation, trayDelayVisible, enhancedTrayRounded, editorNavigationHeight, editorNavigationColor, editorNavigationExpandedContrast, diffSideBySide, minimizeCentered, pinControl, tunSettingsDialog, mixinSwitch, mixinErrorVisible, networkModeWarnings, legacyTapControl, proxyProgress, settingsDuringProxy, serviceProgress };
 }
 
 module.exports = { verifyUiRegressions };

@@ -110,3 +110,27 @@ test("Vue capability plugin reads current settings and publishes proxy status on
     assert.equal(calls.length, count);
     assert.ok(commands.length >= 2);
 });
+
+test("all system proxy callers are serialized and a rejected command cannot strand later requests", async () => {
+    const requests = [];
+    let finish;
+    const Vue = { prototype: {} };
+    const store = { state: { app: { settings: {} } }, getters: { mixedPort: 7890 }, commit() {} };
+    createRendererCapabilities({
+        status: {},
+        systemProxy: { set: async ({ enabled }) => {
+            requests.push(enabled);
+            if (requests.length === 1) await new Promise((_resolve, reject) => { finish = reject; });
+            return true;
+        } }
+    }).install(Vue, { store });
+    const first = Vue.prototype.$setSystemProxy(true);
+    const second = Vue.prototype.$setSystemProxy(false);
+    const rejection = assert.rejects(first, /command failed/);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(requests, [true]);
+    finish(Error("command failed"));
+    await rejection;
+    assert.equal(await second, true);
+    assert.deepEqual(requests, [true, false]);
+});

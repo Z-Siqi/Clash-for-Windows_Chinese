@@ -13,11 +13,16 @@ function refreshProfile(vm, dependencies) {
     const run = async () => {
         const { platform, childProcess, setDns, getPort, messages } = dependencies;
         const previous = applied.get(vm);
-        const state = { tun: vm.isTunEnable === true, mixin: vm.isMixinEnable === true };
-        const turnedOff = previous && ((previous.tun && !state.tun) || (previous.mixin && !state.mixin));
+        const state = { tun: vm.isTunEnable === true, mixin: vm.isMixinEnable === true, tapAllowed: vm.settings.legacyTapEnabled !== false };
+        const turnedOff = previous && ((previous.tun && !state.tun) || (previous.mixin && !state.mixin)
+            || (previous.tapAllowed && !state.tapAllowed));
         const cleanup = await prepareDisconnectCleanup({
             api: vm.clashApi, settings: vm.settings,
             disconnecting: turnedOff && previous.tunnelActive,
+            scope: "tunnel",
+            // Legacy TAP enters the core through SOCKS. Its metadata cannot be
+            // distinguished from macOS System Proxy or manually configured SOCKS.
+            includeSocks: previous?.tapActive && vm.isSystemProxyOn !== true,
             onError: () => dependencies.onDisconnectCleanupError?.()
         });
         let payload;
@@ -26,7 +31,14 @@ function refreshProfile(vm, dependencies) {
             clashApi: vm.clashApi,
             effects: {
                 ...(dependencies.profileNetworkEffects || createProfileNetworkEffects({ childProcess, getPort })),
-                async detectInterface() { await vm.detectInterfaceName(); return vm.finalInterfaceName; },
+                async detectInterface() {
+                    vm.isDetectingProfileInterface = true;
+                    try {
+                        await vm.detectInterfaceName();
+                        await vm.$nextTick?.();
+                        return vm.finalInterfaceName;
+                    } finally { vm.isDetectingProfileInterface = false; }
+                },
                 setPayload(config) { payload = config; vm.setCurrentProfilePayload({ payload: config }); },
                 setProvidersVisible(visible) {
                     const items = vm.menuItems;
@@ -50,7 +62,7 @@ function refreshProfile(vm, dependencies) {
         });
         if (result.success) {
             const tunnelActive = !!(payload?.tun?.enable || vm.tun2socks);
-            applied.set(vm, { ...state, tunnelActive });
+            applied.set(vm, { ...state, tunnelActive, tapActive: !!vm.tun2socks });
             await cleanup(!tunnelActive);
             dependencies.onProfileApplied?.();
         }

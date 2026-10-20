@@ -88,7 +88,12 @@ async function verifyDisconnect(api, proxyPort) {
     }
     try {
         const old = await connect();
-        const finish = await prepareDisconnectCleanup({ api, settings: {}, disconnecting: true, onError: () => assert.fail("Core connection cleanup failed") });
+        const snapshot = (await api.getConnections()).data.connections;
+        assert.ok(["http", "https", "http connect"].includes(snapshot.find(c => Number(c.metadata.sourcePort) === old.localPort).metadata.type.toLowerCase()));
+        const preserveHttp = await prepareDisconnectCleanup({ api, disconnecting: true, scope: "tunnel" });
+        await preserveHttp(true);
+        assert.equal(old.destroyed, false);
+        const finish = await prepareDisconnectCleanup({ api, settings: {}, disconnecting: true, scope: "system", onError: () => assert.fail("Core connection cleanup failed") });
         const newer = await connect();
         await finish(true);
         await until(() => old.destroyed, "old connection cleanup");

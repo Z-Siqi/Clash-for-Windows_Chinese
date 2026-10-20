@@ -38,5 +38,6 @@ const workflow = fs.readFileSync(path.join(
 ), "utf8");
 assert.match(renderer, /features\/mixin\/mixin-runtime/);
 assert.match(renderer, /features\/clash-core\/general-page-workflow/);
-assert.match(workflow, /validateMixinSettings\(this\.settings/);
+assert.match(renderer, /validateMixinSettings\(settings/);
+assert.match(workflow, /requestProfileToggle\("mixin"/);
 console.log("mixin runtime smoke: PASS");

@@ -2,11 +2,12 @@
 
 const { languageIndex } = require("../../core/i18n/language");
 const { renderSecurityCompatibilitySettings } = require("./security-controls");
+const { settingsElement } = require("./proxy-operation-guards");
 
 function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, languageKey, renderConnectionDisconnectSettings }) {
     return function renderSettingsPage() {
                     const viewModel = this;
-                    const createElement = viewModel._self._c;
+                    const createElement = settingsElement(viewModel, viewModel._self._c);
                     const labels = getLanguage();
                     return createElement("div", {
                         staticClass: "main-setting-view"

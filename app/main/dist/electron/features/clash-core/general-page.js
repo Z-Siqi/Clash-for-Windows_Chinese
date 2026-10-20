@@ -238,12 +238,14 @@ function createGeneralPage({
         },
         computed: {
             ...Vuex.mapState({ tunSettings: state => state.app.tunSettings }),
+            proxyBusy() { return !!this.$parent?.proxyBusy; },
             obj() { return utilities.buildTunConfig(this.$data); },
             text() { return yaml.stringify(this.obj); }
         },
         methods: {
             ...Vuex.mapMutations({ setTunSettings: "SET_TUN_SETTINGS" }),
             handleSave() {
+                if (this.proxyBusy) return false;
                 this.setTunSettings({ settings: this.$data });
                 this.$emit("close");
             },
@@ -295,7 +297,7 @@ function createGeneralPage({
             attrs: attributes,
             model: {
                 value: viewModel[propertyName],
-                callback: value => { viewModel[propertyName] = value; },
+                callback: value => { if (!viewModel.proxyBusy) viewModel[propertyName] = value; },
                 expression: propertyName
             }
         });
@@ -321,7 +323,9 @@ function createGeneralPage({
             viewModel._v(" "),
             createElement("div", { staticClass: "pannel" }, [
                 createElement("div", {
-                    staticClass: "left border-[1px] border-[color:var(--bc)]"
+                    staticClass: "left border-[1px] border-[color:var(--bc)]",
+                    class: { "cfw-operation-disabled": viewModel.proxyBusy },
+                    attrs: { inert: viewModel.proxyBusy ? "" : undefined }
                 }, [
                     renderSection("DNS IPv6", renderModelComponent("SwitchView", "ipv6"), "flex"),
                     viewModel._v(" "),
@@ -407,6 +411,8 @@ function createGeneralPage({
                 viewModel._v(" "),
                 createElement("div", {
                     staticClass: "btn clickable",
+                    class: { "cfw-operation-disabled": viewModel.proxyBusy },
+                    attrs: { "aria-disabled": String(viewModel.proxyBusy) },
                     on: { click: viewModel.handleSave }
                 }, [viewModel._v(labels.save())])
             ])
@@ -674,8 +680,8 @@ function createGeneralPage({
             staticClass: iconClass,
             ...(style ? { style } : {})
         }, [viewModel._v(viewModel._s(icon))])]);
-        const renderSwitch = (enabled, handler) => createElement("switch-view", {
-            attrs: { on: enabled },
+        const renderSwitch = (enabled, handler, loading = false) => createElement("switch-view", {
+            attrs: { on: enabled, loading, pendingOn: loading ? viewModel.$parent.proxyTarget : undefined, disabled: viewModel.proxyBusy || loading },
             on: { change: handler }
         });
 
@@ -728,7 +734,7 @@ function createGeneralPage({
                     on: { click: viewModel.handleEditBindAddress }
                 }, [viewModel._v(`\n          ${labels.bind()}${viewModel._s(viewModel.bindAddress)}\n        `)]) : viewModel._e(),
                 viewModel._v(" "),
-                renderSwitch(viewModel.isAllowLan, () => viewModel.handleAllowLANChange(viewModel.isAllowLan))
+                renderSwitch(viewModel.isAllowLan, () => viewModel.handleAllowLANChange(viewModel.isAllowLan), viewModel.allowLanLoading)
             ]),
             viewModel._v(" "),
             renderItem(labels.logLevel(), createElement("div", {
@@ -736,7 +742,7 @@ function createGeneralPage({
                 on: { click: viewModel.handleEditLogLevel }
             }, [viewModel._v(`\n          ${logLevelLabels[String(viewModel.logLevel)] || viewModel._s(viewModel.logLevel)}\n        `)])),
             viewModel._v(" "),
-            renderItem("IPv6", renderSwitch(viewModel.isIPV6, () => viewModel.handleIPV6Change(viewModel.isIPV6))),
+            renderItem("IPv6", renderSwitch(viewModel.isIPV6, () => viewModel.handleIPV6Change(viewModel.isIPV6), viewModel.ipv6Loading)),
             viewModel._v(" "),
             renderItem([
                 createElement("div", [viewModel._v(labels.clashCore())]),
@@ -792,10 +798,16 @@ function createGeneralPage({
                 on: { click: event => viewModel.spawnLoopback(event) }
             }, [viewModel._v(`\n        ${labels.launchHelper()}\n      `)])) : viewModel._e(),
             viewModel._v(" "),
-            viewModel.isWindows ? renderItem(labels.deviceTAP(), createElement("div", {
-                staticClass: "clickable",
-                on: { click: event => viewModel.installTapDevice(event) }
-            }, [viewModel._v(`\n        ${labels.manage()}\n      `)])) : viewModel._e(),
+            viewModel.isWindows ? renderItem([
+                viewModel._v(labels.legacyTap()),
+                createElement("info-icon", [viewModel._v(labels.legacyTapDescribe())])
+            ], [
+                createElement("div", {
+                    staticClass: "clickable mr-2",
+                    on: { click: event => { if (!viewModel.proxyBusy) viewModel.installTapDevice(event); } }
+                }, [viewModel._v(labels.manage())]),
+                renderSwitch(viewModel.settings.legacyTapEnabled !== false, viewModel.handleLegacyTapSwitchClick, viewModel.tapLoading)
+            ]) : viewModel._e(),
             viewModel._v(" "),
             createElement("div", { staticClass: "item" }, [
                 createElement("div", { staticClass: "item-left" }, [viewModel._v(labels.serviceMode())]),
@@ -840,7 +852,7 @@ function createGeneralPage({
                     }) : viewModel._e()
                 ]),
                 viewModel._v(" "),
-                renderSwitch(viewModel.isTunEnable, viewModel.handleTunSwitchClick)
+                renderSwitch(viewModel.isTunEnable, viewModel.handleTunSwitchClick, viewModel.tunLoading)
             ]),
             viewModel._v(" "),
             createElement("div", { staticClass: "item" }, [
@@ -861,17 +873,17 @@ function createGeneralPage({
                     })
                 ]),
                 viewModel._v(" "),
-                renderSwitch(viewModel.isMixinEnable, viewModel.handleMixinSwitchClick)
+                renderSwitch(viewModel.isMixinEnable, viewModel.handleMixinSwitchClick, viewModel.mixinLoading)
             ]),
             viewModel._v(" "),
             viewModel.isLinux ? viewModel._e() : renderItem(
                 labels.sysProxy(),
-                renderSwitch(viewModel.isSystemProxyOn, viewModel.handleSystemProxySwitchClick)
+                renderSwitch(viewModel.isSystemProxyOn, viewModel.handleSystemProxySwitchClick, viewModel.systemProxyBusy)
             ),
             viewModel._v(" "),
             renderItem(
                 viewModel._s(viewModel.autoLaunchHint),
-                renderSwitch(viewModel.autoLaunch, viewModel.handleAutoLaunchSwitchClick)
+                renderSwitch(viewModel.autoLaunch, viewModel.handleAutoLaunchSwitchClick, viewModel.autoLaunchLoading)
             )
         ];
 

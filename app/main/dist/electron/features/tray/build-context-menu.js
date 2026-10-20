@@ -1,6 +1,7 @@
 "use strict";
 
 const { supportsScriptMode } = require("../../core/clash-core/core-capabilities");
+const { proxyMenuEntries } = require("./proxy-operation-progress");
 
 function createContextMenuBuilder({
     state,
@@ -45,16 +46,16 @@ function createContextMenuBuilder({
                 click: actions.runTrayScript
             },
             { type: "separator" },
-            checkbox("System Proxy", "&系统代理", "system-proxy", state.systemProxyChecked,
+            ...checkbox("System Proxy", "&系统代理", "system-proxy", state.systemProxyChecked,
                 !isLinux(), "system-proxy-changed"),
-            checkbox("TUN Mode", "TUN 模式", "tun", state.tunModeChecked, true, "tun-changed"),
-            checkbox("Mixin", "混合配置", "mixin", state.mixinChecked, true, "mixin-changed"),
+            ...checkbox("TUN Mode", "TUN 模式", "tun", state.tunModeChecked, true, "tun-changed"),
+            ...checkbox("Mixin", "混合配置", "mixin", state.mixinChecked, true, "mixin-changed"),
             { type: "separator" },
             { label: localize("Proxy Mode", "代理模式"), id: "mode", enabled: false },
-            modeItem("Global", "全局", "global"),
-            modeItem("Rule", "规则", "rule"),
-            modeItem("Direct", "直连", "direct"),
-            modeItem("Script", "脚本", "script"),
+            ...modeItem("Global", "全局", "global"),
+            ...modeItem("Rule", "规则", "rule"),
+            ...modeItem("Direct", "直连", "direct"),
+            ...modeItem("Script", "脚本", "script"),
             { type: "separator" },
             ...proxySection,
             { type: "separator" },
@@ -82,27 +83,25 @@ function createContextMenuBuilder({
         ];
 
         function checkbox(english, chinese, id, checked, visible, channel) {
-            return {
+            return proxyMenuEntries({ state, actions, operation: id === "system-proxy" ? "system" : id, item: {
                 label: localize(english, chinese),
                 type: "checkbox",
                 id,
                 checked,
                 enabled: state.isReady,
                 visible,
-                click: item => actions.sendRenderer(channel, item.checked)
-            };
+            } });
         }
 
         function modeItem(english, chinese, mode) {
-            return {
+            return proxyMenuEntries({ state, actions, operation: "mode", item: {
                 label: localize(english, chinese),
                 type: "radio",
                 id: `mode-${mode}`,
                 enabled: state.isReady,
                 checked: state.menuMode === mode,
                 visible: mode !== "script" || supportsScriptMode(state.coreType),
-                click: () => actions.sendRenderer("mode-changed", mode)
-            };
+            } });
         }
 
         async function loadProxyGroups() {
@@ -141,6 +140,7 @@ function createContextMenuBuilder({
         }
 
         function selectProxy(groupName, proxyName) {
+            if (state.proxyBusy) return;
             clashApi.selectProxy(groupName, proxyName)
                 .then(response => {
                     if (response.status === 204) {

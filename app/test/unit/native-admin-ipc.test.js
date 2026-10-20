@@ -40,6 +40,7 @@ async function run() {
     const handlers = new Map();
     const elevated = [];
     const ordinary = [];
+    let holdElevation = false, releaseElevation;
     const mainWindow = { webContents: {} };
     registerNativeAdminIpc({
         ipcMain: { handle: (channel, handler) => handlers.set(channel, handler) },
@@ -74,6 +75,7 @@ async function run() {
         sudoPrompt: {
             exec(command, options, callback) {
                 elevated.push([command, options]);
+                if (holdElevation) { releaseElevation = callback; return; }
                 callback(null, "", "");
             }
         },
@@ -137,6 +139,18 @@ async function run() {
         handler(event, "service", "install", { ...base, method: 9 }),
         /Unsupported Windows Service Mode install method/
     );
+
+    holdElevation = true;
+    const first = handler(event, "service", "install", base);
+    const failed = assert.rejects(first, /elevation failed/);
+    for (const action of ["install", "update", "uninstall"]) {
+        await assert.rejects(handler(event, "service", action, base), /already in progress/);
+    }
+    await new Promise(resolve => setImmediate(resolve));
+    holdElevation = false;
+    releaseElevation(Error("elevation failed"));
+    await failed;
+    assert.equal(await handler(event, "service", "install", base), true);
 
     console.log("native administrator IPC smoke: PASS");
 }

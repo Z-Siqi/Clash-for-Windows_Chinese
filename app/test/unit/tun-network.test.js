@@ -124,7 +124,7 @@ const homePageOptionsSource = fs.readFileSync(path.join(
     root, "app/main/dist/electron/features/home/page-options.js"
 ), "utf8");
 assert.equal(/case 67:\s*const Lg = new Language/.test(rendererSource), false);
-assert.match(homePageOptionsSource, /return refreshRendererProfile\(this, \{/);
+assert.match(homePageOptionsSource, /return await refreshRendererProfile\(this, \{/);
 assert.match(rendererSource, /require\("\.\/refresh-profile"\)/);
     assert.match(rendererSource, /features\/tun\/build-tun-config/);
     assert.doesNotMatch(rendererSource, /features\/tun\/tun-runtime/);

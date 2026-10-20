@@ -324,6 +324,7 @@ app.on("browser-window-created", (_event, window) => {
             );
             const { verifyUiRegressions } = require("./ui-regressions");
             const uiRegressions = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: `(${verifyUiRegressions.toString()})()` }]);
+            uiRegressions.trayProxyProgress = require("./tray-progress").verifyTrayProgress(require("electron"));
             uiRegressions.mihomoVersionNavigation = dashboardOpened;
             uiRegressions.languageHotload = languageHotload;
             uiRegressions.editorDigits = editorDigits;
@@ -331,9 +332,11 @@ app.on("browser-window-created", (_event, window) => {
             let indicatorUpdates = false;
             if (indicatorWindow) {
                 const initialFrame = await indicatorWindow.webContents.executeJavaScript(`document.querySelector("#img").src`);
-                await new Promise(resolve => setTimeout(resolve, 250));
-                const nextFrame = await indicatorWindow.webContents.executeJavaScript(`document.querySelector("#img").src`);
-                indicatorUpdates = initialFrame !== nextFrame;
+                const frameDeadline = Date.now() + 1500;
+                while (Date.now() < frameDeadline && !indicatorUpdates) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    indicatorUpdates = initialFrame !== await indicatorWindow.webContents.executeJavaScript(`document.querySelector("#img").src`);
+                }
             }
             uiRegressions.enhancedTray = enhancedTrayFrames > 0 && enhancedTrayRendered && indicatorUpdates;
             finish({

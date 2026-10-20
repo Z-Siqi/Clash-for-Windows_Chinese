@@ -32,8 +32,16 @@
 ## Connection cleanup
 
 - `connMode` closes core connections when the core routing mode changes (Rule, Global, Direct or Script); it does not represent System Proxy, TUN or Mixin switches.
-- `connProxyDisconnect` defaults to enabled. A successful System Proxy on-to-off transition, or a TUN/Mixin switch-off that actually stops TUN/TAP, closes only connection IDs captured before that operation. Enabling proxies, startup, ordinary profile refreshes and unsuccessful changes do not trigger cleanup.
+- `connProxyDisconnect` defaults to enabled. A successful System Proxy on-to-off transition, or a TUN/Mixin/TAP switch-off that actually stops TUN/TAP, closes only matching inbound connection IDs captured before that operation. System Proxy cleanup targets HTTP/HTTPS and, on macOS, SOCKS. Tunnel cleanup targets TUN/Redir/TProxy; legacy TAP also targets SOCKS when System Proxy is off. Unknown inbound types are preserved. Manual clients sharing the same inbound cannot be distinguished from System Proxy or legacy TAP.
 - New connections created after the snapshot are preserved. Cleanup is best effort, uses bounded requests and never exposes controller request details in logs. The other connection cleanup settings remain independent.
+
+## Network mode composition
+
+- Composition remains profile, General TUN configuration, then Mixin. YAML Mixin replaces top-level sections; JavaScript Mixin retains control over its returned object. Diagnostics describe accepted configuration without changing this legacy contract.
+- The Clash Core configuration action in General opens an in-app status dialog with the last accepted TUN configuration, TAP process state, override diagnostics, and an option to preview the submitted YAML. An unsuccessful controller apply preserves the last accepted payload.
+- On Windows, `legacyTapEnabled` defaults to true to preserve existing installations. General exposes this permission separately from native TUN. Setting it to false prevents automatic TAP startup without uninstalling the adapter or changing DNS. Native TUN and legacy TAP remain mutually exclusive during profile application.
+- Manual proxy switches and routing-mode changes share an operation lock. Loading switches retain a neutral dot at the target position; the background spinner does not replace it. Page navigation and unrelated preferences remain available; settings that restart the core or change active network policy are disabled and guarded again at save time.
+- Tray proxy commands reserve the same operation in the main process before sending IPC. A matching renderer acknowledgement releases the reservation; older state messages cannot unlock a newer request. Native menu loading entries replace the affected checkmark and all conflicting commands remain disabled until completion.
 
 ## Runtime entries and platform assets
 

@@ -164,7 +164,7 @@ test("Proxies page: Script mode control follows the selected core", () => {
     });
     assert.equal(visible("clash"), true);
     assert.equal(visible("mihomo"), false);
-    assert.deepEqual(page.components.ProxyModeSwitcher.props, ["mode", "scriptModeVisible"]);
+    assert.deepEqual(page.components.ProxyModeSwitcher.props, ["mode", "scriptModeVisible", "disabled"]);
 
     const Switcher = Vue.extend(page.components.ProxyModeSwitcher);
     const clashButtons = new Switcher({

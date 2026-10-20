@@ -17,7 +17,7 @@ const DEFAULT_MIXIN = `mixin: # object
       - +.stun.*.*.*
       - +.stun.*.*.*.*
       - +.stun.*.*.*.*.*
-      - " *.n.n.srv.nintendo.net"
+      - "*.n.n.srv.nintendo.net"
       - +.stun.playstation.net
       - xbox.*.*.microsoft.com
       - "*.*.xboxlive.com"
@@ -41,13 +41,12 @@ function createGeneralPageWorkflow({
     cache,
     keys,
     getNetworkInterfaces,
+    getNetworkDiagnostics = () => [],
     platform,
     connectedStatus,
     service,
     firewall,
     utilities,
-    ensureMixinDefaults,
-    validateMixinSettings,
     schedule = setTimeout,
     repeat = setInterval
 }) {
@@ -68,6 +67,9 @@ function createGeneralPageWorkflow({
         clashCoreVersion: "",
         coreVersionRequest: 0,
         serviceNeedUpdate: false,
+        serviceDialogOpen: false,
+        allowLanLoading: false,
+        ipv6Loading: false,
         isTunSettingsVisible: false,
         isInterfacesVisible: false,
         isFetchingFirewallRule: false,
@@ -89,6 +91,13 @@ function createGeneralPageWorkflow({
     };
 
     const computed = {
+        proxyBusy() { return this.$parent.proxyBusy; },
+        tunLoading() { return this.$parent.proxyOperation === "tun"; },
+        mixinLoading() { return this.$parent.proxyOperation === "mixin"; },
+        tapLoading() { return this.$parent.proxyOperation === "tap"; },
+        networkStateKnown() { return this.clashStatus === connectedStatus && Object.keys(this.currentProfilePayload || {}).length > 0; },
+        networkWarnings() { return this.networkStateKnown ? getNetworkDiagnostics(this) : []; },
+        systemProxyBusy() { return this.systemProxyLoading || this.$parent.proxyOperation === "system"; },
         autoLaunchHint() {
             const labels = getLanguage();
             return platform.isMacOS() ? labels.startWithMacOS()
@@ -102,11 +111,22 @@ function createGeneralPageWorkflow({
     };
 
     const methods = {
+        handleLegacyTapSwitchClick() { return this.$parent.requestProfileToggle("tap", this.settings.legacyTapEnabled === false); },
         handleTitleClick() { electron.ipcRenderer.invoke("window", "reload"); },
         handleShowDNSQueryDialog() { this.$dns().catch(() => {}); },
         handleShowScriptTestDialog() { this.$script({}).catch(() => {}); },
-        handlePreviewCurrentPayload() {
-            this.$code({ code: yaml.stringify(this.currentProfilePayload), readOnly: true }).catch(() => {});
+        async handlePreviewCurrentPayload() {
+            const labels = getLanguage();
+            const state = this.networkStateKnown
+                ? `${labels.networkAppliedState()} TUN: ${this.currentProfilePayload.tun?.enable ? labels.networkEnabled() : labels.networkDisabled()} · TAP: ${this.$parent.tun2socks ? labels.networkEnabled() : labels.networkDisabled()}`
+                : labels.networkStateUnavailable();
+            const message = [state, ...(this.proxyBusy ? [labels.networkApplying()] : []),
+                ...this.networkWarnings.map(key => labels[key]())].join("\n\n");
+            try {
+                const [selection] = await this.$select({ title: labels.networkConfiguration(), message,
+                    items: [labels.previewSubmittedConfiguration(), labels.cancel()], isLastDifferent: true });
+                if (selection === 0) await this.$code({ code: yaml.stringify(this.currentProfilePayload), readOnly: true });
+            } catch (_cancelled) {}
         },
         async handleAddFirewallRules() {
             if (this.isFetchingFirewallRule) return;
@@ -143,59 +163,97 @@ function createGeneralPageWorkflow({
             } catch (_error) {}
         },
         async installService() {
+            if (this.serviceDialogOpen || this.proxyBusy) return;
+            this.serviceDialogOpen = true;
             const labels = getLanguage();
             const items = [labels.install(), labels.uninstall()];
             if (this.serviceNeedUpdate) items.push(labels.update());
-            const [selection, method] = await this.$select({
-                title: labels.serviceManagement(),
-                message: `${labels.serviceManagementDescribe()}${this.isLocalMode ? labels.inactive() : labels.active()}`,
-                items,
-                subSelectItems: platform.isWindows() ? [`schtasks(${labels.recommended()})`, "winsw"] : [],
-                subSelectTitle: labels.installMethod()
-            });
+            let selection;
             try {
+                const [selected, method] = await this.$select({
+                    title: labels.serviceManagement(),
+                    message: `${labels.serviceManagementDescribe()}${this.isLocalMode ? labels.inactive() : labels.active()}`,
+                    items,
+                    subSelectItems: platform.isWindows() ? [`schtasks(${labels.recommended()})`, "winsw"] : [],
+                    subSelectTitle: labels.installMethod()
+                });
+                selection = selected;
                 if (selection === 0) {
                     if (!this.isLocalMode) {
                         await utilities.showMessageBox({ type: "error", message: "The service is already installed." });
                         return;
                     }
-                    await service.install(method);
-                    if (!this.devMode) this.reloadElectron();
+                    await this.applyServiceChange("install", method);
                 }
                 if (selection === 1) {
-                    await service.uninstall();
-                    if (!this.devMode) this.reloadElectron();
+                    await this.applyServiceChange("uninstall");
                 }
                 if (selection === 2) {
-                    await service.update();
-                    if (!this.devMode) this.reloadElectron();
+                    await this.applyServiceChange("update");
                 }
             } catch (error) {
+                if (selection === undefined) return;
                 const [action] = await this.$select({
                     title: `${labels.failTo()}${items[selection].toLowerCase()}${labels.serviceMode()}`,
                     message: error.message,
                     items: [labels.reloadAPP(), labels.cancel()]
                 });
-                if (action === 0) this.reloadElectron();
+                if (action === 0) {
+                    this.$parent.serviceOperation = "restarting";
+                    try { await this.reloadElectron(); }
+                    catch (reloadError) { this.$parent.serviceOperation = ""; throw reloadError; }
+                }
+            } finally {
+                this.serviceDialogOpen = false;
+            }
+        },
+        async applyServiceChange(action, method) {
+            const home = this.$parent;
+            if (home.proxyBusy) return false;
+            home.serviceOperation = "applying";
+            try {
+                await this.$nextTick();
+                await service[action](method);
+                if (this.devMode) home.serviceOperation = "";
+                else {
+                    home.serviceOperation = "restarting";
+                    await this.$nextTick();
+                    await this.reloadElectron();
+                    // Keep the blocker until the old renderer exits, including quit cleanup.
+                }
+                return true;
+            } catch (error) {
+                home.serviceOperation = "";
+                throw error;
             }
         },
         async handleAllowLANChange() {
-            const next = !this.isAllowLan;
-            const response = await this.clashApi.patchConfig({ "allow-lan": next });
-            if (response.status === 204) {
-                this.isAllowLan = next;
-                await utilities.updateYaml(path.join(this.clashPath, "config.yaml"), "allow-lan", next);
-                this.setConfData({ data: { ...this.confData, "allow-lan": next } });
-            }
+            if (this.allowLanLoading || this.proxyBusy) return;
+            this.allowLanLoading = true;
+            try {
+                return await this.$parent.runProxyOperation("allow-lan", async () => {
+                    const next = !this.isAllowLan;
+                    const response = await this.clashApi.patchConfig({ "allow-lan": next });
+                    if (response.status !== 204) throw new Error(`Could not apply Allow LAN (${response.status})`);
+                    this.isAllowLan = next;
+                    await utilities.updateYaml(path.join(this.clashPath, "config.yaml"), "allow-lan", next);
+                    this.setConfData({ data: { ...this.confData, "allow-lan": next } });
+                }, !this.isAllowLan);
+            } finally { this.allowLanLoading = false; }
         },
         async handleIPV6Change() {
-            const next = !this.isIPV6;
-            const response = await this.clashApi.patchConfig({ ipv6: next });
-            if (response.status === 204) {
-                this.isIPV6 = next;
-                await utilities.updateYaml(path.join(this.clashPath, "config.yaml"), "ipv6", next);
-                this.setConfData({ data: { ...this.confData, ipv6: next } });
-            }
+            if (this.ipv6Loading || this.proxyBusy) return;
+            this.ipv6Loading = true;
+            try {
+                return await this.$parent.runProxyOperation("ipv6", async () => {
+                    const next = !this.isIPV6;
+                    const response = await this.clashApi.patchConfig({ ipv6: next });
+                    if (response.status !== 204) throw new Error(`Could not apply IPv6 (${response.status})`);
+                    this.isIPV6 = next;
+                    await utilities.updateYaml(path.join(this.clashPath, "config.yaml"), "ipv6", next);
+                    this.setConfData({ data: { ...this.confData, ipv6: next } });
+                }, !this.isIPV6);
+            } finally { this.ipv6Loading = false; }
         },
         async handleEditLogLevel() {
             const labels = getLanguage();
@@ -214,26 +272,14 @@ function createGeneralPageWorkflow({
             } catch (_error) {}
         },
         async handleMixinSwitchClick() {
-            try {
-                if (!this.isMixinEnable) {
-                    ensureMixinDefaults(this.settings);
-                    await validateMixinSettings(this.settings, { parseYaml: yaml.parse });
-                }
-                this.changeIsMixinEnable({ isMixin: !this.isMixinEnable });
-            } catch (error) {
-                console.error("toggle mixin failed:", error);
-                utilities.notify("Mixin", error.message, { silent: false });
-            }
+            return this.$parent.requestProfileToggle("mixin", !this.isMixinEnable);
         },
-        async handleTunSwitchClick() { this.changeIsTunEnable({ isTun: !this.isTunEnable }); },
+        async handleTunSwitchClick() { return this.$parent.requestProfileToggle("tun", !this.isTunEnable); },
         async handleSystemProxySwitchClick() {
             const labels = getLanguage();
-            if (this.systemProxyLoading) return;
-            this.systemProxyLoading = true;
+            if (this.systemProxyBusy || this.proxyBusy) return;
             const next = !this.isSystemProxyOn;
-            if (await this.$setSystemProxy(next, this.confData)) {
-                this.setIsSystemProxyOn({ isOn: next });
-            } else if (platform.isMacOS() && this.isLocalMode) {
+            if (!await this.$parent.requestSystemProxy(next) && platform.isMacOS() && this.isLocalMode) {
                 const { response } = await utilities.showMessageBox({
                     type: "error",
                     message: `${labels.makeSureYouHave()}${this.serviceNeedUpdate ? labels.updated() : labels.installed()} ${labels.serviceModeCtrlSysProxy()}`,
@@ -241,9 +287,7 @@ function createGeneralPageWorkflow({
                 });
                 try {
                     if (response === 0) {
-                        if (this.serviceNeedUpdate) await service.update();
-                        else await service.install();
-                        if (!this.$parent.devMode) this.reloadElectron();
+                        await this.applyServiceChange(this.serviceNeedUpdate ? "update" : "install");
                     }
                 } catch (error) {
                     const [selection] = await this.$select({
@@ -254,7 +298,6 @@ function createGeneralPageWorkflow({
                     if (selection === 0) this.reloadElectron();
                 }
             }
-            this.systemProxyLoading = false;
         },
         async handleAutoLaunchSwitchClick() {
             const next = !this.autoLaunch;

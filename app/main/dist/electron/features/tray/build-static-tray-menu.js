@@ -1,6 +1,7 @@
 "use strict";
 
 const { supportsScriptMode } = require("../../core/clash-core/core-capabilities");
+const { proxyMenuEntries } = require("./proxy-operation-progress");
 
 const LABELS = {
     en: {
@@ -43,26 +44,24 @@ function buildStaticTrayMenu({ Menu, locale, state, actions }) {
     return Menu.buildFromTemplate([
         { label: labels.dashboard, click: actions.showDashboard },
         { type: "separator" },
-        {
+        ...proxyMenuEntries({ state, actions, operation: "tun", item: {
             label: labels.tun,
             type: "checkbox",
             id: "tun",
-            enabled: false,
-            click: item => send("tun-changed", item.checked)
-        },
-        {
+            checked: state.tunModeChecked
+        } }),
+        ...proxyMenuEntries({ state, actions, operation: "mixin", item: {
             label: labels.mixin,
             type: "checkbox",
             id: "mixin",
-            enabled: false,
-            click: item => send("mixin-changed", item.checked)
-        },
+            checked: state.mixinChecked
+        } }),
         { type: "separator" },
         { label: labels.proxyMode, id: "mode", enabled: false },
-        modeItem(labels.global, "global", false, false),
-        modeItem(labels.rule, "rule", state.isReady, state.menuMode === "rule"),
-        modeItem(labels.direct, "direct", false, false),
-        modeItem(labels.script, "script", false, false, supportsScriptMode(state.coreType)),
+        ...modeItem(labels.global, "global", false, false),
+        ...modeItem(labels.rule, "rule", state.isReady, state.menuMode === "rule"),
+        ...modeItem(labels.direct, "direct", false, false),
+        ...modeItem(labels.script, "script", false, false, supportsScriptMode(state.coreType)),
         { type: "separator" },
         {
             label: labels.more,
@@ -78,15 +77,14 @@ function buildStaticTrayMenu({ Menu, locale, state, actions }) {
     ]);
 
     function modeItem(label, mode, enabled, checked, visible = true) {
-        return {
+        return proxyMenuEntries({ state, actions, operation: "mode", item: {
             label,
             type: "radio",
             id: `mode-${mode}`,
             enabled,
             checked,
             visible,
-            click: () => send("mode-changed", mode)
-        };
+        } });
     }
 }
 

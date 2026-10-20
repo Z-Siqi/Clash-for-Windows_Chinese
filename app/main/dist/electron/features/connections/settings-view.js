@@ -11,7 +11,7 @@ function renderConnectionDisconnectSettings(viewModel, createElement, labels) {
     ]);
     return [
         row("connMode", labels.breakWhenModeChange(), labels.breakWhenModeChangeDescribe()),
-        row("connProxyDisconnect", labels.breakWhenProxyDisabled(), labels.breakWhenProxyDisabledDescribe())
+        row("connProxyDisconnect", labels.breakWhenProxyDisabled(), labels.breakWhenProxyDisabledScopedDescribe())
     ];
 }
 

@@ -2,6 +2,7 @@
 
 const { createSettingsProxy } = require("../../features/settings/settings-proxy");
 const { loadSettingsFromDisk } = require("../../features/settings/load-settings");
+const { isProxySetting } = require("../../features/settings/proxy-operation-guards");
 
 function createGlobalMixin({ Vuex, platform, ipcRenderer, fs, path, yaml, cloneDeep, setLanguageIndex, settingsRepository, schedule = setTimeout }) {
     return {
@@ -15,7 +16,14 @@ function createGlobalMixin({ Vuex, platform, ipcRenderer, fs, path, yaml, cloneD
             settings() {
                 return createSettingsProxy({
                     getSettings: () => this.sts,
-                    saveSettings: obj => this.saveSettingsObject({ obj }), cloneDeep
+                    saveSettings: obj => this.saveSettingsObject({ obj }), cloneDeep,
+                    canWrite: key => {
+                        const operation = this.$store?.state.app.proxyOperationState;
+                        // The operation owner may initialize its own Mixin defaults.
+                        return !operation?.busy || !isProxySetting(key)
+                            || (this.$options.name === "landing-page" && operation.operation === "mixin"
+                                && ["mixinType", "mixinText", "mixinCode"].includes(key));
+                    }
                 });
             }
         },

@@ -45,7 +45,7 @@ test("Security Core Secret changes only after confirmation, preserves configurat
     const file = path.join(directory, "config.yaml");
     const previous = randomUUID();
     fs.writeFileSync(file, yaml.stringify({ secret: previous, "mixed-port": 7895, "allow-lan": false }));
-    let confirmation = 0, generated, writes = 0, restarts = 0, fail = false;
+    let confirmation = 0, generated, writes = 0, restarts = 0, fail = false, locks = 0;
     const page = createPage({
         uuid: { v4: () => { generated = randomUUID(); return generated; } },
         showMessageBox: async () => ({ response: confirmation }),
@@ -56,18 +56,22 @@ test("Security Core Secret changes only after confirmation, preserves configurat
             writes++;
         }
     });
-    const model = { clashPath: directory, reloadElectron() {
+    const model = { clashPath: directory, $parent: { runProxyOperation(name, action) {
+        assert.equal(name, "core"); locks++; return action();
+    } }, reloadElectron() {
         assert.ok(yaml.parse(fs.readFileSync(file, "utf8")).secret === generated);
         restarts++;
     } };
     await page.methods.handleGenerateUUIDSecret.call(model);
     assert.equal(writes, 0); assert.equal(restarts, 0);
+    assert.equal(locks, 0);
     confirmation = 1;
     await page.methods.handleGenerateUUIDSecret.call(model);
     const saved = yaml.parse(fs.readFileSync(file, "utf8"));
     assert.ok(saved.secret !== previous && saved.secret === generated);
     assert.equal(saved["mixed-port"], 7895); assert.equal(saved["allow-lan"], false);
     assert.equal(writes, 1); assert.equal(restarts, 1);
+    assert.equal(locks, 1);
     fail = true;
     await assert.rejects(page.methods.handleGenerateUUIDSecret.call(model), /save failed/);
     assert.equal(restarts, 1);
@@ -238,10 +242,12 @@ test("Settings page: core selection changes only when needed and restarts throug
     let restarts = 0, modes = [];
     const context = {
         settings: { proxyCore: "clash" },
+        saveSettingsObject({ obj }) { this.settings = obj; },
         $set(target, key, value) { target[key] = value; },
         refreshCore: page.methods.refreshCore,
         $parent: {
             mode: "script",
+            runProxyOperation: (_name, action) => action(),
             async switchMode(mode) { modes.push(mode); this.mode = mode; },
             async handlerRestartClash() { restarts++; }
         }

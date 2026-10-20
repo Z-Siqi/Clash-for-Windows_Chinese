@@ -75,3 +75,18 @@ test("connection deletion concurrency is bounded", async () => {
     assert.ok(peak <= 8);
     assert.equal(h.closed.length, 33);
 });
+
+test("entry-scoped cleanup preserves other inbounds and unknown legacy metadata", async () => {
+    const entries = ["HTTP", "HTTPS", "HTTP CONNECT", "Socks4", "Socks5", "Tun", "Redir", "TProxy", "Mixed", ""];
+    for (const [scope, includeSocks, expected] of [
+        ["system", false, ["HTTP", "HTTPS", "HTTP CONNECT"]],
+        ["system", true, ["HTTP", "HTTPS", "HTTP CONNECT", "Socks4", "Socks5"]],
+        ["tunnel", false, ["Tun", "Redir", "TProxy"]],
+        ["tunnel", true, ["Socks4", "Socks5", "Tun", "Redir", "TProxy"]]
+    ]) {
+        const h = setup();
+        h.api.getConnections = async () => ({ status: 200, data: { connections: entries.map(type => ({ id: type || "unknown", metadata: { type } })) } });
+        await (await prepareDisconnectCleanup({ ...h.options, scope, includeSocks }))(true);
+        assert.deepEqual(h.closed, expected);
+    }
+});

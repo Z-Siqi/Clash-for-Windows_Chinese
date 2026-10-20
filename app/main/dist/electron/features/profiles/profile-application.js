@@ -16,6 +16,18 @@ function dnsHijackAddresses(hijacks = []) {
 function createProfileApplication(deps) {
     const { fs, path, yaml, platform, clashApi, effects, messages } = deps;
     return async function applyProfile(input) {
+        const startedAt = Date.now();
+        let stage = "prepare";
+        let stageStartedAt = startedAt;
+        const reportTiming = (name, duration) => {
+            // Diagnostics must never change the outcome of a configuration apply.
+            try { deps.onTiming?.(name, duration); } catch (_error) {}
+        };
+        const nextStage = name => {
+            reportTiming(stage, Date.now() - stageStartedAt);
+            stage = name;
+            stageStartedAt = Date.now();
+        };
         const { profiles, profilesPath } = input;
         const confData = input.confData || {};
         if (!(profiles.index >= 0)) {
@@ -38,7 +50,7 @@ function createProfileApplication(deps) {
                 config["interface-name"] = await effects.detectInterface();
                 if (!config["interface-name"]) return { success: false, message: messages.tunInterface };
             }
-            if (platform === "win32" && !tun.enable && await effects.hasTap() && dns.enable && dns.listen) {
+            if (platform === "win32" && input.settings.legacyTapEnabled !== false && !tun.enable && dns.enable && dns.listen && await effects.hasTap()) {
                 const [host, port] = dns.listen.split(":").map(value => value.trim());
                 needsTap = ["", "0.0.0.0"].includes(host) && port === "53";
                 if (needsTap && !config["interface-name"] && !tun["auto-detect-interface"]) {
@@ -46,13 +58,14 @@ function createProfileApplication(deps) {
                     if (!config["interface-name"]) return { success: false, message: messages.tapInterface };
                 }
             }
+            nextStage("core-config");
             const response = await clashApi.putConfig({
                 payload: yaml.stringify({ ...config, ipv6: confData.ipv6, "log-level": confData["log-level"] })
             }, { validateStatus: () => true, timeout: hasProviders ? 0 : 10000 });
+            nextStage("network-effects");
             success = response.status === 204;
             message = response.data && response.data.message || `Switching profile failed with status: ${response.status}`;
             if (!success) {
-                effects.setPayload({});
                 return { success, message };
             }
             effects.setPayload(config);
@@ -77,6 +90,9 @@ function createProfileApplication(deps) {
             const position = error.linePos && error.linePos.start;
             const location = position ? `, on line: ${position.line}, at column: ${position.col}` : "";
             return { success: false, message: `Error: ${error.message}${location}` };
+        } finally {
+            reportTiming(stage, Date.now() - stageStartedAt);
+            reportTiming("total", Date.now() - startedAt);
         }
     };
 }

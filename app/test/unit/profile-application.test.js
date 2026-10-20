@@ -5,6 +5,7 @@ const assert = require("node:assert/strict");
 const path = require("node:path");
 const yaml = require("../../main/node_modules/yaml");
 const { createProfileApplication, dnsHijackAddresses } = require("../../main/dist/electron/features/profiles/profile-application");
+const { normalizeLegacyDnsFilters } = require("../../main/dist/electron/features/profiles/prepare-profile");
 
 function harness(overrides = {}) {
     const calls = [];
@@ -62,10 +63,28 @@ test("YAML mixin overrides TUN; malformed optional mixin retains profile", async
     assert.equal((await h.apply(h.input)).success, true);
 });
 
+test("saved legacy Mixin DNS filters are repaired in the applied payload without changing saved text", async () => {
+    const h = harness();
+    h.input.mixinEnabled = true;
+    const text = 'mixin:\n  dns:\n    enable: true\n    fake-ip-filter:\n      - " *.n.n.srv.nintendo.net"\n      - "custom.example"\n';
+    h.input.settings.mixinText = text;
+    assert.equal((await h.apply(h.input)).success, true);
+    assert.deepEqual(h.calls[0][1].dns["fake-ip-filter"], ["*.n.n.srv.nintendo.net", "custom.example"]);
+    assert.equal(h.input.settings.mixinText, text);
+});
+
+test("legacy DNS normalization preserves original objects and unrelated custom filters", () => {
+    const input = { dns: { "fake-ip-filter": [" *.n.n.srv.nintendo.net", " custom.example", "/regex/", null] } };
+    const normalized = normalizeLegacyDnsFilters(input);
+    assert.deepEqual(normalized.dns["fake-ip-filter"], ["*.n.n.srv.nintendo.net", " custom.example", "/regex/", null]);
+    assert.equal(input.dns["fake-ip-filter"][0], " *.n.n.srv.nintendo.net");
+    assert.equal(normalizeLegacyDnsFilters(normalized), normalized);
+});
+
 test("rejected config cannot trigger DNS, TAP, menus or selection side effects", async () => {
     const h = harness({ clashApi: { putConfig: async () => ({ status: 400, data: { message: "invalid config" } }) } });
     assert.deepEqual(await h.apply(h.input), { success: false, message: "invalid config" });
-    assert.deepEqual(h.calls, [["setPayload", {}]]);
+    assert.deepEqual(h.calls, []);
 });
 
 test("read, parse, mixin and transport failures return errors without applying side effects", async () => {
@@ -106,6 +125,16 @@ test("Windows TAP DNS listener activates TAP after a successful apply", async ()
     assert.equal(h.calls.at(-1)[0], "startTap");
 });
 
+test("explicit legacy TAP opt-out skips adapter detection and stops TAP without changing DNS", async () => {
+    const h = harness({ platform: "win32", fs: { readFileSync: () => "dns:\n  enable: true\n  listen: :53" } });
+    h.input.settings.legacyTapEnabled = false;
+    h.deps.effects.hasTap = () => assert.fail("opt-out must not query installed adapters");
+    h.deps.effects.detectInterface = () => assert.fail("opt-out must not detect a route");
+    assert.equal((await h.apply(h.input)).success, true);
+    assert.equal(h.calls[0][1].dns.listen, ":53");
+    assert.equal(h.calls.at(-1)[0], "stopTap");
+});
+
 test("DNS hijacks preserve supported IPv4 and any forms", () => {
     assert.deepEqual(dnsHijackAddresses(["any:53", "1.1.1.1", "2.2.2.2:53", "3.3.3.3:54", "example:53"]), ["8.8.8.8", "1.1.1.1", "2.2.2.2"]);
 });
@@ -129,6 +158,50 @@ test("async DNS failure is caught before reporting DNS ownership", async () => {
 test("missing General configuration does not prevent applying a valid profile", async () => {
     const h = harness(); h.input.confData = null;
     assert.equal((await h.apply(h.input)).success, true);
+});
+
+test("Windows profiles without a DNS listener skip synchronous TAP discovery", async () => {
+    const h = harness({ platform: "win32" });
+    h.deps.effects.hasTap = () => { throw Error("must not query adapters"); };
+    assert.equal((await h.apply(h.input)).success, true);
+});
+
+test("profile timing separates preparation, core application and network effects without configuration data", async () => {
+    const timings = [];
+    const h = harness({ onTiming: (...args) => timings.push(args) });
+    assert.equal((await h.apply(h.input)).success, true);
+    assert.deepEqual(timings.map(([name]) => name), ["prepare", "core-config", "network-effects", "total"]);
+    assert.ok(timings.every(([, ms]) => Number.isFinite(ms) && ms >= 0));
+});
+
+test("a failed timing sink cannot change a successful apply", async () => {
+    const h = harness({ onTiming: () => { throw Error("logger unavailable"); } });
+    assert.equal((await h.apply(h.input)).success, true);
+});
+
+test("renderer interface discovery suppresses only its own watcher flush and releases on failure", async () => {
+    const { refreshProfile } = require("../../main/dist/electron/entry/renderer/refresh-profile");
+    for (const fail of [false, true]) {
+        const model = {
+            profilesPath: "temporary", profiles: { index: 0, files: [{ time: "one" }] },
+            settings: {}, confData: {}, menuItems: [],
+            clashApi: { putConfig: async () => ({ status: 204 }) },
+            async detectInterfaceName() {
+                assert.equal(this.isDetectingProfileInterface, true);
+                if (fail) throw Error("discovery failed");
+                this.finalInterfaceName = "test-adapter";
+            },
+            async $nextTick() { assert.equal(this.isDetectingProfileInterface, true); },
+            setCurrentProfilePayload() {}, setMenuItems() {}, killSpawned() {}
+        };
+        const result = await refreshProfile(model, {
+            platform: "win32", path, yaml,
+            fs: { readFileSync: () => "tun:\n  enable: true\n" },
+            profileNetworkEffects: {}, messages: {}
+        });
+        assert.equal(result.success, !fail);
+        assert.equal(model.isDetectingProfileInterface, false);
+    }
 });
 
 test("renderer refreshes serialize async mixins and recover after a failed apply", async () => {

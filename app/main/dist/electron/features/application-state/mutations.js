@@ -13,6 +13,7 @@ function createAppMutations({ path, connectionStatus, schedule = setTimeout }) {
         SET_ROUTER_HIJACK_MAC_ADDRESSES: ["routerHijackMacAddresses", "addresses"], SET_CURRENT_PROFILE_PAYLOAD: ["currentProfilePayload", "payload"],
         SET_IS_SILENT_UPGRADED: ["isSilentUpgraded", "isUpgraded"], SET_TUN_SETTINGS: ["tunSettings", "settings"],
         CHANGE_IS_TUN_ENABLE: ["isTunEnable", "isTun"], SET_IS_FIREWALL_RULE_EXIST: ["isFirewallRuleExist", "isExist"],
+        SET_PROXY_OPERATION_STATE: ["proxyOperationState", "state"],
         SET_USER_DNS: ["userDNS", "dns"], SET_MATCHED_SSID: ["matchedSSID", "ssid"]
     };
     const mutations = Object.fromEntries(Object.entries(fields).map(([name, [field, key]]) => [name, (state, payload) => { state[field] = payload[key]; }]));

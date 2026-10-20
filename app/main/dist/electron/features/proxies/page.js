@@ -25,12 +25,13 @@ function createProxiesPage({
     const latestFetch = new WeakMap();
     const ProxyModeSwitcher = defineComponent({
         components: { Hint },
-        props: ["mode", "scriptModeVisible"],
+        props: ["mode", "scriptModeVisible", "disabled"],
         methods: {
             btnTheme(mode) {
                 return ["btn", this.mode === mode.toLowerCase() ? "selected" : "normal"];
             },
             async switchMode(mode) {
+                if (this.disabled) return;
                 this.$parent.cancelLatencyTest();
                 this.$emit("switch", mode);
             }
@@ -41,9 +42,9 @@ function createProxiesPage({
         const labels = getLanguage();
         const renderMode = (mode, title, hint, icon) => createElement("Hint", {
             staticClass: "gap-x-2 clickable",
-            class: viewModel.btnTheme(mode),
+            class: [...viewModel.btnTheme(mode), viewModel.disabled ? "cfw-operation-disabled" : ""],
             staticStyle: { "flex-direction": "row" },
-            attrs: { position: "bottom", hint },
+            attrs: { position: "bottom", hint, "aria-disabled": String(!!viewModel.disabled) },
             on: { click() { return viewModel.switchMode(mode); } }
         }, [
             createElement("span", [viewModel._v(title)]),
@@ -357,7 +358,7 @@ function createProxiesPage({
             },
             async handleModeSwitch(mode) {
                 try {
-                    await this.setMode({ mode });
+                    await this.$parent.requestRoutingMode(mode);
                 } catch (_error) {}
             },
             findProvider(providers, proxyName) {
@@ -547,7 +548,7 @@ function createProxiesPage({
 
         return createElement("div", { attrs: { id: "main-proxy-view" } }, [
             createElement("proxy-mode-switcher", {
-                attrs: { mode: viewModel.currentMode, "script-mode-visible": viewModel.scriptModeVisible },
+                attrs: { mode: viewModel.currentMode, "script-mode-visible": viewModel.scriptModeVisible, disabled: this.$parent?.proxyBusy },
                 on: { switch: viewModel.handleModeSwitch }
             }),
             viewModel._v(" "),

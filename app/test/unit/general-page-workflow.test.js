@@ -109,22 +109,21 @@ test("general page mixed-port edit validates, patches and persists one integer v
     assert.deepEqual(calls, [["yaml", "profile/config.yaml", "mixed-port", 65535], ["setup"]]);
 });
 
-test("general page system proxy switch owns loading and store state", async () => {
-    const commits = [];
+test("general page system proxy switch delegates to the shared operation owner", async () => {
+    const requests = [];
     const { workflow } = createWorkflow();
     const page = {
         ...workflow.methods,
         systemProxyLoading: false,
         isSystemProxyOn: false,
         confData: { "mixed-port": 7890 },
-        $setSystemProxy: async () => true,
-        setIsSystemProxyOn: payload => commits.push(payload)
+        $parent: { requestSystemProxy: async enabled => { requests.push(enabled); return true; } }
     };
 
     await page.handleSystemProxySwitchClick();
 
     assert.equal(page.systemProxyLoading, false);
-    assert.deepEqual(commits, [{ isOn: true }]);
+    assert.deepEqual(requests, [true]);
 });
 
 test("general page firewall toggle refreshes canonical firewall state", async () => {
@@ -201,4 +200,91 @@ test("general page route entry loads version, service status and initializes the
     assert.deepEqual(calls, [
         ["invoke", "app", "getVersion"], ["service"], ["setup"], ["schedule", 1], ["switches"]
     ]);
+});
+
+test("service install, update and uninstall keep the blocker through relaunch", async () => {
+    for (const action of ["install", "update", "uninstall"]) {
+        let finishService, finishReload;
+        let operations = 0;
+        const { workflow } = createWorkflow({ service: {
+            [action]: () => { operations++; return new Promise(resolve => { finishService = resolve; }); }
+        } });
+        const home = { serviceOperation: "" };
+        Object.defineProperty(home, "proxyBusy", { get: () => !!home.serviceOperation });
+        const page = {
+            ...workflow.data(), ...workflow.methods, $parent: home, devMode: false,
+            $nextTick: async () => {},
+            reloadElectron: () => new Promise(resolve => { finishReload = resolve; })
+        };
+        const request = page.applyServiceChange(action);
+        assert.equal(home.serviceOperation, "applying");
+        await Promise.resolve();
+        assert.equal(await page.applyServiceChange(action), false);
+        assert.equal(operations, 1);
+        finishService();
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(home.serviceOperation, "restarting");
+        finishReload();
+        assert.equal(await request, true);
+        assert.equal(home.serviceOperation, "restarting");
+    }
+});
+
+test("service failures and development mode release the blocker; cancelled dialogs do not start work", async () => {
+    for (const failure of ["service", "reload", null]) {
+        const { workflow } = createWorkflow({ service: { install: async () => {
+            if (failure === "service") throw Error("service failed");
+        } } });
+        const home = { proxyBusy: false, serviceOperation: "" };
+        const page = {
+            ...workflow.data(), ...workflow.methods, $parent: home, devMode: !failure,
+            $nextTick: async () => {},
+            reloadElectron: async () => { if (failure === "reload") throw Error("reload failed"); },
+            $select: async () => { throw Error("cancelled"); }
+        };
+        if (failure) await assert.rejects(page.applyServiceChange("install"), /failed/);
+        else assert.equal(await page.applyServiceChange("install"), true);
+        assert.equal(home.serviceOperation, "");
+        await page.installService();
+        assert.equal(page.serviceDialogOpen, false);
+        assert.equal(home.serviceOperation, "");
+    }
+});
+
+test("General status refresh cannot reset an in-flight shared system proxy lock", () => {
+    const { workflow } = createWorkflow();
+    const page = { ...workflow.data(), $parent: { proxyOperation: "system", proxyBusy: true } };
+    workflow.methods.setupSwitches.call(page);
+    assert.equal(workflow.computed.systemProxyBusy.call(page), true);
+    assert.equal(workflow.computed.proxyBusy.call(page), true);
+});
+
+test("shared profile reloads disable both switches but only the initiating switch shows progress", () => {
+    const { workflow } = createWorkflow();
+    for (const operation of ["tun", "mixin", ""]) {
+        const page = { $parent: { proxyOperation: operation, profileApplyCount: 1, proxyBusy: true } };
+        assert.equal(workflow.computed.tunLoading.call(page), operation === "tun");
+        assert.equal(workflow.computed.mixinLoading.call(page), operation === "mixin");
+        assert.equal(workflow.computed.proxyBusy.call(page), true);
+    }
+});
+
+test("final configuration action opens an in-app status dialog before the optional read-only preview", async () => {
+    const { workflow } = createWorkflow({ yaml: { stringify: () => "tun:\n  enable: false" } });
+    const calls = [];
+    const page = {
+        networkStateKnown: true, currentProfilePayload: { tun: { enable: false } }, networkWarnings: ["networkTunOverridden"],
+        proxyBusy: true, $parent: { tun2socks: null },
+        $select: async options => { calls.push(options); return [0]; },
+        $code: async options => { calls.push(options); }
+    };
+    await workflow.methods.handlePreviewCurrentPayload.call(page);
+    assert.equal(calls[0].title, "networkConfiguration");
+    assert.match(calls[0].message, /networkTunOverridden/);
+    assert.match(calls[0].message, /networkApplying/);
+    assert.deepEqual(calls[0].items, ["previewSubmittedConfiguration", "cancel"]);
+    assert.equal(calls[1].readOnly, true);
+    calls.length = 0; page.$select = async options => { calls.push(options); return [1]; };
+    await workflow.methods.handlePreviewCurrentPayload.call(page);
+    assert.equal(calls.length, 1);
 });

@@ -16,7 +16,10 @@ function fixture() {
         settings: {}, confData: {}, menuItems: [], tunSettings: {},
         clashApi: {
             isReady: () => true,
-            async getConnections() { events.push("snapshot"); return { status: 200, data: { connections: [{ id: "old" }] } }; },
+            async getConnections() { events.push("snapshot"); return { status: 200, data: { connections: [
+                { id: "tun", metadata: { type: "Tun" } }, { id: "http", metadata: { type: "HTTP" } },
+                { id: "socks", metadata: { type: "Socks5" } }, { id: "unknown" }
+            ] } }; },
             async closeConnection(id) { events.push(`close:${id}`); return { status: 204 }; },
             async putConfig() { events.push("apply"); return { status: control.status }; }
         },
@@ -41,7 +44,7 @@ test("Disconnect settings: TUN refresh closes only after successful disable, ret
     assert.deepEqual(f.events, ["snapshot", "apply"]);
     f.events.length = 0; f.control.status = 204;
     await Promise.all([f.refresh(), f.refresh()]);
-    assert.deepEqual(f.events, ["snapshot", "apply", "close:old", "apply"]);
+    assert.deepEqual(f.events, ["snapshot", "apply", "close:tun", "apply"]);
 });
 
 test("Disconnect settings: Mixin needs an effective TUN/TAP shutdown; opt-out and retained tunnels are respected", async () => {
@@ -56,7 +59,9 @@ test("Disconnect settings: Mixin needs an effective TUN/TAP shutdown; opt-out an
         f.events.length = 0;
         f.vm.isMixinEnable = false;
         assert.equal((await f.refresh()).success, true, kind);
-        assert.equal(f.events.includes("close:old"), ["tun", "tap"].includes(kind), kind);
+        assert.equal(f.events.includes("close:tun"), ["tun", "tap"].includes(kind), kind);
+        assert.equal(f.events.includes("close:socks"), kind === "tap", kind);
+        assert.equal(f.events.includes("close:http"), false, kind);
         if (["rules", "optout"].includes(kind)) assert.deepEqual(f.events, ["apply"]);
     }
 });
@@ -74,13 +79,31 @@ test("Disconnect settings: System Proxy entry snapshots before OS operation and 
             getters: { filesPath: "/packaged", mixedPort: 7890, clashApi: f.vm.clashApi }, commit() {}
         } });
         assert.equal(await LocalVue.prototype.$setSystemProxy(enabled), scenario !== "failure");
-        assert.deepEqual(f.events, scenario === "disable" ? ["snapshot", "os", "close:old"] :
+        assert.deepEqual(f.events, scenario === "disable" ? ["snapshot", "os", "close:http"] :
             scenario === "failure" ? ["snapshot", "os"] : ["os"]);
     }
 });
 
+test("Disconnect settings: disabling TUN preserves System Proxy, and TAP ambiguity preserves SOCKS", async () => {
+    for (const mode of ["tun", "tap"]) {
+        const f = fixture();
+        f.vm.isSystemProxyOn = true;
+        if (mode === "tun") f.vm.isTunEnable = true;
+        else f.control.source = "dns:\n  enable: true\n  listen: :53";
+        assert.equal((await f.refresh()).success, true);
+        f.events.length = 0;
+        if (mode === "tun") f.vm.isTunEnable = false;
+        else f.vm.settings.legacyTapEnabled = false;
+        assert.equal((await f.refresh()).success, true);
+        assert.equal(f.events.includes("close:http"), false);
+        assert.equal(f.events.includes("close:socks"), false);
+        assert.equal(f.events.includes("close:unknown"), false);
+        assert.equal(f.events.includes("close:tun"), true);
+    }
+});
+
 test("Disconnect settings: real Vue renders independent switches and persists model callbacks", () => {
-    const labels = Object.fromEntries(["breakWhenModeChange", "breakWhenModeChangeDescribe", "breakWhenProxyDisabled", "breakWhenProxyDisabledDescribe"].map(key => [key, () => key]));
+    const labels = Object.fromEntries(["breakWhenModeChange", "breakWhenModeChangeDescribe", "breakWhenProxyDisabled", "breakWhenProxyDisabledScopedDescribe"].map(key => [key, () => key]));
     const vm = new Vue({ data: () => ({ settings: { connMode: false, connProxyDisconnect: true } }),
         components: { SwitchView: { props: ["on"], model: { prop: "on", event: "change" }, render: h => h("div") }, Info: { render: h => h("div") } },
         render(h) { return h("div", renderConnectionDisconnectSettings(this, h, labels)); }
