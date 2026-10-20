@@ -88,27 +88,27 @@ function matches(file, digest) {
 
 function verifyBinary(file, spec) {
     const descriptor = fs.openSync(file, "r");
-    const header = Buffer.alloc(64);
-    try { fs.readSync(descriptor, header, 0, header.length, 0); }
-    finally { fs.closeSync(descriptor); }
-    if (spec.platform === "win32") {
-        if (header.subarray(0, 2).toString() !== "MZ") throw new Error(`Invalid Mihomo executable for ${spec.name}`);
-        const pe = Buffer.alloc(6);
-        const fd = fs.openSync(file, "r");
-        try { fs.readSync(fd, pe, 0, pe.length, header.readUInt32LE(60)); }
-        finally { fs.closeSync(fd); }
-        if (pe.readUInt32LE(0) !== 0x4550 || pe.readUInt16LE(4) !== (spec.arch === "x64" ? 0x8664 : 0xaa64)) {
-            throw new Error(`Wrong Mihomo CPU architecture for ${spec.name}`);
+    try {
+        const header = Buffer.alloc(64);
+        fs.readSync(descriptor, header, 0, header.length, 0);
+        if (spec.platform === "win32") {
+            if (header.subarray(0, 2).toString() !== "MZ") throw new Error(`Invalid Mihomo executable for ${spec.name}`);
+            const pe = Buffer.alloc(6);
+            // DOS and PE headers must come from the same opened executable.
+            fs.readSync(descriptor, pe, 0, pe.length, header.readUInt32LE(60));
+            if (pe.readUInt32LE(0) !== 0x4550 || pe.readUInt16LE(4) !== (spec.arch === "x64" ? 0x8664 : 0xaa64)) {
+                throw new Error(`Wrong Mihomo CPU architecture for ${spec.name}`);
+            }
+        } else if (spec.platform === "linux") {
+            if (header.subarray(0, 4).toString("hex") !== "7f454c46" || header[4] !== 2 || header[5] !== 1
+                || header.readUInt16LE(18) !== (spec.arch === "x64" ? 62 : 183)) {
+                throw new Error(`Wrong Mihomo ELF architecture for ${spec.name}`);
+            }
+        } else if (header.readUInt32LE(0) !== 0xfeedfacf
+            || header.readUInt32LE(4) !== (spec.arch === "x64" ? 0x01000007 : 0x0100000c)) {
+            throw new Error(`Wrong Mihomo Mach-O architecture for ${spec.name}`);
         }
-    } else if (spec.platform === "linux") {
-        if (header.subarray(0, 4).toString("hex") !== "7f454c46" || header[4] !== 2 || header[5] !== 1
-            || header.readUInt16LE(18) !== (spec.arch === "x64" ? 62 : 183)) {
-            throw new Error(`Wrong Mihomo ELF architecture for ${spec.name}`);
-        }
-    } else if (header.readUInt32LE(0) !== 0xfeedfacf
-        || header.readUInt32LE(4) !== (spec.arch === "x64" ? 0x01000007 : 0x0100000c)) {
-        throw new Error(`Wrong Mihomo Mach-O architecture for ${spec.name}`);
-    }
+    } finally { fs.closeSync(descriptor); }
 }
 
 function serviceManifest(root, spec, digest) {

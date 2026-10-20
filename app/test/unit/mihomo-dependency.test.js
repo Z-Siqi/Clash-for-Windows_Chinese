@@ -5,7 +5,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { fixture, binaryFor } = require("../fixtures/mihomo-dependency");
-const { targets, targetSpec, readManifest, sha256, matches, verifyServiceManifest,
+const { targets, targetSpec, readManifest, sha256, matches, verifyBinary, verifyServiceManifest,
     prepareMihomo, updateMihomo } = require("../../../scripts/build/mihomo-dependency");
 
 function snapshot(f) {
@@ -147,6 +147,28 @@ test("download URLs are canonical release assets and invalid manifest sources ne
     for (const version of ["01.2.3", "1.02.3", "1.2.03", "1.2.9007199254740992", "1.2.3?private=data"]) {
         assert.throws(() => targetSpec("linux-x64", version), /Mihomo version/);
     }
+});
+
+test("Windows binary validation keeps both headers on one open file and closes it on failure", t => {
+    const f = fixture(t, { materialized: true });
+    const spec = targetSpec("win-x64", f.manifest.version), file = path.join(f.root, "app", spec.output);
+    const open = fs.openSync, read = fs.readSync, close = fs.closeSync;
+    let opened = 0, closed = 0, failPe = false;
+    t.mock.method(fs, "openSync", (...args) => { opened++; return open(...args); });
+    t.mock.method(fs, "closeSync", descriptor => { closed++; return close(descriptor); });
+    t.mock.method(fs, "readSync", (descriptor, buffer, offset, length, position) => {
+        assert.equal(opened, closed + 1, "the DOS handle must stay open until the PE header is validated");
+        if (position !== 0 && failPe) throw Error("PE read failed");
+        return read(descriptor, buffer, offset, length, position);
+    });
+    verifyBinary(file, spec);
+    assert.equal(opened, 1);
+    assert.equal(closed, 1);
+    failPe = true;
+    assert.throws(() => verifyBinary(file, spec), /PE read failed/);
+    assert.equal(opened, 2);
+    assert.equal(closed, 2);
+    t.mock.restoreAll();
 });
 
 test("an upgrade resolves every platform before committing binaries, notices and allow-lists", async t => {
