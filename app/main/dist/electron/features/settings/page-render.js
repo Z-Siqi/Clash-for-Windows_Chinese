@@ -3,6 +3,7 @@
 const { languageIndex } = require("../../core/i18n/language");
 const { renderSecurityCompatibilitySettings } = require("./security-controls");
 const { settingsElement } = require("./proxy-operation-guards");
+const { parsePort } = require("../../core/network/tcp-port");
 
 function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, languageKey, renderConnectionDisconnectSettings }) {
     return function renderSettingsPage() {
@@ -625,12 +626,13 @@ function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, 
                         staticClass: "item"
                     }, [createElement("div", {
                         staticClass: "flex items-center"
-                    }, [createElement("div", [viewModel._v("PAC Server Port")]), viewModel._v(" "), createElement("Info", [viewModel._v("\n            Leave it empty to use a random port."), createElement("br"), createElement("br"), viewModel._v(" "), createElement("strong", [viewModel._v("Restart the APP")]), viewModel._v(" to take effect.\n          ")])], 1), viewModel._v(" "), createElement("div", {
+                    }, [createElement("div", [viewModel._v(labels.pacServerPort())]), viewModel._v(" "), createElement("Info", [viewModel._v(labels.pacPortRestart())])], 1), viewModel._v(" "), createElement("div", {
                         staticClass: "item"
                     }, [createElement("SimpleInput", {
                         attrs: {
                             placeholder: "random",
-                            type: "number"
+                            type: "number",
+                            validate: value => value === "" || parsePort(value) !== null ? "" : labels.invalidPort()
                         },
                         model: {
                             value: viewModel.settings.innerServerPort,
@@ -639,7 +641,7 @@ function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, 
                             },
                             expression: "settings.innerServerPort"
                         }
-                    })], 1)]) : viewModel._e(), viewModel._v(" "), 1 !== viewModel.settings.systemProxyTypeIndex || viewModel.isMacOS ? createElement("div", {
+                    }), viewModel.pacRuntimePort > 0 ? createElement("span", { attrs: { role: "status" } }, [viewModel._v(labels.pacCurrentPort({ port: viewModel.pacRuntimePort }))]) : viewModel._e()], 1)]) : viewModel._e(), viewModel._v(" "), 1 !== viewModel.settings.systemProxyTypeIndex || viewModel.isMacOS ? createElement("div", {
                         staticClass: "item"
                     }, [createElement("div", {
                         staticClass: "flex items-center"

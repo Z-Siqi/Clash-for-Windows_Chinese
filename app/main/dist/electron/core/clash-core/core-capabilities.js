@@ -8,6 +8,13 @@ function supportsScriptMode(coreType) {
     return normalizeCoreType(coreType) === CORE_TYPES.CLASH;
 }
 
+function builtinProxyTargets(coreType) {
+    return normalizeCoreType(coreType) === CORE_TYPES.CLASH ? ["DIRECT", "REJECT", "GLOBAL"]
+        : ["DIRECT", "REJECT", "REJECT-DROP", "PASS", "COMPATIBLE", "GLOBAL"];
+}
+
+function supportsAnyTls(coreType) { return normalizeCoreType(coreType) !== CORE_TYPES.CLASH; }
+
 function isRoutingModeSupported(coreType, mode) {
     return ROUTING_MODES.includes(mode) && (mode !== "script" || supportsScriptMode(coreType));
 }
@@ -19,6 +26,8 @@ function normalizeRoutingMode(coreType, mode) {
 module.exports = {
     ROUTING_MODES,
     supportsScriptMode,
+    builtinProxyTargets,
+    supportsAnyTls,
     isRoutingModeSupported,
     normalizeRoutingMode
 };

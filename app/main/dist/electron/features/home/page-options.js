@@ -4,6 +4,7 @@ const { compareVersions, releasePage, releasesUrl } = require("../../core/releas
 const { selectReleaseAsset } = require("../../core/release/update-policy");
 
 const { shouldCloseWindowForShortcut } = require("./window-shortcut-policy");
+const { createPacFeedback } = require("./pac-feedback");
 const { bindMenuShortcuts } = require("./menu-shortcuts");
 const { supportsScriptMode } = require("../../core/clash-core/core-capabilities");
 const { parsePort } = require("../../core/network/tcp-port");
@@ -38,11 +39,13 @@ function createHomePageOptions(dependencies) {
         shouldReplaceWintun, detectInterface, store, defaultPac, getPort, startPacServer,
         downloadProfile, net, runMacCommand, uuid, firewallRuleExists, getWlanInterfaces,
         mousetrap, cron, serviceStatus, serviceActiveStatus, runtimeState,
-        getLanguage, refreshRendererProfile, createRendererConfiguration, persistSelection,
+        getLanguage, refreshRendererProfile, refreshTapRuntime, createRendererConfiguration, persistSelection,
         createTunRuntime, createClashCoreRuntime,
         isMacOS, isWindows, isLinux
     } = dependencies;
     const { setDns, getDns } = createMacDnsHelpers({ runMacCommand, net });
+    const showPacFeedback = createPacFeedback({ getLanguage, showMessageBox });
+    const profileUpdateJobs = new WeakMap();
 
     function publishCertificateExceptions(settings = {}) {
         let urls = [], origins = [];
@@ -84,6 +87,7 @@ function createHomePageOptions(dependencies) {
                 profileApplyCount: 0,
                 isDetectingProfileInterface: false,
                 serviceOperation: "",
+                restoringAppliedProfileState: false,
                 clashMixedPort: -1
             };
         },
@@ -210,7 +214,7 @@ function createHomePageOptions(dependencies) {
                 }
             },
             isMixinEnable(value) {
-                this.refreshProfile();
+                if (!this.restoringAppliedProfileState) this.refreshProfile();
                 this.updateTrayIcon();
                 electron.ipcRenderer.send("mixin-changed", value);
             },
@@ -219,7 +223,7 @@ function createHomePageOptions(dependencies) {
             "settings.mixinType"() { this.refreshProfile(); },
             "settings.legacyTapMode"(_value, previous) {
                 // Initial settings are applied by core startup, without another queued reload.
-                if (previous !== undefined && !this.isLaunching) this.refreshProfile();
+                if (previous !== undefined && !this.isLaunching && !this.restoringAppliedProfileState) this.refreshProfile();
             },
             "settings.disableLoadingAdsLink": {
                 immediate: true,
@@ -242,7 +246,7 @@ function createHomePageOptions(dependencies) {
             "settings.clashAuthentication"() { this.refreshProfile(); },
             isTunEnable(value) {
                 this.updateTrayIcon();
-                this.refreshProfile();
+                if (!this.restoringAppliedProfileState) this.refreshProfile();
                 electron.ipcRenderer.send("tun-changed", value);
             },
             tunSettings() { if (this.isTunEnable) this.refreshProfile(); },
@@ -376,11 +380,25 @@ function createHomePageOptions(dependencies) {
                     await this.$nextTick();
                     const result = await waitForProfileRefresh(this.clashApi);
                     if (result?.success) return true;
+                    if (result?.actualState) {
+                        await this.restoreAppliedProfileState(result.actualState);
+                        throw new Error(result.message || getLanguage().failedConnectCore());
+                    }
                     commit(previous);
                     await this.$nextTick();
-                    await waitForProfileRefresh(this.clashApi);
+                    const rollback = await waitForProfileRefresh(this.clashApi);
+                    if (!rollback?.success && rollback?.actualState) await this.restoreAppliedProfileState(rollback.actualState);
                     throw new Error(result?.message || getLanguage().failedConnectCore());
                 }, enabled, requestId);
+            },
+            async restoreAppliedProfileState(state) {
+                this.restoringAppliedProfileState = true;
+                try {
+                    if (state.tun !== this.isTunEnable) this.chagneIsTunEnable({ isTun: !!state.tun });
+                    if (state.mixin !== this.isMixinEnable) this.changeIsMixinEnable({ isMixin: !!state.mixin });
+                    if (state.tapMode && state.tapMode !== resolveTapMode(this.settings)) this.settings.legacyTapMode = state.tapMode;
+                    await this.$nextTick();
+                } finally { this.restoringAppliedProfileState = false; }
             },
             requestRoutingMode(mode, requestId = null) {
                 return this.runProxyOperation("mode", async () => {
@@ -686,6 +704,7 @@ function createHomePageOptions(dependencies) {
                 return createTunRuntime();
             },
             setupTapDevice(install = true) { return this.createTunRuntime().setupTapDevice(install); },
+            refreshTapAfterSetup(installed) { return refreshTapRuntime(this, installed); },
             async spawnTun2socks({ isCurrent, signal } = {}) {
                 const previousProcess = this.tun2socks;
                 this.tun2socks = null;
@@ -753,10 +772,14 @@ function createHomePageOptions(dependencies) {
                 if (!this.profiles || this.isAppSuspend) return;
                 const modificationTimes = dependencies.profileFiles
                     ? await dependencies.profileFiles.modificationTimes(this.profilesPath) : null;
+                let updating = profileUpdateJobs.get(this);
+                if (!updating) { updating = new Set(); profileUpdateJobs.set(this, updating); }
+                const seen = new Set();
                 const now = () => Date.now();
                 const profilesToUpdate = (this.profiles.files || []).filter(profile => {
                     const { interval, url, time, cron: cronExpression = "" } = profile;
-                    if (!url) return false;
+                    if (!url || updating.has(url) || seen.has(url)) return false;
+                    seen.add(url);
                     try {
                         const currentTime = moment();
                         if (cronExpression && new cron(cronExpression).isMatchDate(currentTime)) return true;
@@ -773,10 +796,11 @@ function createHomePageOptions(dependencies) {
                     } catch (_error) {}
                     return false;
                 });
-                const results = await Promise.allSettled(profilesToUpdate.map(profile => downloadProfile({
-                    url: profile.url,
-                    headersString: profile.headers
-                })));
+                for (const profile of profilesToUpdate) updating.add(profile.url);
+                let results;
+                try {
+                    results = await Promise.allSettled(profilesToUpdate.map(async profile => downloadProfile({ url: profile.url, headersString: profile.headers })));
+                } finally { for (const profile of profilesToUpdate) updating.delete(profile.url); }
                 for (let index = 0; index < results.length; index++) {
                     if (results[index].status !== "fulfilled") continue;
                     const { success, message, targetIndex } = results[index].value;
@@ -956,10 +980,12 @@ function createHomePageOptions(dependencies) {
             electron.ipcRenderer.send("core-type-changed", this.settings.proxyCore);
             if (isWindows()) {
                 try {
-                    await startPacServer(this.clashPath);
+                    const pac = await startPacServer(this.clashPath);
+                    showPacFeedback(this, pac).catch(() => {});
                     logger.info(`${getLanguage().httpStartAt()}${this.innerServerPort}`);
                 } catch (error) {
                     logger.info(`${getLanguage().httpFailStart()}${error}`);
+                    showPacFeedback(this, undefined, error).catch(() => {});
                 }
             }
 

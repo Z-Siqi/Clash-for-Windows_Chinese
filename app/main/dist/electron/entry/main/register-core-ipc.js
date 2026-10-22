@@ -68,7 +68,7 @@ function registerCoreIpc({
     registerNetworkInfoIpc({
         ipcMain, getMainWindow, platform: process.platform,
         networkInterfaces: require("os").networkInterfaces,
-        execSync: require("child_process").execSync,
+        exec: require("child_process").exec,
         isIP: require("net").isIP,
         isIPv4: require("net").isIPv4
     });

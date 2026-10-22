@@ -16,7 +16,7 @@ function harness() {
         ipcMain: { handle(channel, callback) { assert.equal(channel, "network-info"); handler = callback; } },
         getMainWindow: () => ({ webContents }), platform: "win32",
         networkInterfaces: () => ({ Ethernet: [{ family: "IPv4", internal: false, address: "192.0.2.10" }] }),
-        execSync(command) { commands.push(command); return Buffer.from(""); },
+        exec(command, _options, callback) { commands.push(command); callback(null, ""); },
         isIP: net.isIP, isIPv4: net.isIPv4
     });
     return { handler, event, commands };

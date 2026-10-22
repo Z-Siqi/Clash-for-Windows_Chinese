@@ -4,7 +4,7 @@ function createCoreConfigClient({ ipcRenderer, shouldReplaceWintun }) {
     let sequence = Date.now() * 1000;
     async function call(operation, request) {
         const result = await ipcRenderer.invoke("core-config", operation, request);
-        if (!result || result.ok !== true) throw new Error(result?.error || "Core configuration operation failed");
+        if (!result || result.ok !== true) throw Object.assign(new Error(result?.error || "Core configuration operation failed"), { code: result?.code });
         return result.value;
     }
     return Object.freeze({

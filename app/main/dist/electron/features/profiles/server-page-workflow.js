@@ -23,6 +23,8 @@ function createServerPageWorkflow({
     schedule = setTimeout
 }) {
     const profileSelections = new WeakMap();
+    const clickedSelections = new WeakMap();
+    const applyingSelections = new WeakMap();
     const data = () => ({
         btnType: 0,
         resultHint: labels.downloadFromURL(),
@@ -45,7 +47,7 @@ function createServerPageWorkflow({
         profileSwitchBlocked() { return !!this.$parent?.proxyBusy; },
         profiles: {
             get() { return this.pfs.files || []; },
-            set(profiles) { if (!this.profileSwitchBlocked) this.changeProfiles({ profiles }); }
+            set(profiles) { if (!clickedSelections.has(this.$parent) && !this.profileSwitchBlocked) this.changeProfiles({ profiles }); }
         },
         getBtnText() {
             return this.btnType === 3 ? labels.downloading()
@@ -158,12 +160,12 @@ function createServerPageWorkflow({
         },
         handleQrcodeOpen({ url }) { if (url) this.qrcodeURL = url; },
         handleDragStart() {
-            if (this.$parent?.proxyBusy) { this.dragSelectedName = ""; return; }
+            if (clickedSelections.has(this.$parent) || this.$parent?.proxyBusy) { this.dragSelectedName = ""; return; }
             const index = this.pfs.index ?? -1;
             if (index >= 0) this.dragSelectedName = this.pfs.files[index].time;
         },
         handleDragEnd() {
-            if (this.$parent?.proxyBusy) return;
+            if (clickedSelections.has(this.$parent) || this.$parent?.proxyBusy) return;
             if (this.dragSelectedName === "") return;
             const index = this.pfs.files.findIndex(profile => profile.time === this.dragSelectedName);
             this.changeProfilesIndex({ index });
@@ -281,25 +283,36 @@ function createServerPageWorkflow({
             } catch (_error) {}
         },
         async handleProfileClick(index) {
-            return this.$parent.requestProfileSelection(async () => {
-                this.loadingProfileIndex = [...this.loadingProfileIndex, index];
-                try { return await this.switchProfile(index); }
-                finally { this.loadingProfileIndex = this.loadingProfileIndex.filter(value => value !== index); }
-            });
+            const owner = this.$parent;
+            if (!Number.isInteger(index) || !this.pfs.files?.[index] || clickedSelections.has(owner) || applyingSelections.has(owner) || owner.proxyBusy) return false;
+            // Reserve before calling any parent/Vue code. A delayed render or
+            // a cached busy flag must never admit a second manual selection.
+            const click = { index };
+            clickedSelections.set(owner, click);
+            try {
+                return await owner.requestProfileSelection(async () => {
+                    this.loadingProfileIndex = [...this.loadingProfileIndex, index];
+                    try { return await this.switchProfile(index); }
+                    finally { this.loadingProfileIndex = this.loadingProfileIndex.filter(value => value !== index); }
+                });
+            } finally { if (clickedSelections.get(owner) === click) clickedSelections.delete(owner); }
         },
         async switchProfile(index) {
             if (index === -1) return;
+            const click = clickedSelections.get(this.$parent);
+            if (click && click.index !== index) return false;
             const previous = this.pfs.index;
             const profile = this.pfs.files?.[index];
             const request = {};
             profileSelections.set(this, request);
+            applyingSelections.set(this.$parent, request);
             let selected = false;
             const isCurrent = () => profileSelections.get(this) === request && (!selected ||
                 (this.pfs.index === index && this.pfs.files?.[index]?.time === profile?.time));
             try {
                 this.changeProfilesIndex({ index });
                 selected = true;
-                const { success, message, superseded } = await this.$parent.refreshProfile();
+                const { success, message, superseded, rolledBack, restoredProfileTime, coreApplied } = await this.$parent.refreshProfile();
                 if (superseded || !isCurrent()) return false;
                 if (!success) {
                     const response = await showMessageBox({
@@ -308,7 +321,8 @@ function createServerPageWorkflow({
                     });
                     // An open error dialog must not clear a newer A -> B -> A selection.
                     if (!isCurrent()) return false;
-                    this.changeProfilesIndex({ index: -1 });
+                    const restoredIndex = rolledBack ? this.pfs.files.findIndex(file => file.time === restoredProfileTime) : coreApplied ? index : -1;
+                    this.changeProfilesIndex({ index: restoredIndex });
                     if (response.response === 1) this.openProfile(profile);
                     return false;
                 }
@@ -322,7 +336,7 @@ function createServerPageWorkflow({
                     detail: error.message || String(error), buttons: [labels.ok()]
                 });
                 return false;
-            }
+            } finally { if (applyingSelections.get(this.$parent) === request) applyingSelections.delete(this.$parent); }
         },
         async refreshProfile(profile, { ignoreSelectAfterUpdated = false } = {}) {
             const { url = "", headers = "" } = profile;

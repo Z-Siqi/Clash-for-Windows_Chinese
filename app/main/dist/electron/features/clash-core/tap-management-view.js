@@ -34,11 +34,11 @@ function createTapViews({ defineComponent, EscCapture, Hint, getLanguage }) {
         const createElement = this._self._c, labels = getLanguage();
         const choices = [labels.enable(), labels.tapMixinOnly(), labels.tapDisable()];
         const descriptions = [labels.tapEnabledDescribe(), labels.tapMixinDescribe(), labels.tapDisabledDescribe()];
-        const close = () => this.$emit("close");
+        const close = () => { if (!this.busy) this.$emit("close"); };
         return createElement("EscCapture", { staticClass: "cfw-tap-dialog", on: { esc: close, mousedown: close } }, [createElement("section", {
-            staticClass: "cfw-tap-card", attrs: { role: "dialog", "aria-modal": "true", "aria-label": labels.TAPdeviceManagement() },
+            staticClass: "cfw-tap-card", attrs: { role: "dialog", "aria-modal": "true", "aria-busy": String(this.busy), "aria-label": labels.TAPdeviceManagement() },
             on: { mousedown: event => event.stopPropagation() }
-        }, [createElement("header", [createElement("span", [this._v(labels.TAPdeviceManagement())]), createElement("TapStatusIcon", { props: { installed: this.installed, mode: this.mode } })]),
+        }, [createElement("div", { staticClass: "cfw-tap-scroll" }, [createElement("header", [createElement("span", [this._v(labels.TAPdeviceManagement())]), createElement("TapStatusIcon", { props: { installed: this.installed, mode: this.mode } })]),
         createElement("p", { staticClass: "cfw-tap-summary" }, [this._v(tapStatus(this.installed, this.mode, labels).label)]),
         createElement("div", { staticClass: "cfw-tap-segments", attrs: { role: "group", "aria-label": labels.tapPermission() } }, TAP_MODES.map((mode, index) => createElement("button", {
             key: mode, class: { selected: this.mode === mode }, attrs: { type: "button", disabled: this.busy, "aria-pressed": String(this.mode === mode), "data-tap-mode": mode },
@@ -52,7 +52,8 @@ function createTapViews({ defineComponent, EscCapture, Hint, getLanguage }) {
         createElement("div", { staticClass: "cfw-tap-actions" }, [labels.install(), labels.uninstall(), labels.customize()].map((label, index) => createElement("button", {
             attrs: { type: "button", disabled: this.busy }, on: { click: () => { if (!this.busy) this.$emit("action", index); } }
         }, [this._v(label)]))),
-        createElement("footer", [createElement("button", { attrs: { type: "button" }, on: { click: close } }, [this._v(labels.close())])])])]);
+        this.busy ? createElement("p", { attrs: { role: "status" } }, [this._v(labels.pleaseWait())]) : this._e(),
+        createElement("footer", [createElement("button", { attrs: { type: "button", disabled: this.busy }, on: { click: close } }, [this._v(labels.close())])])])])]);
     });
     return { TapStatusIcon, TapManagementView };
 }

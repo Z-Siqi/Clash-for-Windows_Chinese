@@ -204,6 +204,33 @@ async function verifyUiRegressions() {
         await complete(opening, "cancel rounded selection dialog");
     }
     if (!roundedDialogs) throw Error("Service Mode and log level dialogs did not match the TAP radius");
+    const deletion = home.$select({ title: "Delete", bounded: true,
+        message: Array.from({ length: 500 }, (_, index) => `rules[${index}]`).join("\n"),
+        items: ["Cancel", "Replace references and delete", "Delete with related rules", "Delete and keep references for editing"] });
+    await home.$nextTick();
+    const deletionPanel = document.querySelector('.main-select-view-plugin');
+    const deletionBounds = deletionPanel.querySelector('.card-main').getBoundingClientRect();
+    const deletionMessage = deletionPanel.querySelector('.content-message');
+    if (deletionBounds.top < 25 || deletionBounds.bottom > innerHeight || deletionMessage.scrollHeight <= deletionMessage.clientHeight) {
+        throw Error("A long deletion reference list escaped its bounded dialog");
+    }
+    deletionPanel.querySelector('.btns .btn').click(); await deletion;
+    const choices = Array.from({ length: 500 }, (_, index) => `proxy-${index}`);
+    const selecting = home.$select({ title: "Replacement target", choiceTitle: "Target", choiceItems: choices, items: ["Cancel", "Replace"] });
+    await home.$nextTick();
+    const choicePanel = document.querySelector('.main-select-view-plugin');
+    const choiceList = choicePanel.querySelector('select');
+    const choiceBounds = choicePanel.querySelector('.card-main').getBoundingClientRect();
+    const replacementList = choiceList.options.length === 500 && choiceList.scrollHeight > choiceList.clientHeight
+        && choicePanel.querySelectorAll('.btns .btn').length === 2 && choiceBounds.top >= 25 && choiceBounds.bottom <= innerHeight;
+    if (!replacementList) throw Error("Replacement targets did not fit a scrollable choice list");
+    choiceList.value = "499"; choiceList.dispatchEvent(new Event("change", { bubbles: true }));
+    await home.$nextTick();
+    await wait(350);
+    globalThis.__cfwScreenshotStage = "replacement-list"; await wait(200); globalThis.__cfwScreenshotStage = "";
+    choicePanel.querySelectorAll('.btns .btn')[1].click();
+    const selected = await selecting;
+    if (selected[0] !== 1 || selected[1] !== 499) throw Error("Replacement list did not confirm the last selected item");
     const tunRow = Array.from(general.$el.querySelectorAll(".item")).find(element => /TUN Mode|TUN 模式/.test(element.textContent));
     const tunGear = Array.from(tunRow.querySelectorAll(".tun-settings-icon")).find(element => element.textContent.trim() === "settings");
     tunGear.click();
@@ -300,6 +327,23 @@ async function verifyUiRegressions() {
             const router = row.querySelector('.cfw-tap-router-locked');
             if (savedTap === "mixin" && (!lock || !router || getComputedStyle(router).clipPath === "none"
                 || getComputedStyle(lock).backgroundColor !== "rgba(0, 0, 0, 0)")) throw Error("TAP Router did not leave clear space around its lock badge");
+            if (home.settings.legacyTapMode !== "mixin") await general.handleTapModeChange("mixin");
+            await home.$nextTick();
+            const card = dialog.querySelector('.cfw-tap-card'), scroll = card.querySelector('.cfw-tap-scroll');
+            card.style.maxHeight = "280px";
+            dialog.querySelector('details').open = true;
+            await home.$nextTick();
+            const bounds = card.getBoundingClientRect();
+            const corners = [[bounds.left + 1, bounds.top + 1], [bounds.right - 1, bounds.top + 1],
+                [bounds.left + 1, bounds.bottom - 1], [bounds.right - 1, bounds.bottom - 1]];
+            if (getComputedStyle(card).overflow !== "hidden" || getComputedStyle(card).borderTopRightRadius !== "10px"
+                || scroll.scrollHeight <= scroll.clientHeight || !corners.every(([x, y]) => !document.elementFromPoint(x, y)?.closest('.cfw-tap-card'))) {
+                throw Error("TAP scrollbar escaped the clipped rounded dialog surface");
+            }
+            scroll.scrollTop = scroll.scrollHeight;
+            if (card.querySelector('footer').getBoundingClientRect().bottom > bounds.bottom) throw Error("TAP footer cannot be reached by scrolling");
+            globalThis.__cfwScreenshotStage = "tap-scroll"; await wait(200); globalThis.__cfwScreenshotStage = "";
+            card.style.maxHeight = ""; dialog.querySelector('details').open = false;
             const target = savedTap === "disabled" ? "mixin" : "disabled";
             if (!await general.handleTapModeChange(target)) throw Error("TAP permission did not change");
             legacyTapControl = home.settings.legacyTapMode === target;
@@ -371,60 +415,69 @@ async function verifyUiRegressions() {
     const originalRefresh = home.refreshProfile;
     let releaseProfile;
     const heldRefresh = new Promise(resolve => { releaseProfile = resolve; });
-    home.refreshProfile = () => heldRefresh;
+    let profileWrites = 0;
+    home.refreshProfile = () => { profileWrites++; return heldRefresh; };
     let profileSwitchLock = false;
     let profileSwitchFade = false;
     try {
         const cards = Array.from(profileView.$el.querySelectorAll('.list-item'));
         const first = profileView.handleProfileClick(0);
+        for (let repeat = 0; repeat < 20; repeat++) for (const card of cards.slice(1)) card.click();
+        if (profileWrites !== 1 || home.profiles.index !== 0) throw Error("Other profile cards were accepted before Vue's first update");
         await home.$nextTick();
         const other = cards.find(card => !card.classList.contains("item-cur"));
         if (!other) throw Error("Profile fade regression requires an unselected profile");
         const opacity = () => Number(getComputedStyle(other).opacity);
+        const fadeSamples = [];
+        const sample = label => { fadeSamples.push([label, opacity(), performance.now()]); return opacity(); };
         // Read style now so Chromium establishes the transition's start time.
-        profileSwitchFade = opacity() === 1;
+        profileSwitchFade = sample("initial") === 1;
         const count = profileView.loadingProfileIndex.length;
-        cards[0].click();
-        cards[0].dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+        for (const card of cards) {
+            card.click();
+            card.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+            card.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
+        }
         await home.$nextTick();
         profileSwitchLock = home.proxyBusy && home.proxyOperation === "profile"
             && cards.every(card => card.getAttribute("aria-disabled") === "true")
-            && profileView.loadingProfileIndex.length === count && home.profiles.index === 0;
+            && profileView.loadingProfileIndex.length === count && home.profiles.index === 0 && profileWrites === 1;
         await wait(300);
-        profileSwitchFade = profileSwitchFade && opacity() === 1;
+        profileSwitchFade = sample("fast-pending") === 1 && profileSwitchFade;
         releaseProfile({ success: true });
         await complete(first, "finish locked profile selection");
         await home.$nextTick();
         profileSwitchLock = profileSwitchLock && !home.proxyBusy
             && cards.every(card => card.getAttribute("aria-disabled") === "false");
         await wait(350);
-        profileSwitchFade = profileSwitchFade && opacity() === 1;
+        profileSwitchFade = sample("fast-complete") === 1 && profileSwitchFade;
 
         let releaseSlow;
         const slowRefresh = new Promise(resolve => { releaseSlow = resolve; });
         home.refreshProfile = () => slowRefresh;
         const slow = profileView.handleProfileClick(0);
         await home.$nextTick();
-        profileSwitchFade = profileSwitchFade && opacity() === 1;
+        profileSwitchFade = sample("slow-start") === 1 && profileSwitchFade;
         await wait(430);
-        profileSwitchFade = profileSwitchFade && opacity() === 1;
+        profileSwitchFade = sample("slow-delay") === 1 && profileSwitchFade;
         await wait(150);
-        const fading = opacity();
+        const fading = sample("slow-fading");
         profileSwitchFade = profileSwitchFade && fading > .55 && fading < 1;
         await wait(200);
-        profileSwitchFade = profileSwitchFade && Math.abs(opacity() - .55) < .01;
+        profileSwitchFade = Math.abs(sample("slow-faded") - .55) < .01 && profileSwitchFade;
         releaseSlow({ success: true });
         await complete(slow, "finish slow profile selection");
         await home.$nextTick();
         await wait(70);
-        const recovering = opacity();
+        const recovering = sample("recovering");
         profileSwitchFade = profileSwitchFade && recovering > .55 && recovering < 1;
         await wait(230);
-        profileSwitchFade = profileSwitchFade && opacity() === 1 && !home.proxyBusy;
+        profileSwitchFade = sample("recovered") === 1 && profileSwitchFade && !home.proxyBusy;
+        if (!profileSwitchFade) throw Error(`Profile fade samples: ${JSON.stringify(fadeSamples)}`);
     } finally { home.refreshProfile = originalRefresh; releaseProfile?.({ success: true }); }
     if (!profileSwitchLock) throw Error("Profile switching controls did not lock for mouse and keyboard input");
     if (!profileSwitchFade) throw Error("Profile disabled color did not delay and fade smoothly for fast/slow switches");
-    return { connections, trafficUpdates, securitySettings, settingsNavigation, trayDelayVisible, enhancedTrayRounded, editorNavigationHeight, editorNavigationColor, editorNavigationExpandedContrast, diffSideBySide, minimizeCentered, pinControl, tunSettingsDialog, mixinSwitch, mixinErrorVisible, networkModeWarnings, legacyTapControl, proxyProgress, settingsDuringProxy, serviceProgress, roundedDialogs, profileSwitchLock, profileSwitchFade };
+    return { connections, trafficUpdates, securitySettings, settingsNavigation, trayDelayVisible, enhancedTrayRounded, editorNavigationHeight, editorNavigationColor, editorNavigationExpandedContrast, diffSideBySide, minimizeCentered, pinControl, tunSettingsDialog, mixinSwitch, mixinErrorVisible, networkModeWarnings, legacyTapControl, proxyProgress, settingsDuringProxy, serviceProgress, roundedDialogs, replacementList, profileSwitchLock, profileSwitchFade };
 }
 
 module.exports = { verifyUiRegressions };

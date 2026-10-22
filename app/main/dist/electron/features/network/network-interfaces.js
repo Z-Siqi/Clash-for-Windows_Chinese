@@ -1,5 +1,7 @@
 "use strict";
 
+const { execAsync } = require("../../core/process/commands");
+
 function listNetworkInterfaces({ networkInterfaces }) {
     const result = [];
     for (const [name, addresses] of Object.entries(networkInterfaces())) {
@@ -12,15 +14,15 @@ function listNetworkInterfaces({ networkInterfaces }) {
     return result;
 }
 
-function detectDefaultInterface({
+async function detectDefaultInterface({
     platform,
-    execSync,
+    exec,
     networkInterfaces,
     isIP,
     isIPv4
 }) {
     if (platform === "darwin") {
-        const routes = execSync("netstat -nr | grep default ")
+        const routes = (await execAsync({ exec }, "netstat -nr | grep default "))
             .toString()
             .split("\n")
             .map(line => line.trim().split(/\s+/))
@@ -33,7 +35,7 @@ function detectDefaultInterface({
     }
 
     if (platform === "win32") {
-        const routes = execSync("route print 0.0.0.0 mask 0.0.0.0", { windowsHide: true })
+        const routes = (await execAsync({ exec }, "route print 0.0.0.0 mask 0.0.0.0"))
             .toString()
             .split("\n")
             .map(line => line.trim().split(/\s+/))

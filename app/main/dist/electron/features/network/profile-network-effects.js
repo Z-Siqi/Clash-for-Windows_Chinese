@@ -1,13 +1,19 @@
 "use strict";
 
+const { execFileAsync } = require("../../core/process/commands");
+
 function createProfileNetworkEffects({ childProcess, getPort, setInterval: schedule = setInterval, clearInterval: cancel = clearInterval }) {
+    let tapLookup;
     return {
         hasTap() {
-            try {
-                childProcess.execFileSync("netsh", ["interface", "show", "interface", "name=cfw-tap"], { windowsHide: true });
-                return true;
-            } catch (_error) { return false; }
+            if (!tapLookup) {
+                const lookup = execFileAsync(childProcess, "netsh", ["interface", "show", "interface", "name=cfw-tap"], { timeout: 1000 })
+                    .then(() => true, () => false).finally(() => { if (tapLookup === lookup) tapLookup = null; });
+                tapLookup = lookup;
+            }
+            return tapLookup;
         },
+        invalidateTap() { tapLookup = null; },
         renewDhcp() {
             let attempts = 0;
             const timer = schedule(async () => {

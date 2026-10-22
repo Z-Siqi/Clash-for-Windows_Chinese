@@ -18,6 +18,8 @@ const { buildStore } = require("../fixtures/renderer-store");
 const { homePage } = require("../fixtures/home-page");
 const { persistSelection } = require("../../main/dist/electron/features/profiles/persist-selection");
 const { profilePage, proxiesPage } = require("../fixtures/profile-pages");
+const yaml = require("../../main/node_modules/yaml");
+const { refreshProfile } = require("../../main/dist/electron/entry/renderer/refresh-profile");
 
 const root = path.resolve(__dirname, "../../..");
 const targets = {
@@ -128,6 +130,56 @@ async function stopChild(child) {
             5000
         ))
     ]);
+}
+
+async function queryDns(port) {
+    const socket = dgram.createSocket("udp4");
+    // A fake-IP query is answered locally, without contacting an external DNS server.
+    const name = Buffer.concat([Buffer.from([8]), Buffer.from("rollback"), Buffer.from([7]), Buffer.from("invalid"), Buffer.from([0])]);
+    const query = Buffer.concat([Buffer.from([0x42, 0x10, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0]), name, Buffer.from([0, 1, 0, 1])]);
+    return new Promise(resolve => {
+        let timer;
+        const finish = result => { clearTimeout(timer); socket.close(); resolve(result); };
+        socket.once("error", () => finish(false));
+        socket.once("message", message => finish(message.readUInt16BE(0) === 0x4210 && message.readUInt16BE(6) > 0));
+        timer = setTimeout(() => finish(false), 250);
+        socket.send(query, port, "127.0.0.1");
+    });
+}
+
+async function verifyTapRollback(api) {
+    const dnsPort = await freePort();
+    let activeSource = "dns: {enable: false}\nrules: ['MATCH,DIRECT']\n";
+    let answered = false;
+    const vm = { settings: { legacyTapMode: "enabled" }, isTunEnable: false, isMixinEnable: false,
+        profiles: { index: 0, files: [{ time: "base.yaml" }] }, profilesPath: "virtual", confData: {}, menuItems: [],
+        clashApi: { ...api, putConfig: ({ payload }, options) => {
+            const content = yaml.parse(payload);
+            // Only native DNS binding is redirected: application policy still sees :53.
+            if (content.dns?.listen === ":53") content.dns.listen = `127.0.0.1:${dnsPort}`;
+            return api.putConfig({ payload: yaml.stringify(content) }, options);
+        } },
+        setCurrentProfilePayload({ payload }) { this.currentProfilePayload = payload; },
+        setMenuItems({ items }) { this.menuItems = items; }, resetDNS() {}, killSpawned() {},
+        async spawnTun2socks() {
+            for (let tries = 0; tries < 8 && !answered; tries++) answered = await queryDns(dnsPort);
+            assert.equal(answered, true, "the real core must have applied DNS before the simulated TAP failure");
+            throw Error("simulated TAP route failure after core apply");
+        }
+    };
+    const deps = { yaml, platform: "win32", messages: {}, readProfileSource: async () => activeSource, profileNetworkEffects: { hasTap: async () => true } };
+    assert.equal((await refreshProfile(vm, deps)).success, true);
+    activeSource = "interface-name: Ethernet\ndns: {enable: true, listen: ':53', enhanced-mode: fake-ip, nameserver: ['127.0.0.1:9']}\nrules: ['MATCH,REJECT']\n";
+    vm.profiles = { index: 0, files: [{ time: "tap.yaml" }] };
+    const result = await refreshProfile(vm, deps);
+    assert.equal(result.success, false);
+    assert.match(result.message, /simulated TAP route failure/);
+    assert.equal(result.rolledBack, true);
+    assert.equal(result.restoredProfileTime, "base.yaml");
+    assert.equal(vm.currentProfilePayload.dns.enable, false);
+    assert.equal(await queryDns(dnsPort), false, "rollback must actually stop the real core's failed-attempt DNS listener");
+    const rules = await api.getRules();
+    assert.equal(rules.data.rules.at(-1).proxy, "DIRECT");
 }
 
 async function verifyCore(coreName, relativeBinary) {
@@ -292,6 +344,7 @@ async function verifyCore(coreName, relativeBinary) {
         assert.equal(proxiesUi.proxyInMode.some(group => group.name === "second-profile"), true);
         assert.equal(proxiesUi.proxyInMode.some(group => group.name === "app-test"), false);
         proxiesUi.$destroy();
+        await verifyTapRollback(api);
     } finally {
         await stopChild(child);
         fs.rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });

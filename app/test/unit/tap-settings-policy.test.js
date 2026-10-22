@@ -15,21 +15,23 @@ test("TAP settings reject shell fragments and regex syntax before any native ope
 });
 
 test("TAP route detection compares columns on one line and never interpolates a regex or shell command", async () => {
-    const calls = [];
+    const calls = []; let time = 0;
     const runtime = createTunRuntime({
-        path, platform: "win32", arch: "x64", filesPath: "packaged", logger: { info() {} }, sleep: async () => {},
+        path, platform: "win32", arch: "x64", filesPath: "packaged", logger: { info() {} }, now: () => time, sleep: async ms => { time += ms; },
         childProcess: {
             spawn: () => ({ pid: 123 }),
-            execFileSync(file, args) {
+            execFile(file, args, _options, callback) {
                 calls.push([file, args]);
-                return Buffer.from("10.0.0.0 255.255.255.0 192.0.2.1\n192.0.2.0 255.255.255.0 10.0.0.1");
+                callback(null, "10.0.0.0 255.255.255.0 192.0.2.1\n192.0.2.0 255.255.255.0 10.0.0.1");
             }
         }
     });
-    await runtime.spawnTun2socks({ currentProcess: null, mixedPort: 7890 });
+    await assert.rejects(runtime.spawnTun2socks({ currentProcess: null, mixedPort: 7890 }), /route did not become ready/);
     assert.equal(calls.some(([file, args]) => file === "route" && args[0] === "add"), false);
-    runtime.killSpawned({ pid: "123 & whoami" });
-    assert.equal(calls.some(([file]) => file === "taskkill"), false);
+    const stopped = calls.filter(([file]) => file === "taskkill").length;
+    assert.equal(stopped, 1);
+    await runtime.killSpawned({ pid: "123 & whoami" });
+    assert.equal(calls.filter(([file]) => file === "taskkill").length, stopped);
 });
 
 test("TAP client stops only the host-owned process without forwarding renderer PID or command choices", async () => {

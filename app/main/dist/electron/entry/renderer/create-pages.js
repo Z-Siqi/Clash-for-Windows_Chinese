@@ -30,7 +30,7 @@ const { defineComponent } = require("../../features/renderer-ui/component");
 const { createRouterPage } = require("../../features/router/page");
 const { createSettingsPage } = require("../../features/settings/page");
 const { createRendererConfiguration } = require("./configuration");
-const { refreshProfile } = require("./refresh-profile");
+const { refreshProfile, refreshTapAfterSetup } = require("./refresh-profile");
 const { persistSelection } = require("../../features/profiles/persist-selection");
 const { networkModeDiagnostics } = require("../../features/profiles/network-mode-diagnostics");
 const { buildTunConfig } = require("../../features/tun/build-tun-config");
@@ -61,7 +61,14 @@ function createRendererPages({ Vuex, modifyState, runtime, components, version }
         detectInterface: getDefaultInterface, store, defaultPac, getPort,
         checkPort: runtime.checkPort,
         openCoreLog: runtime.openCoreLog,
-        startPacServer: async home => store.commit("SET_INNER_SERVER_PORT", { port: await runtime.coreConfigRepository.startPac(home) }),
+        startPacServer: async home => {
+            const result = await runtime.coreConfigRepository.startPac(home);
+            store.commit("SET_INNER_SERVER_PORT", { port: result.port });
+            return result;
+        },
+        refreshTapRuntime: (vm, installed) => refreshTapAfterSetup(vm, {
+            hasTap: runtime.profileNetworkEffects.hasTap, connectedStatus: connectionStatus.CONNECTED
+        }, installed),
         downloadProfile: profileParser.downloadProfile, net,
         runMacCommand: runMacSystemProxyCommand, uuid,
         firewallRuleExists: firewall.status, getWlanInterfaces,

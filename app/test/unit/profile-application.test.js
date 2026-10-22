@@ -182,12 +182,23 @@ test("DNS hijacks preserve supported IPv4 and any forms", () => {
     assert.deepEqual(dnsHijackAddresses(["any:53", "1.1.1.1", "2.2.2.2:53", "3.3.3.3:54", "example:53"]), ["8.8.8.8", "1.1.1.1", "2.2.2.2"]);
 });
 
-test("async TAP absence cannot be mistaken for a present interface", async () => {
+test("absent TAP prepares the authorized physical interface but never starts an absent adapter", async () => {
     const h = harness({ platform: "win32", fs: { readFileSync: () => "dns:\n  enable: true\n  listen: 0.0.0.0:53" } });
     h.input.settings.legacyTapMode = "enabled";
     h.deps.effects.hasTap = async () => false;
     assert.equal((await h.apply(h.input)).success, true);
     assert.equal(h.calls.at(-1)[0], "stopTap");
+    assert.equal(h.calls[0][1]["interface-name"], "eth0");
+    assert.equal(h.calls.some(call => call[0] === "startTap"), false);
+});
+
+test("an authorized profile still loads offline when TAP is absent and there is no upstream interface", async () => {
+    const h = harness({ platform: "win32", fs: { readFileSync: () => "dns:\n  enable: true\n  listen: ':53'" } });
+    h.input.settings.legacyTapMode = "enabled";
+    h.deps.effects.hasTap = async () => false;
+    h.deps.effects.detectInterface = async () => null;
+    assert.equal((await h.apply(h.input)).success, true);
+    assert.equal(h.calls.some(call => call[0] === "startTap"), false);
     assert.equal(h.calls[0][1]["interface-name"], undefined);
 });
 

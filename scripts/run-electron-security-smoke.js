@@ -5,7 +5,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 
-async function runElectronSecuritySmoke({ binary, applicationRoot, timeout = 75000, spawnProcess = spawn }) {
+async function runElectronSecuritySmoke({ binary, applicationRoot, timeout = 150000, spawnProcess = spawn }) {
     const executable = path.resolve(binary);
     // A packaged app ignores the fixture argument and could open a real profile.
     if (!fs.existsSync(path.join(path.dirname(executable), "resources", "default_app.asar"))) {
@@ -57,7 +57,7 @@ async function runElectronSecuritySmoke({ binary, applicationRoot, timeout = 750
 
 if (require.main === module) {
     runElectronSecuritySmoke({ binary: process.argv[2], applicationRoot: process.argv[3] }).then(result => {
-        console.log(JSON.stringify({ ok: result.ok, scriptWorkerIsolated: result.scriptWorkerIsolated, allPagesRendered: result.navigation.allPagesRendered, monacoEditingVerified: result.monacoEditingVerified, uiRegressions: result.uiRegressions, ...result.isolation }));
+        console.log(JSON.stringify({ ok: result.ok, scriptWorkerIsolated: result.scriptWorkerIsolated, allPagesRendered: result.navigation.allPagesRendered, monacoEditingVerified: result.monacoEditingVerified, uiRegressions: result.uiRegressions, interactionAudit: result.interactionAudit?.counts, ...result.isolation }));
     }).catch(error => { console.error(error.message); process.exitCode = 1; });
 }
 

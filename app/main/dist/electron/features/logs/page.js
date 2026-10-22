@@ -24,6 +24,8 @@ function createLogsPage({
                 listData: [],
                 randomColor: [],
                 client: null,
+                isActive: false,
+                isPaused: false,
                 isAutoScroll: true,
                 dnsRecords: {},
                 logLevel: parseInt(cache.get(keys.LOG_MOUDLE_LEVEL)) || 0,
@@ -87,10 +89,11 @@ function createLogsPage({
                 return field ? `${field.value}` : "";
             },
             copyPayload(item) {
-                const field = item.fields.find(value => value.key === "rAddr");
-                if (field) {
-                    clipboard.writeText(field.value);
-                    notify("Copied to Clipboad!", field.value);
+                const field = (item.fields || []).find(value => value.key === "rAddr");
+                const text = field?.value || item.msg;
+                if (text) {
+                    clipboard.writeText(String(text));
+                    notify(getLanguage().copiedToClipboard(), String(text));
                 }
             },
             logItemClasses(item) {
@@ -127,12 +130,16 @@ function createLogsPage({
                 }];
             },
             openLogStream() {
+                if (this.isActive === false || this.isPaused || (this.clashStatus && this.clashStatus !== connectedStatus)) return;
+                if (this.client && [0, 1].includes(this.client.readyState)) return;
+                this.closeLogStream();
                 const client = this.clashWSClient("logs", [
                     `level=${["info", "debug"][this.logLevel]}`,
                     "format=structured"
                 ]);
                 if (!client) return;
                 client.on("message", payload => {
+                    if (this.client !== client) return;
                     try { this.parseLog(normalizeStructuredLog(JSON.parse(payload))); }
                     catch (_error) { console.error("failed to parse log"); }
                 });
@@ -149,15 +156,19 @@ function createLogsPage({
             },
             handleItemRightClick(event, item) {
                 this.isAutoScroll = false;
-                const remoteAddress = item.fields.find(field => field.key === "rAddr");
+                const remoteAddress = (item.fields || []).find(field => field.key === "rAddr");
                 this.$menu([{
-                    text: remoteAddress?.value || "Unknown", disabled: true, icon: "title"
+                    text: String(remoteAddress?.value || item.msg || getLanguage().text()).slice(0, 160), disabled: true, icon: "title"
                 }, {
-                    text: getLanguage().copy(), icon: "content_copy", click: () => this.copyPayload(item)
+                    text: getLanguage().copy(), disabled: !remoteAddress?.value && !item.msg, icon: "content_copy", click: () => this.copyPayload(item)
                 }], event);
             },
-            handleBtnClick() { this.client ? this.closeLogStream() : this.openLogStream(); },
-            handleClear() { this.listData = []; },
+            handleBtnClick() {
+                this.isPaused = !this.isPaused;
+                if (this.isPaused) this.closeLogStream();
+                else this.openLogStream();
+            },
+            handleClear() { this.listData = []; this.showDetailItemIDs = []; },
             handleWindowEvent(visible) { visible ? this.openLogStream() : this.closeLogStream(); },
             handleScroll(event) {
                 const target = event.target;
@@ -181,12 +192,14 @@ function createLogsPage({
         },
         beforeRouteEnter(_to, _from, next) {
             next(async vm => {
+                vm.isActive = true;
                 vm.searchText = cache.get(keys.LOG_MODULE_SEARCH_TEXT) || "";
                 const configuredCount = vm.settings.logPreloadLineCount;
                 const lineCount = configuredCount >= 0 ? configuredCount : 30;
                 if (lineCount > 0) {
                     try {
                         const contents = await readCoreLog(lineCount);
+                        if (!vm.isActive) return;
                         contents.split("\n").forEach(line => {
                             const log = parseCoreLogLine(line);
                             if (log) vm.parseLog(log);
@@ -199,10 +212,12 @@ function createLogsPage({
             });
         },
         beforeRouteLeave(_to, _from, next) {
+            this.isActive = false;
             this.closeLogStream();
             this.$refs.list.removeEventListener("scroll", this.handleScroll);
             next();
         },
+        beforeDestroy() { this.closeLogStream(); },
         updated() {
             this.$nextTick(() => {
                 const list = this.$refs.list;

@@ -40,11 +40,36 @@ function registerNativeAdminIpc({
     let tunProcess = null;
     let tunRuntime;
     let tunQueue = Promise.resolve();
+    let tunStop = Promise.resolve();
+    let tunStopPending = 0;
     const tunStarts = new Map();
     let tunProcessRequestId;
     let cancelDhcp;
     let serviceMutation = false;
-    app.once("will-quit", () => { tunRuntime?.killSpawned(tunProcess); cancelDhcp?.(); });
+    let tapSetupPending = 0;
+    const profileNetworkEffects = createProfileNetworkEffects({ childProcess, getPort });
+    app.once("will-quit", event => {
+        cancelDhcp?.();
+        for (const startup of tunStarts.values()) startup.cancelled = true;
+        if (!tunProcess && tunStarts.size === 0 && !tunStopPending) return;
+        // Async process cleanup must finish before Electron stops its event loop.
+        event.preventDefault();
+        tunQueue.then(stopManagedTap).catch(() => {}).finally(() => { app.quit(); });
+    });
+
+    function stopManagedTap() {
+        if (!tunProcess) return tunStop;
+        const processHandle = tunProcess, runtime = tunRuntime, requestId = tunProcessRequestId;
+        tunProcess = null; tunProcessRequestId = undefined;
+        tunStopPending++;
+        const stopped = tunStop.then(() => runtime.killSpawned(processHandle)).catch(error => {
+            // Retain ownership on failure so the next stop/setup can retry.
+            if (!tunProcess) { tunProcess = processHandle; tunRuntime = runtime; tunProcessRequestId = requestId; }
+            throw error;
+        }).finally(() => { tunStopPending--; });
+        tunStop = stopped.catch(() => {});
+        return stopped;
+    }
 
     ipcMain.handle("native-admin", async function(event, scope, action, payload = {}) {
         const mainWindow = getMainWindow();
@@ -76,10 +101,9 @@ function registerNativeAdminIpc({
         if (scope === "profile-network") {
             if (!["has-tap", "renew-dhcp"].includes(action)) throw new Error("Unsupported profile network operation");
             if (platform !== "win32") return false;
-            const effects = createProfileNetworkEffects({ childProcess, getPort });
-            if (action === "has-tap") return effects.hasTap();
+            if (action === "has-tap") return tapSetupPending ? false : profileNetworkEffects.hasTap();
             cancelDhcp?.();
-            cancelDhcp = effects.renewDhcp();
+            cancelDhcp = profileNetworkEffects.renewDhcp();
             return true;
         }
         const runMacCommand = createMacSystemProxyCommand({
@@ -96,12 +120,15 @@ function registerNativeAdminIpc({
                 const startup = tunStarts.get(requestId);
                 if (startup) startup.cancelled = true;
                 else if (tunProcessRequestId === requestId) {
-                    tunRuntime?.killSpawned(tunProcess); tunProcess = null; tunProcessRequestId = undefined;
+                    await stopManagedTap();
                 }
                 return null;
             }
             // Cancellation bypasses the native queue so an in-flight route poll can stop.
-            if (action === "stop") for (const startup of tunStarts.values()) startup.cancelled = true;
+            if (action === "setup" && typeof payload.install !== "boolean") throw new Error("Invalid TAP setup request");
+            if (action === "stop" || action === "setup") for (const startup of tunStarts.values()) startup.cancelled = true;
+            if (action === "start" && tapSetupPending) return null;
+            if (action === "setup") { tapSetupPending++; profileNetworkEffects.invalidateTap(); }
             const startup = action === "start" ? { cancelled: false } : null;
             if (startup) {
                 if (requestId !== undefined && tunStarts.has(requestId)) throw new Error("Duplicate TAP request identity");
@@ -110,28 +137,33 @@ function registerNativeAdminIpc({
             const task = tunQueue.then(async () => {
                 if (startup?.cancelled) return null;
                 if (action === "stop") {
-                    tunRuntime?.killSpawned(tunProcess);
-                    tunProcess = null;
-                    tunProcessRequestId = undefined;
+                    await stopManagedTap();
                     return null;
                 }
-                const tapInfo = payload.tapInfo || {};
+                // Uninstall does not use any saved address preferences.
+                const tapInfo = action === "setup" && !payload.install ? {} : payload.tapInfo || {};
                 if (typeof tapInfo !== "object" || Array.isArray(tapInfo)) throw new Error("Invalid TAP settings");
+                // Driver removal uses only the fixed packaged driver identity;
+                // invalid legacy address preferences must not prevent uninstall.
                 const runtime = createTapRuntime({ childProcess, sudoExec: sudoPrompt.exec, path, platform, arch, filesPath, tapInfo });
                 if (action === "setup") {
-                    if (typeof payload.install !== "boolean") throw new Error("Invalid TAP setup request");
+                    // Release the adapter handle before PnP installs or removes it.
+                    await stopManagedTap();
                     return runtime.setupTapDevice(payload.install);
                 }
                 const mixedPort = payload.mixedPort === 0 ? 0 : parsePort(payload.mixedPort);
                 if (mixedPort === null) throw new Error("Invalid TAP proxy port");
-                tunRuntime?.killSpawned(tunProcess);
-                tunProcess = null;
-                tunProcessRequestId = undefined;
+                await stopManagedTap();
                 tunRuntime = runtime;
-                tunProcess = await runtime.spawnTun2socks({ currentProcess: null, mixedPort, isCurrent: () => !startup.cancelled });
+                tunProcess = await runtime.spawnTun2socks({ currentProcess: null, mixedPort, isCurrent: () => !startup.cancelled,
+                    // Keep ownership even if readiness and subsequent cleanup fail.
+                    onSpawn: processHandle => { tunProcess = processHandle; tunProcessRequestId = requestId; } });
                 if (tunProcess) tunProcessRequestId = requestId;
                 return tunProcess ? { pid: tunProcess.pid } : null;
-            }).finally(() => { if (startup) tunStarts.delete(requestId ?? startup); });
+            }).finally(() => {
+                if (startup) tunStarts.delete(requestId ?? startup);
+                if (action === "setup") { tapSetupPending--; profileNetworkEffects.invalidateTap(); }
+            });
             tunQueue = task.catch(() => {});
             return task;
         }

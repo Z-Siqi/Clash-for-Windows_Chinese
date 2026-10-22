@@ -52,6 +52,10 @@ function createSelect({ Vuex, escCaptureComponent, selectViewComponent, utilitie
                 subSelectItems: [],
                 subSelectIndex: 0,
                 subSelectTitle: "",
+                choiceItems: [],
+                choiceIndex: 0,
+                choiceTitle: "",
+                bounded: false,
                 isLastDifferent: false
             };
         },
@@ -86,7 +90,10 @@ function createSelect({ Vuex, escCaptureComponent, selectViewComponent, utilitie
                 reactionClick = () => {},
                 subSelectItems = [],
                 subSelectTitle = "",
-                isLastDifferent
+                isLastDifferent,
+                choiceItems = [],
+                choiceTitle = "",
+                bounded = false
             }) {
                 this.isShow = true;
                 this.title = title;
@@ -99,6 +106,10 @@ function createSelect({ Vuex, escCaptureComponent, selectViewComponent, utilitie
                 this.reactionClick = reactionClick;
                 this.subSelectItems = subSelectItems;
                 this.subSelectTitle = subSelectTitle;
+                this.choiceItems = choiceItems;
+                this.choiceIndex = 0;
+                this.choiceTitle = choiceTitle;
+                this.bounded = bounded;
                 this.isLastDifferent = isLastDifferent === undefined
                     ? items[items.length - 1] === getLanguage().cancel()
                     : isLastDifferent;
@@ -117,7 +128,9 @@ function createSelect({ Vuex, escCaptureComponent, selectViewComponent, utilitie
             },
             handleItemSelect(index) {
                 this.isShow = false;
-                if (this.subSelectItems.length > 0) {
+                if (this.choiceItems.length > 0) {
+                    this.resolve([index, this.choiceIndex]);
+                } else if (this.subSelectItems.length > 0) {
                     this.resolve([index, this.subSelectIndex]);
                 } else if (this.checkList?.length > 0) {
                     this.resolve([index, this.checkList]);
@@ -145,6 +158,7 @@ function createSelect({ Vuex, escCaptureComponent, selectViewComponent, utilitie
             on: { esc: viewModel.handleCancel, mousedown: viewModel.handleCancel }
         }, [createElement("div", {
             staticClass: "card-main bg-[color:var(--bgc)] text-[color:var(--fgc)]",
+            class: { "cfw-select-bounded": viewModel.bounded || viewModel.choiceItems.length > 0 },
             on: { mousedown: event => event.stopPropagation() }
         }, [createElement("div", { staticClass: "card-content" }, [
             createElement("div", { staticClass: "content-title" }, [viewModel._v(viewModel._s(viewModel.title))]),
@@ -200,6 +214,13 @@ function createSelect({ Vuex, escCaptureComponent, selectViewComponent, utilitie
                 })
             ], 1) : viewModel._e(),
             viewModel._v(" "),
+            viewModel.choiceItems.length > 0 ? createElement("label", { staticClass: "cfw-select-choices" }, [
+                createElement("span", [viewModel._v(viewModel.choiceTitle)]),
+                createElement("select", { attrs: { size: Math.min(8, Math.max(2, viewModel.choiceItems.length)), "aria-label": viewModel.choiceTitle },
+                    domProps: { value: String(viewModel.choiceIndex) },
+                    on: { change: event => { viewModel.choiceIndex = Number(event.target.value); } }
+                }, viewModel.choiceItems.map((item, index) => createElement("option", { key: index, domProps: { value: String(index) } }, [viewModel._v(item)])))
+            ]) : viewModel._e(),
             createElement("div", { staticClass: "btns" }, viewModel._l(viewModel.items, (item, index) => createElement("div", {
                 key: index,
                 staticClass: "btn",

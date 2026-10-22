@@ -772,11 +772,11 @@ function createGeneralPage({
                     onClick: stopAndRun(viewModel.handleShowDNSQueryDialog)
                 }),
                 viewModel._v(" "),
-                renderHintIcon({
+                viewModel.scriptModeVisible ? renderHintIcon({
                     hint: labels.testByScriptMode(),
                     icon: "play_arrow",
                     onClick: stopAndRun(viewModel.handleShowScriptTestDialog)
-                })
+                }) : viewModel._e()
             ], createElement("div", {
                 staticClass: "clickable",
                 on: { click: viewModel.handleCopyControllerURL }
@@ -931,7 +931,7 @@ function createGeneralPage({
             }) : viewModel._e(),
             viewModel.isTapManagementVisible ? createElement("TapManagementView", {
                 props: { mode: viewModel.legacyTapMode, installed: viewModel.tapInstalled, busy: viewModel.proxyBusy },
-                on: { close: () => { viewModel.isTapManagementVisible = false; }, "change-mode": viewModel.handleTapModeChange, action: viewModel.handleTapManagementAction }
+                on: { close: () => { if (!viewModel.proxyBusy) viewModel.isTapManagementVisible = false; }, "change-mode": viewModel.handleTapModeChange, action: viewModel.handleTapManagementAction }
             }) : viewModel._e(),
             viewModel._v(" "),
             viewModel.isTunSettingsVisible ? createElement("tun-settings-view", {

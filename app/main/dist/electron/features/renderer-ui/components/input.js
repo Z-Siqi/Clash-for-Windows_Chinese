@@ -55,7 +55,7 @@ function createInput({ Vuex, escCaptureComponent, getLanguage } = {}) {
                 this.reject();
             },
             handleDone() {
-                const missingRequiredValue = this.data.some(item => item.required && item.value === "");
+                const missingRequiredValue = this.data.some(item => item.required && (item.value == null || String(item.value).trim() === ""));
                 if (missingRequiredValue) {
                     this.error = labels.requiredFieldMissing();
                     return;

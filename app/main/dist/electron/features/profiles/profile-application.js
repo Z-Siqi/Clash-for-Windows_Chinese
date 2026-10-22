@@ -41,6 +41,7 @@ function createProfileApplication(deps) {
         }
         let success = false;
         let message = null;
+        let tapStarting = false;
         try {
             const profile = profiles.files[profiles.index];
             if (!profile) throw Object.assign(new Error("Selected profile does not exist"), { code: "CFW_PROFILE_MISSING" });
@@ -53,28 +54,33 @@ function createProfileApplication(deps) {
             const dns = config.dns || {};
             const autoDetect = tun["auto-detect-interface"] || tun["macOS-auto-detect-interface"];
             let needsTap = false;
+            const tapEligible = platform === "win32" && allowsLegacyTap(input.settings, tapAuthorized) && !tun.enable && isTapDns(dns);
             if (platform !== "linux" && tun.enable && !autoDetect && !config["interface-name"]) {
                 config["interface-name"] = await effects.detectInterface();
                 if (!isCurrent()) return superseded();
                 if (!config["interface-name"]) return { success: false, message: messages.tunInterface };
             }
-            if (platform === "win32" && allowsLegacyTap(input.settings, tapAuthorized) && !tun.enable && isTapDns(dns)) {
+            if (tapEligible) {
                 needsTap = await effects.hasTap();
                 if (!isCurrent()) return superseded();
-                if (needsTap && !config["interface-name"] && !tun["auto-detect-interface"]) {
-                    config["interface-name"] = await effects.detectInterface();
+                if (!config["interface-name"] && !tun["auto-detect-interface"]) {
+                    let detected;
+                    try { detected = await effects.detectInterface(); }
+                    catch (error) { if (needsTap) throw error; }
                     if (!isCurrent()) return superseded();
-                    if (!config["interface-name"]) return { success: false, message: messages.tapInterface };
+                    if (detected) config["interface-name"] = detected;
+                    else if (needsTap) return { success: false, message: messages.tapInterface };
                 }
             }
             nextStage("core-config");
+            const submitted = yaml.stringify({ ...config, ipv6: confData.ipv6, "log-level": confData["log-level"] });
             const response = await clashApi.putConfig({
-                payload: yaml.stringify({ ...config, ipv6: confData.ipv6, "log-level": confData["log-level"] })
+                payload: submitted
             }, { validateStatus: () => true, timeout: hasProviders ? 0 : 10000 });
             nextStage("network-effects");
             success = response.status === 204;
             message = response.data && response.data.message || (deps.getLanguage?.() || createTranslator(1)).profileSwitchStatus({ status: response.status });
-            if (success) effects.setPayload(config);
+            if (success) effects.setPayload(config, { tapAuthorized, submitted });
             if (!isCurrent()) return superseded();
             if (!success) {
                 return { success, message };
@@ -97,7 +103,7 @@ function createProfileApplication(deps) {
                 if (platform === "win32" && tun.stack === "system") await effects.renewDhcp();
             } else await effects.resetDns();
             if (!isCurrent()) return superseded();
-            if (needsTap) await effects.startTap({ isCurrent, signal: input.signal });
+            if (needsTap) { tapStarting = true; await effects.startTap({ isCurrent, signal: input.signal }); }
             else await effects.stopTap();
             if (!isCurrent()) return superseded();
             return { success: true, message: null };
@@ -110,7 +116,7 @@ function createProfileApplication(deps) {
             // Localize owned validation failures; keep third-party diagnostics intact.
             const reason = key ? labels[key]() : error.name === "YAMLParseError"
                 ? `${labels.profileInvalidYaml()}\n\n${error.message}` : error.message;
-            return { success: false, message: labels.profileApplyError({ reason, location }) };
+            return { success: false, message: labels.profileApplyError({ reason, location }), ...(tapStarting ? { tapFailed: true, coreApplied: true } : {}) };
         } finally {
             reportTiming(stage, Date.now() - stageStartedAt);
             reportTiming("total", Date.now() - startedAt);

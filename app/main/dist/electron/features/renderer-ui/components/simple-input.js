@@ -9,6 +9,7 @@ function createSimpleInput({ lodash } = {}) {
             value: [String, Number],
             placeholder: String,
             suffix: String,
+            validate: Function,
             type: {
                 type: String,
                 default() {
@@ -18,16 +19,22 @@ function createSimpleInput({ lodash } = {}) {
         },
         model: { prop: "value", event: "change" },
         data() {
-            return { suffixWidth: 0, ref: "" };
+            return { suffixWidth: 0, ref: "", validationError: "" };
         },
         computed: {},
         methods: {
-            handleTextChange: lodash.debounce(function handleTextChange(event) {
+            handleTextChange(event) {
                 const value = event.target?.value;
-                if (value === undefined) return;
-                this.$emit("change", this.type === "number" ? parseInt(value) : value);
-            }, 500)
+                if (value === undefined || event.isComposing || event.target.composing) return;
+                this.validationError = this.validate?.(value) || "";
+                if (this.validationError) { this.emitTextChange.cancel?.(); return; }
+                this.emitTextChange(this.type === "number" && value !== "" ? parseInt(value, 10) : value);
+            },
+            handleBlur() { this.emitTextChange.flush?.(); }
         },
+        // Each input owns its timer; editing another field must not cancel it.
+        created() { this.emitTextChange = lodash.debounce(value => this.$emit("change", value), 500); },
+        beforeDestroy() { this.emitTextChange.flush?.(); this.emitTextChange.cancel?.(); },
         mounted() {
             this.ref = lodash.uniqueId("simple-input");
             this.$nextTick(() => {
@@ -48,11 +55,14 @@ function createSimpleInput({ lodash } = {}) {
                 attrs: {
                     spellcheck: "false",
                     type: viewModel.type,
-                    placeholder: viewModel.placeholder
+                    placeholder: viewModel.placeholder,
+                    "aria-invalid": String(!!viewModel.validationError),
+                    title: viewModel.validationError || undefined
                 },
                 domProps: { value: viewModel.value },
-                on: { input: viewModel.handleTextChange }
+                on: { input: viewModel.handleTextChange, compositionend: viewModel.handleTextChange, blur: viewModel.handleBlur }
             }),
+            viewModel.validationError ? createElement("span", { attrs: { role: "alert" }, staticClass: "text-red-500" }, [viewModel._v(viewModel.validationError)]) : viewModel._e(),
             viewModel._v(" "),
             createElement("div", { ref: viewModel.ref, staticClass: "suffix" }, [viewModel._v(viewModel._s(viewModel.suffix))])
         ]);

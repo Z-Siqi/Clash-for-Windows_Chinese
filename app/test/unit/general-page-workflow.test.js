@@ -35,6 +35,19 @@ function createWorkflow(overrides = {}) {
     return { workflow: createGeneralPageWorkflow(dependencies), calls, cacheValues };
 }
 
+test("the legacy Script tester is available only for Clash, including direct action calls", async () => {
+    const { workflow } = createWorkflow();
+    let opened = 0;
+    const page = { settings: { proxyCore: "mihomo" }, $script: async () => { opened++; } };
+    assert.equal(workflow.computed.scriptModeVisible.call(page), false);
+    assert.equal(await workflow.methods.handleShowScriptTestDialog.call(page), false);
+    assert.equal(opened, 0);
+    page.settings.proxyCore = "clash";
+    assert.equal(workflow.computed.scriptModeVisible.call(page), true);
+    await workflow.methods.handleShowScriptTestDialog.call(page);
+    assert.equal(opened, 1);
+});
+
 test("General dialogs localize service status, later/copy buttons, port validation and GeoIP fields", async () => {
     for (const language of [0, 1]) {
         const labels = createTranslator(language), dialogs = [], inputs = [], alerts = [];

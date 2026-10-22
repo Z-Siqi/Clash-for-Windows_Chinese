@@ -55,9 +55,15 @@ function createMenu({ escCaptureComponent, getLanguage } = {}) {
             handleCancel() {
                 this.isShow = false;
             },
-            handleItemSelect(item) {
+            async handleItemSelect(item) {
+                if (!item || item.disabled || item.hide) return;
                 this.isShow = false;
-                if (item) item.click();
+                try { return await item.click(); }
+                catch (error) {
+                    // Select/input cancellation rejects without an Error. Keep
+                    // genuine asynchronous menu failures visible to the user.
+                    if (error && this.$alert) await this.$alert({ title: getLanguage().failed(), content: error.message || String(error) }).catch(() => {});
+                }
             },
             handleMenuScroll(event) {
                 const menuElement = event.target;

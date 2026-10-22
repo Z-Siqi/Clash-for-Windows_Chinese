@@ -232,9 +232,10 @@ function registerRepositoryIpc({ ipcMain, app, getMainWindow, fs, path, yaml, fi
             }
             else if (operation === "start-pac") {
                 if (!pacServer || platform !== "win32") throw new Error("PAC server is unavailable on this platform");
-                value = await pacServer.start({
+                await pacServer.start({
                     getSettings: () => settings.load(home), getMixedPort: () => config.load(home)["mixed-port"]
                 });
+                value = pacServer.getStatus();
             }
             else {
                 value = config.load(home);
@@ -245,8 +246,9 @@ function registerRepositoryIpc({ ipcMain, app, getMainWindow, fs, path, yaml, fi
                 });
             }
             return { ok: true, value };
-        } catch (_error) {
-            return { ok: false, error: "Core configuration operation failed" };
+        } catch (error) {
+            return { ok: false, error: "Core configuration operation failed",
+                code: operation === "start-pac" && ["EADDRINUSE", "EACCES"].includes(error.code) ? error.code : undefined };
         }
     });
 }

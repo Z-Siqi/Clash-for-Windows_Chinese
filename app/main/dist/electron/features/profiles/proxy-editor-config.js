@@ -26,6 +26,8 @@ function assignOptional(target, key, value) {
 function buildProxyConfig(state) {
     const sameType = state.original && state.original.type === state.proxyType;
     const proxy = sameType ? { ...state.original } : {};
+    const unchanged = field => sameType && state.initialValues && Object.hasOwn(state.initialValues, field)
+        && state.initialValues[field] === state[field];
     delete proxy._index;
     Object.assign(proxy, {
         name: state.proxyName,
@@ -36,24 +38,34 @@ function buildProxyConfig(state) {
 
     if (state.proxyType === "anytls") {
         proxy.password = state.proxyPassword;
-        proxy.udp = state.proxyUdp === true;
-        assignOptional(proxy, "client-fingerprint", compact(state.proxyClientFingerprint));
-        assignOptional(proxy, "sni", compact(state.proxySni));
-        assignOptional(proxy, "alpn", parseAlpn(state.proxyAlpn));
-        assignOptional(proxy, "idle-session-check-interval", optionalNumber(state.proxyIdleSessionCheckInterval));
-        assignOptional(proxy, "idle-session-timeout", optionalNumber(state.proxyIdleSessionTimeout));
-        assignOptional(proxy, "min-idle-session", optionalNumber(state.proxyMinIdleSession));
-        if (state.proxySkipCertVerify) proxy["skip-cert-verify"] = true;
-        else delete proxy["skip-cert-verify"];
+        // Saved omission can select a core default; a rename must not replace it
+        // with the form's defaults for newly created AnyTLS nodes.
+        if (!unchanged("proxyUdp")) proxy.udp = state.proxyUdp === true;
+        for (const [key, field, value] of [
+            ["client-fingerprint", "proxyClientFingerprint", compact(state.proxyClientFingerprint)],
+            ["sni", "proxySni", compact(state.proxySni)],
+            ["alpn", "proxyAlpn", parseAlpn(state.proxyAlpn)],
+            ["idle-session-check-interval", "proxyIdleSessionCheckInterval", optionalNumber(state.proxyIdleSessionCheckInterval)],
+            ["idle-session-timeout", "proxyIdleSessionTimeout", optionalNumber(state.proxyIdleSessionTimeout)],
+            ["min-idle-session", "proxyMinIdleSession", optionalNumber(state.proxyMinIdleSession)]
+        ]) {
+            if (!unchanged(field)) assignOptional(proxy, key, value);
+        }
+        if (!unchanged("proxySkipCertVerify")) {
+            if (state.proxySkipCertVerify) proxy["skip-cert-verify"] = true;
+            else delete proxy["skip-cert-verify"];
+        }
         return proxy;
     }
 
     if (state.proxyType === "ss") {
         proxy.cipher = state.proxyChipher;
         proxy.password = state.proxyPassword;
-        if (state.proxyObfs) {
+        if (sameType && proxy.plugin && proxy.plugin !== "obfs") {
+            // This form only edits obfs fields; preserve other plugin protocols.
+        } else if (state.proxyObfs) {
             proxy.plugin = "obfs";
-            proxy["plugin-opts"] = { mode: state.proxyObfs, host: state.proxyObfshost || "bing.com" };
+            proxy["plugin-opts"] = { ...proxy["plugin-opts"], mode: state.proxyObfs, host: state.proxyObfshost || "bing.com" };
         } else {
             delete proxy.plugin;
             delete proxy["plugin-opts"];
@@ -68,18 +80,18 @@ function buildProxyConfig(state) {
         else delete proxy["skip-cert-verify"];
         if (state.proxyNetwork === "ws") {
             proxy.network = "ws";
-            const options = { path: state.proxyWsPath };
-            try { options.headers = JSON.parse(state.proxyWsHeaders); } catch (_error) {}
+            const options = { ...proxy["ws-opts"], path: state.proxyWsPath };
+            if (state.proxyWsHeaders?.trim()) options.headers = JSON.parse(state.proxyWsHeaders);
+            else delete options.headers;
             proxy["ws-opts"] = options;
         } else {
-            delete proxy.network;
+            if (state.proxyNetwork && state.proxyNetwork !== "tcp") proxy.network = state.proxyNetwork;
+            else delete proxy.network;
             delete proxy["ws-opts"];
         }
     } else if (state.proxyType === "socks5" || state.proxyType === "http") {
-        if (state.proxyUsername && state.proxyPassword) {
-            proxy.username = state.proxyUsername;
-            proxy.password = state.proxyPassword;
-        }
+        assignOptional(proxy, "username", compact(state.proxyUsername));
+        assignOptional(proxy, "password", compact(state.proxyPassword));
         if (state.proxyTls) proxy.tls = true;
         else delete proxy.tls;
         if (state.proxySkipCertVerify) proxy["skip-cert-verify"] = true;

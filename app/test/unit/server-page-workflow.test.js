@@ -37,7 +37,7 @@ test("server page profile selection owns loading and failure recovery", async ()
     const page = {
         ...workflow.methods,
         loadingProfileIndex: [],
-        pfs: { index: -1, files: [] },
+        pfs: { index: -1, files: Array.from({ length: 5 }, (_, index) => ({ time: `profile-${index}.yaml` })) },
         $parent: { requestProfileSelection: action => action(), async refreshProfile() { throw new Error("invalid profile"); } },
         changeProfilesIndex(payload) { selected.push(payload); this.pfs.index = payload.index; }
     };
@@ -48,6 +48,13 @@ test("server page profile selection owns loading and failure recovery", async ()
     assert.deepEqual(selected, [{ index: 4 }, { index: -1 }]);
     assert.equal(dialogs.length, 1);
     assert.equal(dialogs[0].detail, "invalid profile");
+});
+
+test("invalid or removed profile cards cannot reserve or change selection", async () => {
+    const { workflow } = createWorkflow();
+    const page = { ...workflow.methods, pfs: { files: [{ time: "one.yaml" }] },
+        $parent: { requestProfileSelection() { assert.fail("invalid card must not start an operation"); } } };
+    for (const index of [-1, 1, undefined, 0.5]) assert.equal(await page.handleProfileClick(index), false);
 });
 
 test("profile switching blocks manual reorder and deletion, including a confirmation opened before the operation", async () => {

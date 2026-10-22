@@ -4,8 +4,16 @@ const fs = require("node:fs");
 const http = require("node:http");
 const os = require("node:os");
 const path = require("node:path");
-const { app, utilityProcess, ipcMain, BrowserWindow, shell, dialog } = require("electron");
+const { app, utilityProcess, ipcMain, BrowserWindow, shell, dialog, clipboard } = require("electron");
 require("./native-boundaries");
+// Exhaustive interaction checks must not write the host clipboard, autostart
+// preference, or launch Explorer/file dialogs.
+clipboard.writeText = () => {};
+clipboard.readText = () => "";
+app.setLoginItemSettings = () => {};
+shell.openPath = async () => "";
+shell.showItemInFolder = () => {};
+dialog.showOpenDialogSync = () => undefined;
 const { verifyLanguageHotload } = require("./language-hotload");
 const { verifyEditorDigits } = require("./editor-digits");
 
@@ -66,6 +74,8 @@ let finished = false;
 let profileUrl = "";
 let profileResponseVersion = 0;
 let controllerMode = "rule";
+const fixtureProxySelection = { GLOBAL: "Outer", Outer: "Auto", Auto: "DIRECT" };
+let fixtureConnectionOpen = true;
 const controllerRequests = [];
 const consoleMessages = [];
 let enhancedTrayFrames = 0;
@@ -82,7 +92,8 @@ ipcMain.on("speed-update", (_event, image) => {
         enhancedTrayFrames++;
     }
 });
-const timeout = setTimeout(() => finish({ ok: false, error: "window load timed out" }), 60000);
+let phase = "window load";
+const timeout = setTimeout(() => finish({ ok: false, error: `Electron verification timed out during ${phase}` }), 120000);
 const controllerServer = http.createServer((request, response) => {
     const chunks = [];
     request.on("data", chunk => chunks.push(chunk));
@@ -98,7 +109,7 @@ const controllerServer = http.createServer((request, response) => {
         }
         if (request.url === "/configs" && request.method === "GET") {
             response.writeHead(200, { "content-type": "application/json" });
-            response.end(JSON.stringify({ mode: controllerMode }));
+            response.end(JSON.stringify({ mode: controllerMode, "mixed-port": 7890, "allow-lan": false, "bind-address": "*", "log-level": "info", ipv6: false }));
             return;
         }
         if (request.url === "/configs" && ["PATCH", "PUT"].includes(request.method)) {
@@ -109,8 +120,23 @@ const controllerServer = http.createServer((request, response) => {
         }
         if (request.url === "/proxies") {
             response.writeHead(200, { "content-type": "application/json" });
-            response.end(JSON.stringify({ proxies: {} }));
+            response.end(JSON.stringify({ proxies: {
+                GLOBAL: { type: "Selector", now: fixtureProxySelection.GLOBAL, all: ["Outer", "Auto", "DIRECT", "REJECT"] },
+                Outer: { type: "Selector", now: fixtureProxySelection.Outer, all: ["Auto", "DIRECT"] },
+                Auto: { type: "Selector", now: fixtureProxySelection.Auto, all: ["DIRECT", "REJECT"] },
+                DIRECT: { type: "Direct", history: [] }, REJECT: { type: "Reject", history: [] }
+            } }));
             return;
+        }
+        if (/^\/proxies\/[^/]+\/delay\?/.test(request.url)) {
+            response.writeHead(200, { "content-type": "application/json" }); response.end(JSON.stringify({ delay: 8 })); return;
+        }
+        if (/^\/proxies\/[^/]+$/.test(request.url) && request.method === "PUT") {
+            try { fixtureProxySelection[decodeURIComponent(request.url.split("/")[2])] = JSON.parse(body).name; } catch (_error) {}
+            response.writeHead(204); response.end(); return;
+        }
+        if (/^\/connections(?:\/[^/]+)?$/.test(request.url) && request.method === "DELETE") {
+            fixtureConnectionOpen = false; response.writeHead(204); response.end(); return;
         }
         if (request.url === "/providers/proxies") {
             response.writeHead(200, { "content-type": "application/json" });
@@ -138,16 +164,19 @@ controllerServer.on("upgrade", (request, socket, head) => {
             if (stream.readyState !== 1) return;
             sequence++;
             if (endpoint === "/traffic") stream.send(JSON.stringify({ up: sequence * 1024, down: sequence * 2048 }));
-            if (endpoint === "/connections") stream.send(JSON.stringify({ uploadTotal: sequence, downloadTotal: sequence, connections: [{
+            if (endpoint === "/connections") stream.send(JSON.stringify({ uploadTotal: sequence, downloadTotal: sequence, connections: fixtureConnectionOpen ? [{
                 id: "fixture-connection", start: "2026-01-01T00:00:00Z", upload: sequence, download: sequence,
                 chains: ["DIRECT"], metadata: { host: "fixture.live.test", network: "tcp", type: "HTTP", sourceIP: "127.0.0.1", sourcePort: "1234", destinationIP: "127.0.0.1", destinationPort: "80" }
-            }] }));
+            }] : [] }));
         }, 100);
         stream.on("close", () => clearInterval(timer));
     });
 });
 
 app.on("browser-window-created", (_event, window) => {
+    // CSS transition assertions need compositor frames even if the test window
+    // is covered by the desktop app that launched it.
+    window.webContents.setBackgroundThrottling(false);
     window.webContents.on("console-message", (_consoleEvent, ...details) => {
         consoleMessages.push(details.map(detail =>
             typeof detail === "object" ? detail.message : String(detail)
@@ -176,6 +205,7 @@ app.on("browser-window-created", (_event, window) => {
                 menuItems: Array.from(document.querySelectorAll(".main-main-menu li.item")).map(item => item.innerText.trim()),
                 route: location.hash
             })`);
+            phase = "script isolation";
             const scriptWorkerIsolated = await verifyScriptWorker();
             const isolation = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: `(() => {
                 let nodeModulesBlocked = false;
@@ -218,6 +248,7 @@ app.on("browser-window-created", (_event, window) => {
             })`);
             // Fresh profiles now use Mihomo. Select legacy Clash explicitly for
             // the Script-mode checks, which remain a supported legacy capability.
+            phase = "language and editor controls";
             const languageHotload = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: `(${verifyLanguageHotload.toString()})()` }]);
             const editorDigits = await verifyEditorDigits(window);
             const defaultMihomo = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: `(() => {
@@ -322,8 +353,21 @@ app.on("browser-window-created", (_event, window) => {
             const allPagesRendered = pageResults.every(page =>
                 page.clicked && page.route === page.expectedRoute && page.rightChildren > 0
             );
+            phase = "page UI regressions";
             const { verifyUiRegressions } = require("./ui-regressions");
-            const uiRegressions = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: `(${verifyUiRegressions.toString()})()` }]);
+            const screenshots = new Map();
+            const screenshotDirectory = process.env.CFW_SECURITY_SMOKE_SCREENSHOTS;
+            if (screenshotDirectory) fs.mkdirSync(screenshotDirectory, { recursive: true });
+            const screenshotTimer = screenshotDirectory && setInterval(async () => {
+                try {
+                    const stage = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: "globalThis.__cfwScreenshotStage" }]);
+                    if (!["replacement-list", "tap-scroll"].includes(stage) || screenshots.has(stage)) return;
+                    screenshots.set(stage, window.webContents.capturePage().then(image => fs.writeFileSync(path.join(screenshotDirectory, `${stage}.png`), image.toPNG())));
+                } catch (_closing) {}
+            }, 50);
+            let uiRegressions;
+            try { uiRegressions = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: `(${verifyUiRegressions.toString()})()` }]); }
+            finally { clearInterval(screenshotTimer); await Promise.all(screenshots.values()); }
             uiRegressions.trayProxyProgress = require("./tray-progress").verifyTrayProgress(require("electron"));
             uiRegressions.trayNodeMetadata = await require("./tray-node-metadata").verifyTrayNodeMetadata(require("electron"));
             uiRegressions.mihomoVersionNavigation = dashboardOpened;
@@ -340,6 +384,10 @@ app.on("browser-window-created", (_event, window) => {
                 }
             }
             uiRegressions.enhancedTray = enhancedTrayFrames > 0 && enhancedTrayRendered && indicatorUpdates;
+            phase = "recursive page interaction audit";
+            dialog.showMessageBox = async () => ({ response: 0 });
+            const { verifyInteractionAudit } = require("./interaction-audit");
+            const interactionAudit = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: `(${verifyInteractionAudit.toString()})()` }]);
             finish({
                 ok: result.processType === "undefined"
                     && result.requireType === "undefined"
@@ -366,6 +414,7 @@ app.on("browser-window-created", (_event, window) => {
                     && scriptWorkerIsolated && isolatedEvalBlocked
                     && Object.values(uiRegressions).every(Boolean) && securityConfirmations === 2,
                 uiRegressions,
+                interactionAudit,
                 error: Object.values(uiRegressions).every(Boolean) ? undefined : `UI regressions failed: ${Object.entries(uiRegressions).filter(([_name, passed]) => !passed).map(([name]) => name).join(", ")}`,
                 result,
                 scriptWorkerIsolated,

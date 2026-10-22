@@ -50,6 +50,7 @@ function createSettingsPageOptions({
             },
             ...Vuex.mapState({
                 detectedInterfaceName: state => state.app.detectedInterfaceName,
+                pacRuntimePort: state => state.app.innerServerPort,
                 clashPath: state => state.app.clashPath,
                 confData: state => state.app.confData,
                 scriptModeVisible: state => supportsScriptMode(state.app.settings.proxyCore)
@@ -212,13 +213,15 @@ function createSettingsPageOptions({
             },
             async handleFetchCurrentSSID() {
                 const labels = getLanguage();
-                const ssids = (await getWlanInterfaces()).map(networkInterface => networkInterface.SSID).filter(Boolean);
-                const [selectedIndex] = await this.$select({
-                    title: labels.currentSSID(),
-                    message: labels.currentSSIDDescribe(),
-                    items: [...ssids, labels.cancel()]
-                });
-                if (selectedIndex !== ssids.length) electron.clipboard.writeText(ssids[selectedIndex]);
+                let ssids;
+                try { ssids = (await getWlanInterfaces()).map(networkInterface => networkInterface.SSID).filter(Boolean); }
+                catch (_error) { await showMessageBox({ type: "error", message: labels.failed() }); return false; }
+                try {
+                    const [selectedIndex] = await this.$select({
+                        title: labels.currentSSID(), message: labels.currentSSIDDescribe(), items: [...ssids, labels.cancel()]
+                    });
+                    if (ssids[selectedIndex]) electron.clipboard.writeText(ssids[selectedIndex]);
+                } catch (_cancelled) {}
             },
             async handleOpenActionScriptsConsoleFile() {
                 await openApplicationLog("script");
@@ -282,7 +285,7 @@ function createSettingsPageOptions({
                     message: labels.askQuit(),
                     buttons: [labels.no(), labels.yes()]
                 });
-                if (result.response === 0) return;
+                if (result.response !== 1) return;
                 if (cleanupDone) electron.ipcRenderer.send("cleanup-done");
                 else this.$parent.quit();
             },

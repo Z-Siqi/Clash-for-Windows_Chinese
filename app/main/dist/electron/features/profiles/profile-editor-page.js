@@ -1,8 +1,11 @@
 "use strict";
 
+const { parsePort } = require("../../core/network/tcp-port");
+const { supportsAnyTls } = require("../../core/clash-core/core-capabilities");
+const { proxyNames, references, replaceReferences, removeReferences, invalidReferences, circularReferences } = require("./profile-references");
+
 const GROUPS = "proxy-groups";
 const PROXIES = "proxies";
-const RULES = "rules";
 
 function createProfileEditor({
     defineComponent,
@@ -16,7 +19,7 @@ function createProfileEditor({
     draggable
 }) {
     const AppendProxyView = defineComponent({
-        props: ["type", "data"],
+        props: ["type", "data", "coreType"],
         data() {
             return {
                 ssCipher: ["aes-128-gcm", "aes-192-gcm", "aes-256-gcm", "chacha20-ietf-poly1305", "aes-128-ctr", "aes-192-ctr", "aes-256-ctr", "aes-128-cfb", "aes-192-cfb", "aes-256-cfb", "chacha20-ietf", "xchacha20", "rc4-md5", "xchacha20-ietf-poly1305"],
@@ -30,13 +33,38 @@ function createProfileEditor({
                 proxyObfshost: "", proxyTls: false, proxyUsername: "", alterIdx: -1,
                 proxySkipCertVerify: false, proxyNetwork: "tcp", proxyWsPath: "", proxyWsHeaders: "",
                 proxyClientFingerprint: "chrome", proxyUdp: true, proxySni: "", proxyAlpn: "h2,http/1.1",
-                proxyIdleSessionCheckInterval: 30, proxyIdleSessionTimeout: 30, proxyMinIdleSession: 0
+                proxyIdleSessionCheckInterval: 30, proxyIdleSessionTimeout: 30, proxyMinIdleSession: 0,
+                validationError: ""
             };
+        },
+        computed: {
+            proxyTypes() { return this.pType.filter(type => type !== "anytls" || supportsAnyTls(this.coreType)); },
+            protocolUnavailable() { return this.type === 1 && this.proxyType === "anytls" && !supportsAnyTls(this.coreType); }
         },
         methods: {
             confirmInput() {
+                this.validationError = "";
+                if (this.protocolUnavailable) { this.validationError = getLanguage().anyTlsRequiresMihomo(); return; }
+                if (!String(this.type === 0 ? this.groupName : this.proxyName).trim()) {
+                    this.validationError = getLanguage().requiredFieldMissing();
+                    return;
+                }
+                if (this.type === 1 && parsePort(this.proxyPort) === null) {
+                    this.validationError = getLanguage().invalidPort();
+                    return;
+                }
+                if (this.type === 1 && this.proxyType === "vmess" && this.proxyNetwork === "ws" && this.proxyWsHeaders.trim()) {
+                    try {
+                        const headers = JSON.parse(this.proxyWsHeaders);
+                        if (!headers || typeof headers !== "object" || Array.isArray(headers)) throw new Error("Invalid headers");
+                    } catch (_invalidJson) {
+                        this.validationError = getLanguage().invalidWebSocketHeaders();
+                        return;
+                    }
+                }
                 if (this.type === 0) {
-                    const content = { name: this.groupName, proxies: [], type: this.groupType };
+                    const content = { ...(this.data || { proxies: [] }), name: this.groupName, type: this.groupType };
+                    delete content._index;
                     if (["url-test", "fallback", "load-balance"].includes(this.groupType)) {
                         content.url = this.groupUrl;
                         content.interval = this.groupInterval;
@@ -45,6 +73,7 @@ function createProfileEditor({
                 } else if (this.type === 1) {
                     const content = buildProxyConfig({
                         original: this.data,
+                        initialValues: this.initialValues,
                         proxyType: this.proxyType,
                         proxyName: this.proxyName,
                         proxyServer: this.proxyServer,
@@ -113,6 +142,7 @@ function createProfileEditor({
                 if ("min-idle-session" in this.data) this.proxyMinIdleSession = this.data["min-idle-session"];
             }
             this.alterIdx = this.data._index;
+            this.initialValues = { ...this.$data };
         }
     }, function renderAppendProxyView() {
         const viewModel = this;
@@ -219,7 +249,7 @@ function createProfileEditor({
             viewModel._v(" "),
             input("proxyName", { placeholder: labels.proxyName() }),
             viewModel._v(" "),
-            radios(viewModel.pType, "proxyType", "proxy-type-list"),
+            radios(viewModel.proxyTypes, "proxyType", "proxy-type-list"),
             viewModel._v(" "),
             input("proxyServer", { placeholder: labels.server() }),
             viewModel._v(" "),
@@ -238,9 +268,9 @@ function createProfileEditor({
                     : viewModel._e(),
             viewModel._v(" "),
             viewModel.proxyType === "ss" ? createElement("div", { staticClass: "ss-list" }, [
-                input("proxyObfs", { placeholder: labels.obfsPlaceholder() }),
+                input("proxyObfs", { placeholder: labels.obfsPlaceholder(), readonly: !!(viewModel.data?.plugin && viewModel.data.plugin !== "obfs") }),
                 viewModel._v(" "),
-                input("proxyObfshost", { placeholder: labels.obfsHostPlaceholder() })
+                input("proxyObfshost", { placeholder: labels.obfsHostPlaceholder(), readonly: !!(viewModel.data?.plugin && viewModel.data.plugin !== "obfs") })
             ]) : viewModel._e(),
             viewModel._v(" "),
             viewModel.proxyType === "vmess" ? createElement("div", { staticClass: "vmess-list" }, [
@@ -279,6 +309,7 @@ function createProfileEditor({
             attrs: { id: "main-append-proxy-view" }
         }, [
             viewModel.type === 0 ? groupForm : viewModel.type === 1 ? proxyForm : viewModel._e(),
+            viewModel.validationError ? createElement("div", { staticClass: "text-red-500", attrs: { role: "alert" } }, [viewModel._v(viewModel.validationError)]) : viewModel._e(),
             viewModel._v(" "),
             createElement("div", {
             staticClass: "btns"
@@ -300,13 +331,16 @@ function createProfileEditor({
                 conf: null,
                 specialProxies: [{ name: "DIRECT" }, { name: "REJECT" }],
                 addType: -1,
-                addData: null
+                addData: null,
+                removedNames: [],
+                referenceBusy: false
             };
         },
         computed: {
             saveBtn() { return getLanguage().save(); },
             ...Vuex.mapState({
                 clashPath: state => state.app.clashPath,
+                proxyCore: state => state.app.settings?.proxyCore,
                 profilesPath: state => state.app.profilesPath
             })
         },
@@ -315,61 +349,104 @@ function createProfileEditor({
             removeFromGroup(group, index) { this.conf[GROUPS][group].proxies.splice(index, 1); },
             removeFromProxies(event, index) {
                 event.stopPropagation();
-                const name = this.conf[PROXIES][index].name;
-                this.conf[PROXIES].splice(index, 1);
-                this.conf[GROUPS].forEach(group => { group.proxies = group.proxies.filter(value => value !== name); });
+                return this.removeObject(PROXIES, index);
             },
             removeGroup(event, index) {
                 event.stopPropagation();
-                const name = this.conf[GROUPS][index].name;
-                this.conf[GROUPS].splice(index, 1);
-                this.conf[GROUPS].forEach(group => { group.proxies = group.proxies.filter(value => value !== name); });
+                return this.removeObject(GROUPS, index);
+            },
+            async removeObject(kind, index) {
+                if (this.referenceBusy) return false;
+                const object = this.conf[kind]?.[index];
+                if (!object) return false;
+                const affected = references(this.conf).filter(item => item.target === object.name);
+                this.referenceBusy = true;
+                try {
+                    let cleanReferences = false;
+                    if (affected.length) {
+                        const labels = getLanguage();
+                        const message = `${labels.profileDeleteReferences({ name: object.name })}\n${affected.map(item => item.path).join("\n")}`;
+                        const [choice] = await this.$select({ title: labels.delete(), message, bounded: true,
+                            items: [labels.cancel(), labels.profileReplaceAndDelete(), labels.profileDeleteWithReferences(), labels.profileDeleteKeepReferences()] });
+                        if (choice === 1) {
+                            const targets = proxyNames(this.conf, this.proxyCore).filter(name => name !== object.name);
+                            const [action, target] = await this.$select({ title: labels.profileReplacementTarget(),
+                                choiceTitle: labels.profileReplacementTarget(), choiceItems: targets,
+                                items: [labels.cancel(), labels.profileReplaceAndDelete()] });
+                            if (action !== 1 || !Number.isInteger(target) || !targets[target]) return false;
+                            const preview = JSON.parse(JSON.stringify(this.conf));
+                            replaceReferences(preview, object.name, targets[target]);
+                            preview[kind].splice(index, 1);
+                            const cycles = circularReferences(preview);
+                            if (cycles.length) {
+                                await this.$alert({ content: `${labels.profileReferenceCycle()}\n${cycles.join("\n")}` });
+                                return false;
+                            }
+                            replaceReferences(this.conf, object.name, targets[target]);
+                        } else if (choice === 2) cleanReferences = true;
+                        else if (choice !== 3) return false;
+                    }
+                    this.removedNames.push(object.name);
+                    this.conf[kind].splice(this.conf[kind].indexOf(object), 1);
+                    if (cleanReferences) {
+                        this.removedNames.push(...removeReferences(this.conf, object.name));
+                        this.conf = { ...this.conf };
+                    }
+                    return true;
+                } catch (_cancelled) { return false; }
+                finally { this.referenceBusy = false; }
             },
             renameGroup(from, to) {
-                this.conf[GROUPS].forEach(group => { group.proxies = group.proxies.map(value => value === from ? to : value); });
+                replaceReferences(this.conf, from, to);
             },
             renameRule(from, to) {
-                this.conf[RULES] = this.conf[RULES].map(rule => {
-                    if (/\s*MATCH\s*,([^,]*)($|,*|\/\/|#)/.test(rule)) {
-                        if (RegExp.$1.trim() === from.trim()) return `MATCH,${to}${RegExp.$2}`;
-                    } else if (/([^,]*?),([^,]*?),([^,]*)($|,*|\/\/|#)/.test(rule) && RegExp.$3.trim() === from.trim()) {
-                        return `${RegExp.$1},${RegExp.$2},${to}${RegExp.$4}`;
-                    }
-                    return rule;
-                });
+                replaceReferences(this.conf, from, to);
             },
             handleInputDone(result) {
+                if (!result?.content) return false;
+                const collection = result.type === 0 ? GROUPS : PROXIES;
+                const names = [...(this.conf[GROUPS] || []), ...(this.conf[PROXIES] || [])];
+                const old = this.conf[collection]?.[result.index];
+                if (names.some(item => item !== old && item.name === result.content.name)
+                    || ["DIRECT", "REJECT", "REJECT-DROP", "PASS", "COMPATIBLE", "GLOBAL"].includes(result.content.name)) {
+                    this.$alert({ content: getLanguage().profileDuplicateName({ name: result.content.name }) }).catch(() => {});
+                    return false;
+                }
                 this.addType = -1;
                 if (result.type === 0) {
-                    if (result.index === -1) this.conf[GROUPS].push(result.content);
+                    if (result.index === -1) {
+                        if (!this.conf[GROUPS]) this.$set(this.conf, GROUPS, []);
+                        this.conf[GROUPS].push(result.content);
+                    }
                     else {
                         const proxies = this.conf[GROUPS][result.index].proxies;
                         const oldName = this.conf[GROUPS][result.index].name;
-                        result.content.proxies = proxies;
-                        this.conf[GROUPS][result.index] = result.content;
+                        if (proxies) result.content.proxies = proxies;
+                        this.conf[GROUPS].splice(result.index, 1, result.content);
                         this.renameGroup(oldName, result.content.name);
-                        this.renameRule(oldName, result.content.name);
                     }
                 } else if (result.type === 1) {
-                    if (result.index === -1) this.conf[PROXIES].push(result.content);
+                    if (result.index === -1) {
+                        if (!this.conf[PROXIES]) this.$set(this.conf, PROXIES, []);
+                        this.conf[PROXIES].push(result.content);
+                    }
                     else {
                         const oldName = this.conf[PROXIES][result.index].name;
-                        this.conf[PROXIES][result.index] = result.content;
+                        this.conf[PROXIES].splice(result.index, 1, result.content);
                         this.renameGroup(oldName, result.content.name);
-                        this.renameRule(oldName, result.content.name);
                     }
                 }
             },
             newGroup() { this.addType = 0; this.addData = null; },
             editGroup(group, index) {
                 if (["url-test", "fallback", "select", "load-balance"].includes(group.type)) {
-                    this.addType = 0; group._index = index; this.addData = group;
+                    this.addType = 0; this.addData = { ...group, _index: index };
                 } else this.$alert({ content: `${getLanguage().couldNotEditProxyGroupType()} [${group.type}].` });
             },
             newProxy() { this.addType = 1; this.addData = null; },
             editProxy(proxy, index) {
                 if (["ss", "vmess", "http", "socks5", "anytls"].includes(proxy.type)) {
-                    this.addType = 1; proxy._index = index; this.addData = proxy;
+                    this.addType = 1; this.addData = { ...proxy, _index: index };
                 } else this.$alert({ content: `${getLanguage().cannotEditProxyType()} [${proxy.type}].` });
             },
             async loadData() {
@@ -380,7 +457,17 @@ function createProfileEditor({
                 } catch (_error) {}
             },
             async saveData() {
-                if (!this.conf) return;
+                if (!this.conf || this.referenceBusy) return;
+                const missing = invalidReferences(this.conf, this.removedNames, this.proxyCore);
+                if (missing.length) {
+                    await this.$alert({ title: getLanguage().failed(), content: `${getLanguage().profileUnresolvedReferences()}\n${missing.map(item => `${item.path}: ${item.target}`).join("\n")}` });
+                    return false;
+                }
+                const cycles = circularReferences(this.conf);
+                if (cycles.length) {
+                    await this.$alert({ content: `${getLanguage().profileReferenceCycle()}\n${cycles.join("\n")}` });
+                    return false;
+                }
                 try {
                     if (profileFiles) await profileFiles.writeProfile(this.profilesPath, this.profileName, yaml.stringify(this.conf));
                     else fs.writeFileSync(path.join(this.profilesPath, this.profileName), yaml.stringify(this.conf));
@@ -504,7 +591,7 @@ function createProfileEditor({
                 }, [viewModel._v("delete")])])), 0)
             ], 1)), 0)
         ]) : viewModel._e(), viewModel._v(" "), viewModel.addType !== -1 ? createElement("append-proxy-view", {
-            attrs: { data: viewModel.addData, type: viewModel.addType },
+            attrs: { data: viewModel.addData, type: viewModel.addType, "core-type": viewModel.proxyCore },
             on: {
                 inputDone: viewModel.handleInputDone,
                 inputCancel: () => { viewModel.addType = -1; }

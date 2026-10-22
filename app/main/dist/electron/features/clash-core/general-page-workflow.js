@@ -1,7 +1,9 @@
 "use strict";
 
 const { parsePort, buildDashboardUrl } = require("./general-settings");
+const { isIPv4 } = require("../../core/network/browser-ip");
 const { normalizeCoreVersion } = require("./core-api-compat");
+const { supportsScriptMode } = require("../../core/clash-core/core-capabilities");
 const { TAP_MODES, resolveTapMode } = require("../../core/network/legacy-tap-policy");
 
 const DEFAULT_MIXIN = `mixin: # object
@@ -61,9 +63,11 @@ function createGeneralPageWorkflow({
         logLevel: "unknow",
         isIPV6: false,
         geoipUpdateTime: "",
+        geoipUpdating: false,
         systemProxyLoading: true,
         autoLaunch: cache.get(keys.AUTO_LAUNCH) || false,
         autoLaunchLoading: true,
+        autoLaunchPending: false,
         protableMode: false,
         version: "",
         clashCoreVersion: "",
@@ -94,6 +98,7 @@ function createGeneralPageWorkflow({
     };
 
     const computed = {
+        scriptModeVisible() { return supportsScriptMode(this.settings.proxyCore); },
         proxyBusy() { return this.$parent.proxyBusy; },
         tunLoading() { return this.$parent.proxyOperation === "tun"; },
         mixinLoading() { return this.$parent.proxyOperation === "mixin"; },
@@ -129,7 +134,10 @@ function createGeneralPageWorkflow({
         },
         handleTitleClick() { electron.ipcRenderer.invoke("window", "reload"); },
         handleShowDNSQueryDialog() { this.$dns().catch(() => {}); },
-        handleShowScriptTestDialog() { this.$script({}).catch(() => {}); },
+        handleShowScriptTestDialog() {
+            if (!supportsScriptMode(this.settings.proxyCore)) return false;
+            return this.$script({}).catch(() => {});
+        },
         async handlePreviewCurrentPayload() {
             const labels = getLanguage();
             const state = this.networkStateKnown
@@ -147,11 +155,12 @@ function createGeneralPageWorkflow({
             if (this.isFetchingFirewallRule) return;
             this.isFetchingFirewallRule = true;
             try {
-                if (this.isFirewallRuleExist) await firewall.remove();
-                else await firewall.add();
-            } catch (_error) {}
-            this.setIsFirewallRuleExist({ isExist: await firewall.status() });
-            this.isFetchingFirewallRule = false;
+                try {
+                    if (this.isFirewallRuleExist) await firewall.remove();
+                    else await firewall.add();
+                } catch (_error) {}
+                this.setIsFirewallRuleExist({ isExist: await firewall.status() });
+            } finally { this.isFetchingFirewallRule = false; }
         },
         async handleEditMixin() {
             const { mixinText = DEFAULT_MIXIN, mixinType = 0, mixinCode = DEFAULT_MIXIN_CODE } = this.settings;
@@ -316,12 +325,18 @@ function createGeneralPageWorkflow({
         },
         async handleAutoLaunchSwitchClick() {
             const next = !this.autoLaunch;
-            if (this.autoLaunchLoading) return;
+            if (this.autoLaunchLoading || this.autoLaunchPending) return;
             this.autoLaunchLoading = true;
-            this.$setAutoLaunch(next);
-            this.autoLaunch = next;
-            cache.put(keys.AUTO_LAUNCH, next);
-            this.autoLaunchLoading = false;
+            this.autoLaunchPending = true;
+            try {
+                await this.$setAutoLaunch(next);
+                this.autoLaunch = next;
+                cache.put(keys.AUTO_LAUNCH, next);
+                return true;
+            } catch (_error) {
+                await utilities.showMessageBox({ type: "error", message: getLanguage().failed() });
+                return false;
+            } finally { this.autoLaunchLoading = false; this.autoLaunchPending = false; }
         },
         async installTapDevice() {
             if (!platform.isWindows() || this.proxyBusy) return false;
@@ -333,21 +348,15 @@ function createGeneralPageWorkflow({
             const labels = getLanguage();
             return this.$parent.runProxyOperation("tap", async () => {
                 try {
-                    if (selection === 0) {
-                        await this.$parent.setupTapDevice(true);
-                        utilities.notify(labels.success(), labels.tapDeviceInstalled(), true);
-                    } else if (selection === 1) {
-                        await this.$parent.setupTapDevice(false);
-                        utilities.notify(labels.success(), labels.tapDeviceRemoved(), true);
-                    } else if (selection === 2) {
+                    if (selection === 2) {
                         const { ip, subnet, gateway } = cache.get(keys.TAP_INFO) ?? {};
                         try {
                             const result = await this.$input({
                                 title: labels.deviceTAP(),
                                 data: [
-                                    { name: labels.IPaddress(), key: "ip", placeholder: "10.0.0.1", value: ip ?? "" },
-                                    { name: labels.subnetMask(), key: "subnet", placeholder: "255.255.255.0", value: subnet ?? "" },
-                                    { name: labels.defaultGateway(), key: "gateway", placeholder: "10.0.0.0", value: gateway ?? "" }
+                                    { name: labels.IPaddress(), key: "ip", placeholder: "10.0.0.1", value: ip ?? "", validate: value => value === "" || isIPv4(value) ? "" : labels.ipv4Required() },
+                                    { name: labels.subnetMask(), key: "subnet", placeholder: "255.255.255.0", value: subnet ?? "", validate: value => value === "" || isIPv4(value) ? "" : labels.ipv4Required() },
+                                    { name: labels.defaultGateway(), key: "gateway", placeholder: "10.0.0.0", value: gateway ?? "", validate: value => value === "" || isIPv4(value) ? "" : labels.ipv4Required() }
                                 ],
                                 hint: labels.reinstallDescribeWithTAP()
                             });
@@ -355,8 +364,20 @@ function createGeneralPageWorkflow({
                         } catch (_error) {}
                     }
                     if (selection !== 2) {
-                        const result = await this.$parent.refreshProfile();
+                        let setupError;
+                        try {
+                            if (await this.$parent.setupTapDevice(selection === 0) === false) {
+                                throw new Error(selection === 0 ? labels.notInstallTapDevice() : labels.notRemoveTapDevice());
+                            }
+                        } catch (error) { setupError = error; }
+                        // A cancelled elevation can leave the driver installed after
+                        // its owned process was stopped. Reapply the current policy.
+                        const result = this.$parent.refreshTapAfterSetup
+                            ? await this.$parent.refreshTapAfterSetup(setupError ? undefined : selection === 0)
+                            : await this.$parent.refreshProfile();
+                        if (setupError) throw setupError;
                         if (!result.success && result.message) throw new Error(result.message);
+                        utilities.notify(labels.success(), selection === 0 ? labels.tapDeviceInstalled() : labels.tapDeviceRemoved(), true);
                     }
                     return true;
                 } finally { await this.refreshTapStatus(); }
@@ -499,7 +520,9 @@ function createGeneralPageWorkflow({
                 return;
             }
             const originalTime = this.geoipUpdateTime;
-            if (/^Updating/.test(originalTime)) return;
+            if (this.geoipUpdating) return;
+            this.geoipUpdating = true;
+            let started = false;
             try {
                 const { url = "", token = "" } = await this.$input({
                     title: labels.updateDbGeoIP(),
@@ -513,6 +536,7 @@ function createGeneralPageWorkflow({
                 cache.put(keys.GEOIP_URL, url);
                 if (!this.clashPath) return;
                 if (!token && !url) return;
+                started = true;
                 this.geoipUpdateTime = `${labels.updating()}... (0%)`;
                 await coreConfigRepository.updateGeoip(this.clashPath, { url, token }, percent => {
                     this.geoipUpdateTime = percent === 1 ? labels.restartingCore() : `${labels.updating()}... (${Math.round(100 * percent)}%)`;
@@ -520,10 +544,10 @@ function createGeneralPageWorkflow({
                 await this.$parent.handlerRestartClash();
             } catch (_error) {
                 this.geoipUpdateTime = originalTime;
-                this.$alert({ content: labels.downloadDbErrGeoIP() });
-            }
+                if (started) this.$alert({ content: labels.downloadDbErrGeoIP() });
+            } finally { this.geoipUpdating = false; }
         },
-        setupSwitches() { this.autoLaunchLoading = false; this.systemProxyLoading = false; },
+        setupSwitches() { if (!this.autoLaunchPending) this.autoLaunchLoading = false; this.systemProxyLoading = false; },
         async setupComponent() {
             this.refreshTapStatus();
             if (!this.clashApi.isReady() || this.clashStatus !== connectedStatus) return;

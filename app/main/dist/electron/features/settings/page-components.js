@@ -40,7 +40,7 @@ function createSettingsPageComponents({ defineComponent, Vuex, draggable, getLan
             handleKeyDown(event) {
                 if (!this.isRecording) return;
                 if (event.keyCode === 13) this.isRecording = false;
-                else if (event.key) this.keyChain.push(event.key);
+                else if (event.key && !event.repeat && !this.keyChain.includes(event.key)) this.keyChain.push(event.key);
             },
             handleClick() {
                 this.keyChain = [];

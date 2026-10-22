@@ -6,7 +6,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const yaml = require("../../main/node_modules/yaml");
-const { refreshProfile } = require("../../main/dist/electron/entry/renderer/refresh-profile");
+const { refreshProfile, refreshTapAfterSetup } = require("../../main/dist/electron/entry/renderer/refresh-profile");
 const { buildStore } = require("../fixtures/renderer-store");
 const { profilePage } = require("../fixtures/profile-pages");
 const { homePage } = require("../fixtures/home-page");
@@ -51,6 +51,68 @@ function fixture(t, overrides = {}, pageOptions = {}) {
     const page = profilePage({ store, parent: model, dialogs, ...pageOptions });
     return { page, model, dependencies, payloads, events, dialogs, store };
 }
+
+test("a :53 profile TAP failure restores the completed profile selection and core payload", async t => {
+    const h = fixture(t);
+    assert.equal(await h.page.switchProfile(1), true);
+    h.model.spawnTun2socks = async () => { throw Error("route unavailable"); };
+    assert.equal(await h.page.switchProfile(0), false);
+    assert.equal(h.store.state.app.profiles.index, 1);
+    assert.equal(h.model.currentProfilePayload.dns.enable, false);
+    assert.deepEqual(h.payloads.map(payload => payload.dns.enable), [false, true, false]);
+    assert.match(h.dialogs[0].detail, /route unavailable/);
+    assert.deepEqual(h.page.loadingProfileIndex, []);
+});
+
+test("a :53 profile TAP failure retains the accepted selection when the controller rejects compensation", async t => {
+    const h = fixture(t);
+    await h.page.switchProfile(1);
+    const putConfig = h.model.clashApi.putConfig;
+    h.model.clashApi.putConfig = async payload => h.payloads.length === 2 ? { status: 500 } : putConfig(payload);
+    h.model.spawnTun2socks = async () => { throw Error("route unavailable"); };
+    assert.equal(await h.page.switchProfile(0), false);
+    assert.equal(h.store.state.app.profiles.index, 0);
+    assert.equal(h.model.currentProfilePayload.dns.listen, ":53");
+    assert.match(h.dialogs[0].detail, /500/);
+});
+
+test("failed switching between :53 profiles restarts only the restored profile's TAP process", async t => {
+    const h = fixture(t);
+    await h.page.switchProfile(0);
+    fs.writeFileSync(path.join(h.model.profilesPath, "other.yaml"), "interface-name: Ethernet\ndns: {enable: true, listen: ':53', nameserver: [9.9.9.9]}\nrules: ['MATCH,REJECT']\n");
+    h.store.commit("APPEND_PROFILE", { profile: { time: "other.yaml" } });
+    let starts = 0;
+    h.model.spawnTun2socks = async () => {
+        if (++starts === 1) { h.model.tun2socks = null; throw Error("new TAP failed"); }
+        h.model.tun2socks = { pid: 200 };
+    };
+    assert.equal(await h.page.switchProfile(2), false);
+    assert.equal(h.store.state.app.profiles.index, 0);
+    assert.equal(h.model.tun2socks.pid, 200);
+    assert.equal(starts, 2);
+    assert.deepEqual(h.model.currentProfilePayload.rules, ["MATCH,DIRECT"]);
+    assert.equal(h.model.currentProfilePayload.dns.nameserver, undefined);
+    assert.deepEqual(h.payloads.map(payload => payload.rules[0]), ["MATCH,DIRECT", "MATCH,REJECT", "MATCH,DIRECT"]);
+});
+
+test("TAP started by a completed installation is also restarted when a later :53 profile fails", async t => {
+    let installed = false;
+    const h = fixture(t, { profileNetworkEffects: { hasTap: async () => installed } });
+    await h.page.switchProfile(0);
+    assert.equal(h.model.tun2socks, null);
+    h.model.clashStatus = "connected"; installed = true;
+    await refreshTapAfterSetup(h.model, { connectedStatus: "connected" }, true);
+    assert.ok(h.model.tun2socks);
+    let attempts = 0;
+    h.model.spawnTun2socks = async () => {
+        if (++attempts === 1) { h.model.tun2socks = null; throw Error("next startup failed"); }
+        h.model.tun2socks = { pid: 201 };
+    };
+    assert.equal(await h.page.switchProfile(0), false);
+    assert.equal(attempts, 2);
+    assert.equal(h.model.tun2socks.pid, 201);
+    assert.equal(h.model.profiles.index, 0);
+});
 
 test("updating an active subscription without :53 stops TAP through manual and scheduled update paths", async t => {
     for (const trigger of ["manual", "scheduled"]) {
@@ -152,6 +214,47 @@ test("manual profile clicks keep the first selection locked through TAP startup 
     assert.equal(state.model.tun2socks, null);
 });
 
+test("the click entry blocks other cards synchronously even if parent busy state stays stale", async t => {
+    const h = fixture(t), entered = deferred(), finish = deferred();
+    // A parent callback alone is not a reliable input lock. Keep its busy flag
+    // deliberately stale to exercise the local reservation before Vue paints.
+    h.model.proxyBusy = false;
+    h.model.spawnTun2socks = async () => { entered.resolve(); await finish.promise; h.model.tun2socks = { pid: 200 }; };
+    const first = h.page.handleProfileClick(0);
+    for (let index = 0; index < 50; index++) assert.equal(await h.page.handleProfileClick(1), false);
+    await entered.promise;
+    assert.equal(await h.page.switchProfile(1), false, "a second entry must not bypass the click reservation");
+    h.page.dragSelectedName = "plain.yaml";
+    h.page.handleDragEnd();
+    assert.equal(h.model.profiles.index, 0);
+    assert.equal(h.payloads.length, 1);
+    finish.resolve();
+    assert.equal(await first, true);
+    assert.equal(h.model.profiles.index, 0);
+    assert.equal(await h.page.handleProfileClick(1), true);
+    assert.equal(h.model.profiles.index, 1);
+});
+
+test("a rejected parent reservation releases the click latch for the next user action", async t => {
+    const h = fixture(t);
+    h.model.requestProfileSelection = () => { throw Error("cannot reserve"); };
+    await assert.rejects(h.page.handleProfileClick(0), /cannot reserve/);
+    h.model.requestProfileSelection = action => action();
+    assert.equal(await h.page.handleProfileClick(1), true);
+});
+
+test("a background profile apply also blocks manual clicks until it finishes", async t => {
+    const h = fixture(t), entered = deferred(), finish = deferred();
+    h.model.proxyBusy = false;
+    h.model.spawnTun2socks = async () => { entered.resolve(); await finish.promise; h.model.tun2socks = { pid: 200 }; };
+    const background = h.page.switchProfile(0);
+    await entered.promise;
+    assert.equal(await h.page.handleProfileClick(1), false);
+    assert.equal(h.model.profiles.index, 0);
+    finish.resolve(); await background;
+    assert.equal(await h.page.handleProfileClick(1), true);
+});
+
 test("rapid TAP/plain profile selections discard obsolete queued refreshes and apply only the last choice", async t => {
     for (const lastIndex of [0, 1]) {
         const entered = deferred(), read = deferred();
@@ -245,10 +348,10 @@ test("profile cancellation crosses native IPC and kills pending TAP startup befo
         createTapRuntime: options => createTunRuntime({ ...options, logger: { info() {} }, sleep() { waiting.resolve(); return resume.promise; } }),
         childProcess: {
             spawn() { const processHandle = { pid: ++nextPid }; commands.push(["spawn", processHandle.pid]); return processHandle; },
-            execFileSync(command, argumentsList) {
+            execFile(command, argumentsList, _options, callback) {
                 commands.push([command, ...argumentsList]);
-                return Buffer.from(command === "route" && argumentsList[0] === "print" && ready
-                    ? "10.0.0.0 255.255.255.0 10.0.0.1" : "");
+                callback(null, command === "route" && argumentsList[0] === "print" && ready
+                    ? "10.0.0.0 255.255.255.0 On-link 10.0.0.1 257\n0.0.0.0 0.0.0.0 10.0.0.0 10.0.0.1 2" : "");
             }
         }
     });
@@ -276,7 +379,7 @@ test("profile cancellation crosses native IPC and kills pending TAP startup befo
     assert.equal(fixtureState.store.state.app.profiles.index, 1);
     await fixtureState.page.switchProfile(0);
     assert.equal(fixtureState.model.tun2socks.pid, 102);
-    assert.equal(commands.filter(command => command[0] === "route" && command[1] === "add").length, 1);
+    assert.equal(commands.filter(command => command[0] === "route" && command[1] === "add").length, 0);
     assert.deepEqual(fixtureState.dialogs, []);
 
     await t.test("Enable burst switching between two :53 profiles replaces TAP once and leaves only the final process", async () => {

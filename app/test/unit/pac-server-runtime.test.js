@@ -36,3 +36,17 @@ test("PAC runtime binds loopback, renders current persisted settings and closes 
     await runtime.start({ getSettings: () => settings, getMixedPort: () => mixedPort });
     assert.equal(previous.listening, false);
 });
+
+test("PAC legacy fallback metadata and listener survive core unavailability and a mixed-port change", async t => {
+    let mixedPort;
+    const runtime = createPacServerRuntime({ Koa, getPort, defaultPac: "PROXY 127.0.0.1:%mixed-port%" });
+    t.after(() => runtime.stop());
+    const port = await runtime.start({ getSettings: () => ({ innerServerPort: 65536 }), getMixedPort: () => mixedPort });
+    assert.deepEqual(runtime.getStatus(), { port, invalidConfiguredPort: true });
+    assert.equal((await request(port, "/pac")).status, 404);
+    mixedPort = 7890;
+    assert.equal((await request(port, "/pac")).body, "PROXY 127.0.0.1:7890");
+    mixedPort = 7891;
+    assert.equal((await request(port, "/pac")).body, "PROXY 127.0.0.1:7891");
+    assert.equal(runtime.getStatus().port, port);
+});
