@@ -54,6 +54,7 @@ function createServerPage({
 
     const ServerPage = defineComponent({
         data: workflow.data,
+        watch: workflow.watch,
         components: { draggable, ConfigView: ProfileEditor, RuleView: RuleEditor, QRCodeView, Hint },
         directives: {
             focus: { update(element, binding) { if (binding.value) element.focus(); } }
@@ -89,7 +90,8 @@ function createServerPage({
             viewModel.editProfileType = -1;
         };
         const renderProfile = (profile, index) => {
-            const updatedTime = `\n                (${viewModel._s(viewModel.parseTime(profile))})\n              `;
+            const relativeTime = viewModel.parseTime(profile);
+            const updatedTime = relativeTime ? `\n                (${viewModel._s(relativeTime)})\n              ` : "";
             const stopAndRun = action => event => {
                 event.stopPropagation();
                 action();

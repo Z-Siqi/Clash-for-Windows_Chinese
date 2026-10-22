@@ -500,7 +500,12 @@ async function verifyUiRegressions() {
         await complete(slow, "finish slow profile selection");
         await home.$nextTick();
         await wait(70);
-        const recovering = sample("recovering");
+        let recovering = sample("recovering");
+        // A restored/hidden Electron window may begin the compositor transition
+        // after this timer. Require a real intermediate frame before its end.
+        for (let frame = 0; frame < 30 && recovering <= .55; frame++) {
+            await wait(20); recovering = sample("recovering");
+        }
         profileSwitchFade = profileSwitchFade && recovering > .55 && recovering < 1;
         await wait(230);
         profileSwitchFade = sample("recovered") === 1 && profileSwitchFade && !home.proxyBusy;

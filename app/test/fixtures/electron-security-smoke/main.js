@@ -71,6 +71,7 @@ for (const name of ["home", "userData", "sessionData", "temp", "logs"]) {
 }
 
 let finished = false;
+let startupProfileReloaded = false;
 let profileUrl = "";
 let profileResponseVersion = 0;
 let controllerMode = "rule";
@@ -195,6 +196,29 @@ app.on("browser-window-created", (_event, window) => {
         }
         await new Promise(resolve => setTimeout(resolve, 2000));
         try {
+            // Restore Profiles on a fresh renderer, before Home has initialized
+            // its data paths. Keep the fixture's real file timestamp authoritative.
+            if (!startupProfileReloaded) {
+                startupProfileReloaded = true;
+                const folder = path.join(app.getPath("home"), ".config", "clash", "profiles");
+                const file = path.join(folder, "startup-time.yml");
+                fs.writeFileSync(file, "rules: ['MATCH,DIRECT']\n");
+                const modified = new Date(Date.now() - 5 * 60000);
+                fs.utimesSync(file, modified, modified);
+                await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: `(() => {
+                    const store = document.querySelector("#app").__vue__.$store;
+                    store.commit("APPEND_PROFILE", { profile: { name: "Startup timestamp", time: "startup-time.yml", url: "" } });
+                    store.commit("SET_CURRENT_ROUTE_PATH", { path: "/home/server" });
+                })()` }]);
+                window.webContents.reload();
+                return;
+            }
+            const profileStartupTime = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: `(() => {
+                const root = document.querySelector("#app").__vue__;
+                const card = [...document.querySelectorAll(".list-view .list-item")].find(element => element.textContent.includes("Startup timestamp"));
+                return root.$route.path === "/home/server" && /5\\s*(?:分钟前|minutes ago)/.test(card?.querySelector(".item-time")?.textContent || "");
+            })()` }]);
+            if (!profileStartupTime) throw Error("Restoring Profiles at startup did not load the existing file's actual modification time");
             const result = await window.webContents.executeJavaScript(`({
                 processType: typeof process,
                 requireType: typeof require,
@@ -372,6 +396,7 @@ app.on("browser-window-created", (_event, window) => {
             uiRegressions.trayNodeMetadata = await require("./tray-node-metadata").verifyTrayNodeMetadata(require("electron"));
             uiRegressions.mihomoVersionNavigation = dashboardOpened;
             uiRegressions.languageHotload = languageHotload;
+            uiRegressions.profileStartupTime = profileStartupTime;
             uiRegressions.editorDigits = editorDigits;
             const indicatorWindow = BrowserWindow.getAllWindows().find(candidate => candidate.webContents.getURL().endsWith("/cfw-sub.html"));
             let indicatorUpdates = false;

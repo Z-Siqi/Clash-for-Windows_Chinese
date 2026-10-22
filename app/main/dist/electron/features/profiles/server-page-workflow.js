@@ -25,6 +25,8 @@ function createServerPageWorkflow({
     const profileSelections = new WeakMap();
     const clickedSelections = new WeakMap();
     const applyingSelections = new WeakMap();
+    const monitoringSessions = new WeakMap();
+    const modificationReads = new WeakMap();
     const data = () => ({
         btnType: 0,
         resultHint: labels.downloadFromURL(),
@@ -44,6 +46,8 @@ function createServerPageWorkflow({
     });
 
     const computed = {
+        // The saved route can mount before Home initializes the directory/list.
+        profileFilesDirectory() { return Array.isArray(this.pfs?.files) ? this.profilesPath : ""; },
         profileSwitchBlocked() { return !!this.$parent?.proxyBusy; },
         profiles: {
             get() { return this.pfs.files || []; },
@@ -375,8 +379,9 @@ function createServerPageWorkflow({
         parseTime({ time }) {
             try {
                 const modified = this.profileModificationTimes?.[time];
+                if (modified === undefined) return "";
                 return modified ? moment(modified).locale(getLanguage().locale()).from(this.now) : "missing file";
-            } catch (_error) { return "missing file"; }
+            } catch (_error) { return ""; }
         },
         async updateConfig({ url, headers = "", cancelToken = null, selectAfterUpdated = false }) {
             let result;
@@ -451,12 +456,49 @@ function createServerPageWorkflow({
             }
         },
         async refreshModificationTimes() {
-            this.profileModificationTimes = await profileFiles.modificationTimes(this.profilesPath);
+            if (!profileFiles || !this.profilesPath) return false;
+            const folder = this.profilesPath;
+            const request = {};
+            modificationReads.set(this, request);
+            try {
+                const times = await profileFiles.modificationTimes(folder);
+                if (modificationReads.get(this) !== request || this.profilesPath !== folder) return false;
+                this.profileModificationTimes = times;
+                return true;
+            } catch (_unavailable) { return false; }
+        },
+        async startProfileFileMonitoring() {
+            const session = monitoringSessions.get(this);
+            const folder = this.profileFilesDirectory;
+            if (!session || !folder || session.folder === folder) return;
+            if (session.folder) this.removeWatcher();
+            session.folder = folder;
+            const initialization = {};
+            session.initialization = initialization;
+            this.profileModificationTimes = {};
+            const isCurrent = () => monitoringSessions.get(this) === session && session.initialization === initialization && this.profileFilesDirectory === folder;
+            try {
+                // Watch before the initial read so a concurrent file update is
+                // still observed, even if the metadata request temporarily fails.
+                this.setupWatcher();
+                await this.refreshModificationTimes();
+                if (!isCurrent()) return;
+                if (this.pfs.files.length === 0) {
+                    await this.localCopy("config.yaml");
+                    if (isCurrent()) await this.switchProfile(0);
+                }
+            } catch (_unavailable) { /* A later route entry can retry initialization. */ }
         },
         setupWatcher() {
+            const session = monitoringSessions.get(this);
+            const initialization = session?.initialization;
+            const folder = this.profilesPath;
+            const isCurrent = () => monitoringSessions.get(this) === session && session?.initialization === initialization && this.profilesPath === folder;
             const onChange = lodash.debounce(async filename => {
                 try {
+                    if (!isCurrent()) return;
                     await this.refreshModificationTimes();
+                    if (!isCurrent()) return;
                     const index = this.pfs.files.findIndex(profile => profile.time === filename);
                     if (index > -1 && index === this.pfs.index) await this.switchProfile(index);
                 } catch (_error) {}
@@ -467,30 +509,36 @@ function createServerPageWorkflow({
         removeWatcher() {
             this.profileChangeCallback?.cancel?.();
             if (this.fileWatcher) this.fileWatcher.close();
+            this.fileWatcher = null;
+            this.profileChangeCallback = null;
         }
     };
 
     function beforeRouteEnter(_to, _from, next) {
-        next(async vm => {
+        next(vm => {
+            if (monitoringSessions.has(vm)) return;
+            monitoringSessions.set(vm, { folder: "" });
             vm.now = moment();
-            if (profileFiles) await vm.refreshModificationTimes();
-            vm.intervalID = scheduler.add(() => { vm.now = moment(); }, 60000);
-            vm.setupWatcher();
-            if (vm.pfs.files?.length === 0) {
-                await vm.localCopy("config.yaml");
-                await vm.switchProfile(0);
-            }
+            vm.intervalID = scheduler.add(() => {
+                vm.now = moment();
+                return vm.refreshModificationTimes();
+            }, 60000);
+            vm.startProfileFileMonitoring();
         });
     }
 
     function beforeRouteLeave(_to, _from, next) {
+        monitoringSessions.delete(this);
+        modificationReads.delete(this);
         if (this.intervalID) scheduler.stop(this.intervalID);
+        this.intervalID = null;
         this.removeWatcher();
         for (const url in this.downlodingUrls) this.downlodingUrls[url](MANUAL_STOP);
         next();
     }
 
-    return { data, computed, methods, beforeRouteEnter, beforeRouteLeave };
+    const watch = { profileFilesDirectory() { this.startProfileFileMonitoring(); } };
+    return { data, computed, watch, methods, beforeRouteEnter, beforeRouteLeave };
 }
 
 module.exports = { MANUAL_STOP, createServerPageWorkflow };

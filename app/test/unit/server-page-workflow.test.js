@@ -186,6 +186,8 @@ test("server page route lifecycle starts and permanently releases owned resource
         }
     });
     const page = {
+        ...workflow.data(), ...workflow.methods,
+        profilesPath: "virtual-profiles", profileFilesDirectory: "virtual-profiles",
         pfs: { files: [{ time: "1.yml" }] },
         setupWatcher() { calls.push(["watch"]); },
         removeWatcher() { calls.push(["unwatch"]); },
