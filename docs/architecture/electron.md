@@ -34,6 +34,15 @@ The dashboard runs with `sandbox: true`, `nodeIntegration: false` and `contextIs
 
 Architecture tests reject upward dependencies from `core/` and horizontal dependencies between features.
 
+Connections snapshots are parsed, indexed, sorted and filtered in a dedicated
+browser worker composed by `entry/worker/connections.js`. The renderer forwards
+raw snapshots with at most one waiting update and receives only the visible
+connection rows, visible filter labels, totals and selected detail. Both lists
+use fixed-height windows; the full dataset stays outside Vue observation.
+The build emits and hashes the worker beside the renderer, and the host checks
+both assets before startup. Paused cached pages retain their worker snapshot;
+other route exits and component destruction terminate the worker.
+
 ## Localization
 
 `core/i18n/` owns the packaged i18next catalogs for `zh-CN` and `en-US`. Existing

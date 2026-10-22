@@ -8,8 +8,13 @@ function installSandboxedRenderer({ window, fs, path, crypto, pathToFileURL, dir
             const renderer = fs.readFileSync(path.join(generated, "renderer", "renderer.js"), "utf8");
             const manifest = JSON.parse(fs.readFileSync(path.join(generated, "renderer", "manifest.json"), "utf8"));
             if (crypto.createHash("sha256").update(renderer).digest("hex") !== manifest.sha256) throw new Error("Renderer asset integrity check failed");
+            const connectionsWorker = path.join(generated, "renderer", "connections-worker.js");
+            if (crypto.createHash("sha256").update(fs.readFileSync(connectionsWorker)).digest("hex") !== manifest.connectionsWorkerSha256) {
+                throw new Error("Connections worker asset integrity check failed");
+            }
             const monaco = fs.readFileSync(path.join(generated, "monaco", "monaco.js"), "utf8");
             const metadata = { platform, arch, cwd, systemLanguage, staticRoot: path.resolve(staticRoot),
+                connectionsWorker: pathToFileURL(connectionsWorker).href,
                 monacoBase: pathToFileURL(path.join(generated, "monaco") + path.sep).href,
                 rendererBase: pathToFileURL(dirname + path.sep).href };
             const bootstrap = `(() => {

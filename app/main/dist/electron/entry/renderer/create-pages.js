@@ -10,7 +10,7 @@ const draggable = require("vuedraggable");
 
 const { createClashApi } = require("../../core/network/clash-api");
 const { connectionStatus, proxyStatus } = require("../../features/application-state/status");
-const { normalizeConnectionsSnapshot, normalizeStructuredLog, parseCoreLogLine } = require("../../features/clash-core/core-api-compat");
+const { normalizeStructuredLog, parseCoreLogLine } = require("../../features/clash-core/core-api-compat");
 const { createGeneralPage } = require("../../features/clash-core/general-page");
 const { createGeneralPageWorkflow } = require("../../features/clash-core/general-page-workflow");
 const { createConnectionsPage } = require("../../features/connections/page");
@@ -207,7 +207,7 @@ function createRendererPages({ Vuex, modifyState, runtime, components, version }
         EscCapture: components.EscCapture, formatBytes: utilities.formatBytes,
         flattenValues: utilities.flattenValues, notify: utilities.notify,
         clipboard: electron.clipboard, getLanguage: language,
-        getLanguageIndex: languageIndex, normalizeConnectionsSnapshot
+        getLanguageIndex: languageIndex
     });
     const setting = createSettingsPage({
         openApplicationLog: runtime.openApplicationLog,

@@ -1,7 +1,6 @@
 "use strict";
 
-const DEFAULT_YAML_MIXIN = "mixin: {}\n";
-const DEFAULT_CODE_MIXIN = "module.exports.parse = ({ content }) => content\n";
+const { DEFAULT_YAML_MIXIN, DEFAULT_CODE_MIXIN } = require("../../core/config/mixin-defaults");
 
 function ensureMixinDefaults(settings) {
     const type = Number(settings.mixinType || 0);

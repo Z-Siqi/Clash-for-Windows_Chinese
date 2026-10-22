@@ -18,6 +18,10 @@ const childProcess = {
         } else complete?.(null, "", "");
     },
     execFile(file, args, options, callback) {
+        if (file === "route" && args[0] === "print") {
+            (callback || options)?.(null, "0.0.0.0 0.0.0.0 10.0.0.0 10.0.0.1 1\n10.0.0.0 255.255.255.0 On-link 10.0.0.1 1", "");
+            return;
+        }
         if (file === "powershell.exe" && args.some(arg => /get_tap_state\.ps1$/.test(arg))) {
             (callback || options)?.(null, JSON.stringify({ exists: tapPresent, configured: tapConfigured, interfaceIndex: 41 }), "");
             return;
@@ -40,6 +44,10 @@ Module._load = function loadFixtureModule(request, parent, isMain) {
     const filename = (parent?.filename || "").replace(/\\/g, "/");
     if (filename.includes("/dist/electron/")) {
         if (request === "child_process") return childProcess;
+        if (request.endsWith("/network-interfaces")) return {
+            detectDefaultInterface: async () => "Fixture Ethernet",
+            listNetworkInterfaces: () => [{ name: "Fixture Ethernet", address: "192.0.2.1" }]
+        };
         if (request === "@vscode/sudo-prompt") return { exec: (_command, _options, callback) => callback(null, "", "") };
         if (request.endsWith("/clash-service-api")) return { createClashServiceApi: () => serviceApi };
     }

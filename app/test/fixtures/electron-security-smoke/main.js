@@ -77,6 +77,7 @@ let profileResponseVersion = 0;
 let controllerMode = "rule";
 const fixtureProxySelection = { GLOBAL: "Outer", Outer: "Auto", Auto: "DIRECT" };
 let fixtureConnectionOpen = true;
+let largeConnectionPayload;
 const controllerRequests = [];
 const consoleMessages = [];
 let enhancedTrayFrames = 0;
@@ -165,6 +166,10 @@ controllerServer.on("upgrade", (request, socket, head) => {
             if (stream.readyState !== 1) return;
             sequence++;
             if (endpoint === "/traffic") stream.send(JSON.stringify({ up: sequence * 1024, down: sequence * 2048 }));
+            if (endpoint === "/connections" && largeConnectionPayload) {
+                if (sequence % 10 === 0) stream.send(`{"uploadTotal":${sequence},"downloadTotal":${sequence},"connections":${largeConnectionPayload}}`);
+                return;
+            }
             if (endpoint === "/connections") stream.send(JSON.stringify({ uploadTotal: sequence, downloadTotal: sequence, connections: fixtureConnectionOpen ? [{
                 id: "fixture-connection", start: "2026-01-01T00:00:00Z", upload: sequence, download: sequence,
                 chains: ["DIRECT"], metadata: { host: "fixture.live.test", network: "tcp", type: "HTTP", sourceIP: "127.0.0.1", sourcePort: "1234", destinationIP: "127.0.0.1", destinationPort: "80" }
@@ -377,6 +382,15 @@ app.on("browser-window-created", (_event, window) => {
             const allPagesRendered = pageResults.every(page =>
                 page.clicked && page.route === page.expectedRoute && page.rightChildren > 0
             );
+            let connectionsPerformance;
+            if (process.env.CFW_CONNECTIONS_PERF === "1") {
+                phase = "100,000 live connections";
+                largeConnectionPayload = JSON.stringify(require("../large-connections").largeConnections());
+                try {
+                    const { verifyLargeConnections } = require("./large-connections");
+                    connectionsPerformance = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: `(${verifyLargeConnections.toString()})()` }]);
+                } finally { largeConnectionPayload = undefined; }
+            }
             phase = "page UI regressions";
             const { verifyUiRegressions } = require("./ui-regressions");
             const screenshots = new Map();
@@ -439,6 +453,7 @@ app.on("browser-window-created", (_event, window) => {
                     && scriptWorkerIsolated && isolatedEvalBlocked
                     && Object.values(uiRegressions).every(Boolean) && securityConfirmations === 2,
                 uiRegressions,
+                connectionsPerformance,
                 interactionAudit,
                 error: Object.values(uiRegressions).every(Boolean) ? undefined : `UI regressions failed: ${Object.entries(uiRegressions).filter(([_name, passed]) => !passed).map(([name]) => name).join(", ")}`,
                 result,

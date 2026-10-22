@@ -26,8 +26,15 @@ async function main() {
     // Browser mode rejects Node built-ins rather than silently replacing native APIs.
     const content = result.outputFiles[0].contents;
     fs.writeFileSync(path.join(output, "renderer.js"), content);
+    const worker = await esbuild.build({
+        entryPoints: [path.join(root, "app/main/dist/electron/entry/worker/connections.js")],
+        bundle: true, platform: "browser", target: ["chrome120"], format: "iife", minify: true, write: false
+    });
+    const workerContent = worker.outputFiles[0].contents;
+    fs.writeFileSync(path.join(output, "connections-worker.js"), workerContent);
     fs.writeFileSync(path.join(output, "manifest.json"), JSON.stringify({
         builder: `esbuild@${version}`, sha256: crypto.createHash("sha256").update(content).digest("hex"),
+        connectionsWorkerSha256: crypto.createHash("sha256").update(workerContent).digest("hex"),
         inputs: Object.keys(result.metafile.inputs).sort()
     }, null, 2) + "\n");
     console.log(`Browser renderer: built ${content.length} bytes without Node built-ins`);

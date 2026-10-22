@@ -1,5 +1,6 @@
 {
   "languageString": "语言",
+  "connectionsProcessingFailed": "无法处理连接数据，请重新打开此页面后重试。",
   "tapNoPreviousConfiguration": "没有可恢复的已完成配置，开关保留内核已接受的配置状态。",
   "tapRollbackFailed": "TAP 回滚未完成：{{reason}}。开关保留最后确认的内核配置状态，请解决网卡错误后重试。",
   "copiedToClipboard": "已复制到剪贴板",

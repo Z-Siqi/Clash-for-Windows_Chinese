@@ -1,5 +1,6 @@
 {
   "languageString": "Language",
+  "connectionsProcessingFailed": "Could not process connections. Reopen this page to retry.",
   "tapNoPreviousConfiguration": "No previously completed configuration is available to restore. The switches retain the configuration accepted by the core.",
   "tapRollbackFailed": "TAP recovery did not finish: {{reason}}. The switches reflect the last confirmed core configuration; retry after resolving the adapter error.",
   "copiedToClipboard": "Copied to Clipboard",

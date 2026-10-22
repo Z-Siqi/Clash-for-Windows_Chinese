@@ -13,6 +13,8 @@ test("the production browser renderer manifest excludes native transports and ca
     const content = fs.readFileSync(path.join(output, "renderer.js"));
     assert.equal(crypto.createHash("sha256").update(content).digest("hex"), manifest.sha256);
     assert.equal(manifest.builder, "esbuild@0.28.2");
+    const worker = fs.readFileSync(path.join(output, "connections-worker.js"));
+    assert.equal(crypto.createHash("sha256").update(worker).digest("hex"), manifest.connectionsWorkerSha256);
     assert.ok(manifest.inputs.some(value => value.endsWith("dist/electron/renderer.js")));
     // Moment's dynamic locale requires are unavailable in the sandboxed bundle.
     assert.ok(manifest.inputs.some(value => value.endsWith("moment/locale/zh-cn.js")), "Chinese time locale must be bundled explicitly");

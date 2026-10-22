@@ -54,7 +54,7 @@ npm run mihomo:prepare -- --all
 # Explicit offline verification/restoration (also available with --target win-x64).
 npm run mihomo:prepare -- --all --offline
 # Deliberate upgrade: resolve all platforms, then update the text lock and allow-lists.
-npm run mihomo:update -- 1.19.32
+npm run mihomo:update -- 1.19.33
 ```
 
 The update command requires an exact version. Review and commit the manifest,

@@ -57,7 +57,7 @@ async function runElectronSecuritySmoke({ binary, applicationRoot, timeout = 150
 
 if (require.main === module) {
     runElectronSecuritySmoke({ binary: process.argv[2], applicationRoot: process.argv[3] }).then(result => {
-        console.log(JSON.stringify({ ok: result.ok, scriptWorkerIsolated: result.scriptWorkerIsolated, allPagesRendered: result.navigation.allPagesRendered, monacoEditingVerified: result.monacoEditingVerified, uiRegressions: result.uiRegressions, interactionAudit: result.interactionAudit?.counts, ...result.isolation }));
+        console.log(JSON.stringify({ ok: result.ok, connectionsPerformance: result.connectionsPerformance, scriptWorkerIsolated: result.scriptWorkerIsolated, allPagesRendered: result.navigation.allPagesRendered, monacoEditingVerified: result.monacoEditingVerified, uiRegressions: result.uiRegressions, interactionAudit: result.interactionAudit?.counts, ...result.isolation }));
     }).catch(error => { console.error(error.message); process.exitCode = 1; });
 }
 

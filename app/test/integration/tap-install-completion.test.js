@@ -4,6 +4,8 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const yaml = require("../../main/node_modules/yaml");
 const { refreshProfile, refreshTapAfterSetup } = require("../../main/dist/electron/entry/renderer/refresh-profile");
+const { ensureMixinDefaults, DEFAULT_YAML_MIXIN } = require("../../main/dist/electron/features/mixin/mixin-runtime");
+const { DEFAULT_MIXIN } = require("../../main/dist/electron/features/clash-core/general-page-workflow");
 
 function fixture(settings = { legacyTapMode: "enabled" }) {
     const calls = [];
@@ -28,6 +30,19 @@ test("TAP install reconciles the accepted policy without rerunning profile parsi
     calls.length = 0;
     await refreshTapAfterSetup(vm, { connectedStatus: "connected" }, false);
     assert.deepEqual(calls, ["stop-tap"]);
+});
+
+test("first Mixin enable persists the editor's DNS example and TAP installation preserves it", async () => {
+    const { vm, dependencies, calls } = fixture({ legacyTapMode: "mixin" });
+    assert.equal(DEFAULT_YAML_MIXIN, DEFAULT_MIXIN);
+    ensureMixinDefaults(vm.settings);
+    vm.isMixinEnable = true;
+    assert.equal((await refreshProfile(vm, dependencies)).success, true);
+    assert.equal(vm.currentProfilePayload.dns["enhanced-mode"], "fake-ip");
+    calls.length = 0;
+    assert.equal((await refreshTapAfterSetup(vm, { connectedStatus: "connected" }, true)).success, true);
+    assert.deepEqual(calls, ["stop-tap", "start-tap"]);
+    assert.equal(vm.settings.mixinText, DEFAULT_MIXIN);
 });
 
 test("installation never grants TAP permission to subscriptions and does not start TAP during core restart", async () => {

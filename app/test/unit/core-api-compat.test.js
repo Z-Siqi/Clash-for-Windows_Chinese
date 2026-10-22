@@ -80,6 +80,8 @@ assert.match(renderer, /features\/clash-core\/general-page-workflow/);
 assert.match(generalWorkflow, /normalizeCoreVersion\(response\.data, core\)/);
 assert.match(logsPage, /normalizeStructuredLog\(JSON\.parse\(payload\)\)/);
 assert.match(logsPage, /parseCoreLogLine\(line\)/);
-assert.match(connectionsPage, /normalizeConnectionsSnapshot\(JSON\.parse\(payload\)\)/);
+assert.doesNotMatch(connectionsPage, /JSON\.parse\(payload\)/, "large snapshots must not parse on the UI thread");
+const connectionWorker = fs.readFileSync(path.join(root, "app/main/dist/electron/entry/worker/connections.js"), "utf8");
+assert.match(connectionWorker, /normalizeSnapshot: normalizeConnectionsSnapshot/);
 
 console.log("core API compatibility smoke: PASS");
