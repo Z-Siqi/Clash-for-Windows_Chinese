@@ -194,7 +194,7 @@ function createRendererPages({ Vuex, modifyState, runtime, components, version }
         showMessageBox: utilities.showMessageBox, formatBytes: utilities.formatBytes
     });
     const server = createServerPage({
-        defineComponent, Vuex, getLanguage: language, getLanguageIndex: languageIndex,
+        defineComponent, Vuex, getLanguage: language,
         workflow: serverWorkflow, draggable, ProfileEditor, RuleEditor,
         Hint: components.Hint, qrcode, shortenText: utilities.shortenText,
         confirmOpenExternal: utilities.confirmOpenExternal

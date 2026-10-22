@@ -375,7 +375,7 @@ function createServerPageWorkflow({
         parseTime({ time }) {
             try {
                 const modified = this.profileModificationTimes?.[time];
-                return modified ? moment(modified).locale(labels.locale()).from(this.now) : "missing file";
+                return modified ? moment(modified).locale(getLanguage().locale()).from(this.now) : "missing file";
             } catch (_error) { return "missing file"; }
         },
         async updateConfig({ url, headers = "", cancelToken = null, selectAfterUpdated = false }) {

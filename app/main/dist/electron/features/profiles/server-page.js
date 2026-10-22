@@ -4,7 +4,6 @@ function createServerPage({
     defineComponent,
     Vuex,
     getLanguage,
-    getLanguageIndex,
     workflow,
     draggable,
     ProfileEditor,
@@ -90,17 +89,7 @@ function createServerPage({
             viewModel.editProfileType = -1;
         };
         const renderProfile = (profile, index) => {
-            const updatedTimeChinese = `\n                (${viewModel._s(viewModel.parseTime(profile))})\n              `;
-            const updatedTimeEnglish = updatedTimeChinese
-                .replace(/前/g, " ago")
-                .replace(/几秒/g, "seconds")
-                .replace(/秒/g, "seconds")
-                .replace(/分钟/g, "minutes")
-                .replace(/小时/g, "hours")
-                .replace(/天/g, "days")
-                .replace(/个月/g, "month")
-                .replace(/年/g, "years");
-            const updatedTime = getLanguageIndex() === 0 ? updatedTimeChinese : updatedTimeEnglish;
+            const updatedTime = `\n                (${viewModel._s(viewModel.parseTime(profile))})\n              `;
             const stopAndRun = action => event => {
                 event.stopPropagation();
                 action();

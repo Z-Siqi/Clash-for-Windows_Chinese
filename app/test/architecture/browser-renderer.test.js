@@ -14,6 +14,8 @@ test("the production browser renderer manifest excludes native transports and ca
     assert.equal(crypto.createHash("sha256").update(content).digest("hex"), manifest.sha256);
     assert.equal(manifest.builder, "esbuild@0.28.2");
     assert.ok(manifest.inputs.some(value => value.endsWith("dist/electron/renderer.js")));
+    // Moment's dynamic locale requires are unavailable in the sandboxed bundle.
+    assert.ok(manifest.inputs.some(value => value.endsWith("moment/locale/zh-cn.js")), "Chinese time locale must be bundled explicitly");
     for (const file of manifest.inputs) assert.doesNotMatch(file, /node_modules\/(got|ws|electron-log|@vscode\/sudo-prompt)\//);
     // Vue 2's template-parser advisory does not apply to this runtime-only build.
     assert.ok(manifest.inputs.some(file => file.endsWith("vue/dist/vue.runtime.common.prod.js")));

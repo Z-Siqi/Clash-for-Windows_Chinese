@@ -412,6 +412,37 @@ async function verifyUiRegressions() {
     } finally { home.serviceOperation = ""; await home.$nextTick(); }
     await navigate(/Profiles|配置/i);
     const profileView = findComponent(component => component.$options._scopeId === "data-v-820f0efe");
+    const languageSelect = findComponent(component => component.items?.[0] === "简体中文", settings);
+    const originalLanguage = languageSelect.index;
+    const originalTimes = profileView.profileModificationTimes;
+    const originalNow = profileView.now;
+    const timedProfile = profileView.profiles[0];
+    let profileTimeLanguage = false;
+    try {
+        const now = new Date();
+        profileView.now = now;
+        profileView.profileModificationTimes = { ...originalTimes, [timedProfile.time]: now.valueOf() - 300000 };
+        for (const index of [0, 1, 0, 1]) {
+            languageSelect.handleItemClick(index);
+            await root.$nextTick();
+            const visible = profileView.$el.querySelector(".item-time").textContent.trim();
+            const expected = index === 0 ? "(5 分钟前)" : "(5 minutes ago)";
+            if (visible !== expected) throw Error(`Profile update language did not refresh: ${visible}; expected ${expected}`);
+            if (findComponent(component => component.$options._scopeId === "data-v-820f0efe") !== profileView) throw Error("Language change replaced the profiles page");
+        }
+        profileView.$set(profileView.profileModificationTimes, timedProfile.time, now.valueOf() - 30000);
+        await root.$nextTick();
+        if (profileView.$el.querySelector(".item-time").textContent.trim() !== "(a few seconds ago)") throw Error("New profile modification time did not update in English");
+        languageSelect.handleItemClick(0);
+        await root.$nextTick();
+        profileTimeLanguage = profileView.$el.querySelector(".item-time").textContent.trim() === "(几秒前)";
+        if (!profileTimeLanguage) throw Error("New profile modification time did not switch back to Chinese");
+    } finally {
+        languageSelect.handleItemClick(originalLanguage);
+        profileView.profileModificationTimes = originalTimes;
+        profileView.now = originalNow;
+        await root.$nextTick();
+    }
     const originalRefresh = home.refreshProfile;
     let releaseProfile;
     const heldRefresh = new Promise(resolve => { releaseProfile = resolve; });
@@ -477,7 +508,7 @@ async function verifyUiRegressions() {
     } finally { home.refreshProfile = originalRefresh; releaseProfile?.({ success: true }); }
     if (!profileSwitchLock) throw Error("Profile switching controls did not lock for mouse and keyboard input");
     if (!profileSwitchFade) throw Error("Profile disabled color did not delay and fade smoothly for fast/slow switches");
-    return { connections, trafficUpdates, securitySettings, settingsNavigation, trayDelayVisible, enhancedTrayRounded, editorNavigationHeight, editorNavigationColor, editorNavigationExpandedContrast, diffSideBySide, minimizeCentered, pinControl, tunSettingsDialog, mixinSwitch, mixinErrorVisible, networkModeWarnings, legacyTapControl, proxyProgress, settingsDuringProxy, serviceProgress, roundedDialogs, replacementList, profileSwitchLock, profileSwitchFade };
+    return { connections, trafficUpdates, securitySettings, settingsNavigation, trayDelayVisible, enhancedTrayRounded, editorNavigationHeight, editorNavigationColor, editorNavigationExpandedContrast, diffSideBySide, minimizeCentered, pinControl, tunSettingsDialog, mixinSwitch, mixinErrorVisible, networkModeWarnings, legacyTapControl, proxyProgress, settingsDuringProxy, serviceProgress, roundedDialogs, replacementList, profileTimeLanguage, profileSwitchLock, profileSwitchFade };
 }
 
 module.exports = { verifyUiRegressions };
