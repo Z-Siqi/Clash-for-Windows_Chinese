@@ -24,9 +24,9 @@ function refreshProfile(vm, dependencies) {
         const previous = applied.get(vm);
         const previousPolicy = completed.get(vm);
         const previousMenu = [...(vm.menuItems || [])];
-        const state = { tun: vm.isTunEnable === true, mixin: vm.isMixinEnable === true, tapMode: resolveTapMode(vm.settings) };
+        const state = { tun: vm.isTunEnable === true, mixin: vm.isMixinEnable === true, tapMode: resolveTapMode(vm.settings), tapAllowMulticast: vm.settings.tapAllowMulticast === true };
         const turnedOff = previous && ((previous.tun && !state.tun) || (previous.mixin && !state.mixin)
-            || (previous.tapMode !== state.tapMode));
+            || (previous.tapMode !== state.tapMode) || (previous.tapAllowMulticast !== state.tapAllowMulticast));
         const cleanup = await prepareDisconnectCleanup({
             api: vm.clashApi, settings: vm.settings,
             disconnecting: turnedOff && previous.tunnelActive,
@@ -67,7 +67,7 @@ function refreshProfile(vm, dependencies) {
                 setDnsChanged(changed) { vm.isUserDNSChanged = changed; },
                 resetDns() { return vm.resetDNS(); },
                 switchMode(mode) { return vm.switchMode(mode, false); },
-                startTap(options) { return vm.spawnTun2socks(options); },
+                startTap(options) { return vm.spawnTun2socks({ ...options, allowMulticast: state.tapAllowMulticast }); },
                 async stopTap() { await vm.killSpawned(vm.tun2socks); vm.tun2socks = null; }
             }
         });
@@ -106,7 +106,7 @@ function refreshProfile(vm, dependencies) {
                     throw Error(labels.failedConnectCore());
                 }
                 await failedCleanup(true);
-                if (previousPolicy.tapActive && isCurrent()) await vm.spawnTun2socks({ isCurrent, signal: request.controller.signal });
+                if (previousPolicy.tapActive && isCurrent()) await vm.spawnTun2socks({ isCurrent, signal: request.controller.signal, allowMulticast: previousPolicy.tapAllowMulticast === true });
                 applied.set(vm, { ...previous, tapActive: !!vm.tun2socks, tunnelActive: !!(previousPolicy.config.tun?.enable || vm.tun2socks) });
                 return { ...result, rolledBack: true, actualState: previousPolicy, restoredProfileTime: previousPolicy.profileTime };
             } catch (error) {
@@ -141,13 +141,14 @@ async function refreshTapAfterSetup(vm, { hasTap, connectedStatus }, installed) 
     updateCompletedTap();
     if (installed === false || !policy || vm.clashStatus !== connectedStatus) return { success: true };
     if (policy.tun !== (vm.isTunEnable === true) || policy.mixin !== (vm.isMixinEnable === true)
-        || policy.tapMode !== resolveTapMode(vm.settings)) return { success: false, message: "TAP policy changed; apply the current profile before starting TAP." };
+        || policy.tapMode !== resolveTapMode(vm.settings)
+        || policy.tapAllowMulticast !== (vm.settings.tapAllowMulticast === true)) return { success: false, message: "TAP policy changed; apply the current profile before starting TAP." };
     const eligible = allowsLegacyTap(vm.settings, policy.authorized) && !policy.config.tun?.enable && isTapDns(policy.config.dns);
     if (!eligible || (installed === undefined && !await hasTap())) return { success: true };
     if (!policy.config["interface-name"] && !policy.config.tun?.["auto-detect-interface"]) {
         return { success: false, message: "TAP is installed, but no upstream interface was available when the core configuration was applied. Connect to a network and apply the profile again." };
     }
-    await vm.spawnTun2socks({ isCurrent: () => acceptedTap.get(vm) === policy && !vm.isCoreRestarting });
+    await vm.spawnTun2socks({ isCurrent: () => acceptedTap.get(vm) === policy && !vm.isCoreRestarting, allowMulticast: policy.tapAllowMulticast === true });
     if (previous) applied.set(vm, { ...previous, tapActive: !!vm.tun2socks, tunnelActive: !!(policy.config.tun?.enable || vm.tun2socks) });
     updateCompletedTap();
     return { success: true };

@@ -99,6 +99,10 @@ function createGeneralPageWorkflow({
             if (this.proxyBusy || !TAP_MODES.includes(mode)) return false;
             return this.$parent.requestProfileToggle("tap", mode);
         },
+        handleTapMulticastChange(value) {
+            if (this.proxyBusy || typeof value !== "boolean") return false;
+            return this.$parent.requestProfileToggle("tapMulticast", value);
+        },
         async refreshTapStatus() {
             if (!platform.isWindows()) return;
             const request = this.tapStatusRequest = (this.tapStatusRequest || 0) + 1;

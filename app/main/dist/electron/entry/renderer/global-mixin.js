@@ -23,7 +23,8 @@ function createGlobalMixin({ Vuex, platform, ipcRenderer, fs, path, yaml, cloneD
                         return !operation?.busy || !isProxySetting(key)
                             || (this.$options.name === "landing-page" && operation.operation === "mixin"
                                 && ["mixinType", "mixinText", "mixinCode"].includes(key))
-                            || (this.$options.name === "landing-page" && operation.operation === "tap" && key === "legacyTapMode");
+                            || (this.$options.name === "landing-page" && operation.operation === "tap" && key === "legacyTapMode")
+                            || (this.$options.name === "landing-page" && operation.operation === "tapMulticast" && key === "tapAllowMulticast");
                     }
                 });
             }

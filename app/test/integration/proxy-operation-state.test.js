@@ -32,10 +32,10 @@ function model(overrides = {}) {
     const vm = new Vue({
         data: () => ({
             ...page.data(), isTunEnable: false, isMixinEnable: false, isSystemProxyOn: false,
-            isLaunching: false, settings: { legacyTapMode: "enabled" }, clashApi: {}, confData: {}
+            isLaunching: false, settings: { legacyTapMode: "enabled", tapAllowMulticast: false }, clashApi: {}, confData: {}
         }),
         computed: { proxyBusy: page.computed.proxyBusy },
-        watch: { isTunEnable: page.watch.isTunEnable, isMixinEnable: page.watch.isMixinEnable, "settings.legacyTapMode": page.watch["settings.legacyTapMode"] },
+        watch: { isTunEnable: page.watch.isTunEnable, isMixinEnable: page.watch.isMixinEnable, "settings.legacyTapMode": page.watch["settings.legacyTapMode"], "settings.tapAllowMulticast": page.watch["settings.tapAllowMulticast"] },
         methods: {
             ...page.methods,
             updateTrayIcon() {},
@@ -127,6 +127,23 @@ test("initial TAP preference load does not add a startup profile refresh", () =>
     page.watch["settings.legacyTapMode"].call(model, "mixin", undefined);
     model.isLaunching = true;
     page.watch["settings.legacyTapMode"].call(model, "disabled", "enabled");
+});
+
+test("TAP multicast compatibility restarts through the shared operation and rolls back on failure", async () => {
+    for (const success of [true, false]) {
+        const h = model();
+        const request = h.vm.requestProfileToggle("tapMulticast", true);
+        assert.equal(h.vm.proxyBusy, true);
+        assert.equal(await h.vm.requestProfileToggle("tapMulticast", false), false);
+        await Vue.nextTick();
+        assert.equal(h.vm.profileApplyCount, 1);
+        h.gate.resolve({ success, message: "TAP rejected multicast setting" });
+        assert.equal(await request, success);
+        assert.equal(h.vm.settings.tapAllowMulticast, success);
+        assert.equal(h.calls.length, success ? 1 : 2);
+        assert.equal(h.vm.proxyBusy, false);
+        h.vm.$destroy();
+    }
 });
 
 test("resume restores TAP through the profile queue instead of starting an independent process", async () => {

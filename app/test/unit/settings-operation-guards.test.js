@@ -55,3 +55,17 @@ test("only the TAP operation owner can persist its mode while the shared operati
         assert.equal(saved.proxyCore, "mihomo");
     }
 });
+
+test("only the TAP multicast operation owner may change compatibility while busy", () => {
+    const mixin = createGlobalMixin({ Vuex, cloneDeep: structuredClone });
+    for (const [name, operation, allowed] of [["landing-page", "tapMulticast", true], ["landing-page", "tap", false], ["settings-page", "tapMulticast", false]]) {
+        let saved = { tapAllowMulticast: false, legacyTapMode: "mixin" };
+        const context = { $options: { name }, $store: { state: { app: { proxyOperationState: { busy: true, operation } } } },
+            get sts() { return saved; }, saveSettingsObject({ obj }) { saved = obj; } };
+        const settings = mixin.computed.settings.call(context);
+        settings.tapAllowMulticast = true;
+        settings.legacyTapMode = "enabled";
+        assert.equal(saved.tapAllowMulticast, allowed);
+        assert.equal(saved.legacyTapMode, name === "landing-page" && operation === "tap" ? "enabled" : "mixin");
+    }
+});

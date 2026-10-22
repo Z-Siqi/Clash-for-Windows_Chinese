@@ -698,6 +698,8 @@
   "profileInvalidYaml": "配置的 YAML 格式无效。解析器诊断：",
   "tapAdapter": "TAP 网卡",
   "tapPermission": "TAP 使用权限",
+  "tapAllowMulticast": "允许 TAP 转发组播（旧版行为）",
+  "tapAllowMulticastDescribe": "默认优先让局域网组播使用原网卡，并在 TAP 入口过滤以防止转发循环。仅当应用需要组播经过 TAP 时开启；可能再次出现连接数暴增。更改后会自动重启 TAP。",
   "tapPermissionDescribe": "管理哪些配置有权启动旧式 TAP 网卡，原生 TUN 不受此权限影响。",
   "tapMixinOnly": "仅配置覆写",
   "tapDisable": "禁用",

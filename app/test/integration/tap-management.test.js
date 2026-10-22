@@ -44,3 +44,24 @@ test("TAP icon color reflects installation while Router, Router Off and lock ref
         vm.$destroy();
     }
 });
+
+test("TAP multicast compatibility is opt-in, explains the loop risk and ignores busy changes", () => {
+    for (const language of [0, 1]) {
+        const labels = createTranslator(language);
+        const { TapManagementView } = createTapViews({ defineComponent, EscCapture: Empty, Hint: Empty, getLanguage: () => labels });
+        const vm = new (Vue.extend(TapManagementView))({ propsData: { mode: "mixin", installed: true } });
+        const changes = []; vm.$on("change-multicast", value => changes.push(value));
+        const checkbox = () => nodes(vm._render()).find(node => node.tag === "input");
+        assert.equal(checkbox().data.domProps.checked, false);
+        assert.ok(nodes(vm._render()).some(node => node.text === labels.tapAllowMulticastDescribe()));
+        checkbox().data.on.change({ target: { checked: true } });
+        assert.deepEqual(changes, [true]);
+        vm.allowMulticast = true;
+        assert.equal(checkbox().data.domProps.checked, true);
+        vm.busy = true;
+        assert.equal(checkbox().data.attrs.disabled, true);
+        checkbox().data.on.change({ target: { checked: false } });
+        assert.deepEqual(changes, [true]);
+        vm.$destroy();
+    }
+});

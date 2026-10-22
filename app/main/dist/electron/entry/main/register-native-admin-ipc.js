@@ -113,6 +113,7 @@ function registerNativeAdminIpc({
         if (scope === "tun") {
             if (platform !== "win32") return null;
             if (!["setup", "start", "stop", "cancel"].includes(action)) throw new Error("Unsupported TAP operation");
+            if (action === "start" && payload.allowMulticast !== undefined && typeof payload.allowMulticast !== "boolean") throw new Error("Invalid TAP multicast preference");
             const requestId = payload.requestId;
             if (requestId !== undefined && (typeof requestId !== "string" || !/^\d{1,16}-\d{1,16}$/.test(requestId))) throw new Error("Invalid TAP request identity");
             if (action === "cancel") {
@@ -155,7 +156,7 @@ function registerNativeAdminIpc({
                 if (mixedPort === null) throw new Error("Invalid TAP proxy port");
                 await stopManagedTap();
                 tunRuntime = runtime;
-                tunProcess = await runtime.spawnTun2socks({ currentProcess: null, mixedPort, isCurrent: () => !startup.cancelled,
+                tunProcess = await runtime.spawnTun2socks({ currentProcess: null, mixedPort, allowMulticast: payload.allowMulticast === true, isCurrent: () => !startup.cancelled,
                     // Keep ownership even if readiness and subsequent cleanup fail.
                     onSpawn: processHandle => { tunProcess = processHandle; tunProcessRequestId = requestId; } });
                 if (tunProcess) tunProcessRequestId = requestId;

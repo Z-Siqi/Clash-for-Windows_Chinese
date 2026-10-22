@@ -9,6 +9,7 @@
     "release:check": "node scripts/build/sync-release.js --check",
     "build:monaco": "node scripts/build/build-monaco.js",
     "build:renderer": "node scripts/build/build-renderer.js",
+    "build:tap-forwarder": "node scripts/build/build-tap-forwarder.js",
     "build:linux-service-helper": "node scripts/build/build-linux-service-helper.js",
     "build:mac-service-helper": "node scripts/build/build-macos-service-helper.js",
     "package:win-x64": "node scripts/build/package-application.js win-x64",

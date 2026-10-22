@@ -930,8 +930,8 @@ function createGeneralPage({
                 on: { close: () => { viewModel.isResetDNSSettingsVisible = false; } }
             }) : viewModel._e(),
             viewModel.isTapManagementVisible ? createElement("TapManagementView", {
-                props: { mode: viewModel.legacyTapMode, installed: viewModel.tapInstalled, busy: viewModel.proxyBusy },
-                on: { close: () => { if (!viewModel.proxyBusy) viewModel.isTapManagementVisible = false; }, "change-mode": viewModel.handleTapModeChange, action: viewModel.handleTapManagementAction }
+                props: { mode: viewModel.legacyTapMode, installed: viewModel.tapInstalled, busy: viewModel.proxyBusy, allowMulticast: viewModel.settings.tapAllowMulticast === true },
+                on: { close: () => { if (!viewModel.proxyBusy) viewModel.isTapManagementVisible = false; }, "change-mode": viewModel.handleTapModeChange, "change-multicast": viewModel.handleTapMulticastChange, action: viewModel.handleTapManagementAction }
             }) : viewModel._e(),
             viewModel._v(" "),
             viewModel.isTunSettingsVisible ? createElement("tun-settings-view", {

@@ -128,6 +128,16 @@ test("native TAP stop failure retains process ownership for a retry and blocks d
     assert.equal(setups, 1);
 });
 
+test("native TAP IPC validates compatibility booleans and passes only the accepted choice", async () => {
+    const choices = [];
+    const h = nativeHarness({ spawnTun2socks: async ({ allowMulticast }) => { choices.push(allowMulticast); return { pid: 42 }; }, killSpawned: async () => {} });
+    await assert.rejects(h.call("start", { mixedPort: 7890, allowMulticast: "true" }), /multicast preference/);
+    await h.call("start", { mixedPort: 7890 });
+    await h.call("start", { mixedPort: 7890, allowMulticast: true });
+    assert.deepEqual(choices, [false, true]);
+    await h.call("stop");
+});
+
 test("TAP startup failure cannot lose ownership of a child whose cleanup also failed", async () => {
     let stopped = 0;
     const runtime = { async spawnTun2socks({ onSpawn }) { onSpawn({ pid: 43 }); throw Error("startup and cleanup failed"); },

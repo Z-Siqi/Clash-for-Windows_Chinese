@@ -225,6 +225,9 @@ function createHomePageOptions(dependencies) {
                 // Initial settings are applied by core startup, without another queued reload.
                 if (previous !== undefined && !this.isLaunching && !this.restoringAppliedProfileState) this.refreshProfile();
             },
+            "settings.tapAllowMulticast"(_value, previous) {
+                if (previous !== undefined && !this.isLaunching && !this.restoringAppliedProfileState) this.refreshProfile();
+            },
             "settings.disableLoadingAdsLink": {
                 immediate: true,
                 handler(value) {
@@ -368,13 +371,16 @@ function createHomePageOptions(dependencies) {
             },
             requestProfileToggle(kind, enabled, requestId = null) {
                 if (kind === "tap" && !TAP_MODES.includes(enabled)) return Promise.resolve(false);
+                if (kind === "tapMulticast" && typeof enabled !== "boolean") return Promise.resolve(false);
                 return this.runProxyOperation(kind, async () => {
                     if (kind === "mixin" && enabled) await dependencies.prepareMixin(this.settings);
-                    const previous = kind === "tun" ? this.isTunEnable : kind === "tap" ? resolveTapMode(this.settings) : this.isMixinEnable;
+                    const previous = kind === "tun" ? this.isTunEnable : kind === "tap" ? resolveTapMode(this.settings)
+                        : kind === "tapMulticast" ? this.settings.tapAllowMulticast === true : this.isMixinEnable;
                     if (previous === enabled) return true;
                     const commit = value => kind === "tun"
                         ? this.chagneIsTunEnable({ isTun: value }) : kind === "tap"
-                            ? this.settings.legacyTapMode = value : this.changeIsMixinEnable({ isMixin: value });
+                            ? this.settings.legacyTapMode = value : kind === "tapMulticast"
+                                ? this.settings.tapAllowMulticast = value : this.changeIsMixinEnable({ isMixin: value });
                     commit(enabled);
                     // Vue watchers own the reload. Wait for their flush before observing it.
                     await this.$nextTick();
@@ -397,6 +403,7 @@ function createHomePageOptions(dependencies) {
                     if (state.tun !== this.isTunEnable) this.chagneIsTunEnable({ isTun: !!state.tun });
                     if (state.mixin !== this.isMixinEnable) this.changeIsMixinEnable({ isMixin: !!state.mixin });
                     if (state.tapMode && state.tapMode !== resolveTapMode(this.settings)) this.settings.legacyTapMode = state.tapMode;
+                    if (typeof state.tapAllowMulticast === "boolean" && state.tapAllowMulticast !== this.settings.tapAllowMulticast) this.settings.tapAllowMulticast = state.tapAllowMulticast;
                     await this.$nextTick();
                 } finally { this.restoringAppliedProfileState = false; }
             },
@@ -705,10 +712,10 @@ function createHomePageOptions(dependencies) {
             },
             setupTapDevice(install = true) { return this.createTunRuntime().setupTapDevice(install); },
             refreshTapAfterSetup(installed) { return refreshTapRuntime(this, installed); },
-            async spawnTun2socks({ isCurrent, signal } = {}) {
+            async spawnTun2socks({ isCurrent, signal, allowMulticast = this.settings.tapAllowMulticast === true } = {}) {
                 const previousProcess = this.tun2socks;
                 this.tun2socks = null;
-                this.tun2socks = await this.createTunRuntime().spawnTun2socks({ currentProcess: previousProcess, mixedPort: this.mixedPort, isCurrent, signal });
+                this.tun2socks = await this.createTunRuntime().spawnTun2socks({ currentProcess: previousProcess, mixedPort: this.mixedPort, allowMulticast, isCurrent, signal });
             },
             killSpawned(processHandle) { return this.createTunRuntime().killSpawned(processHandle); },
             async getClashStatus() {

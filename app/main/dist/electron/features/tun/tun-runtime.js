@@ -2,6 +2,7 @@
 
 const { execFileAsync } = require("../../core/process/commands");
 const { tapRouteState } = require("./tap-route-state");
+const { createMulticastRoutes } = require("./multicast-routes");
 
 function createTunRuntime({
     childProcess,
@@ -14,8 +15,20 @@ function createTunRuntime({
     logger = console,
     sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds)),
     now = Date.now,
-    readTapState
+    readTapState,
+    multicastRoutes
 }) {
+    let multicast = multicastRoutes;
+    const getMulticast = () => multicast ||= createMulticastRoutes({ childProcess, path, filesPath, logger });
+    const routeLeases = new WeakMap();
+    function releaseMulticast(processHandle) {
+        const lease = routeLeases.get(processHandle);
+        if (!lease) return Promise.resolve();
+        if (!lease.releasing) lease.releasing = Promise.resolve().then(() => getMulticast().release(lease.value)).then(() => {
+            routeLeases.delete(processHandle);
+        }, error => { lease.releasing = null; throw error; });
+        return lease.releasing;
+    }
     const normalizedTapInfo = tapInfo || {};
     const ip = normalizedTapInfo.ip || "10.0.0.1";
     const subnet = normalizedTapInfo.subnet || "255.255.255.0";
@@ -85,8 +98,9 @@ function createTunRuntime({
         return false;
     }
 
-    async function spawnTun2socks({ currentProcess, mixedPort, isCurrent = () => true, onSpawn = () => {} }) {
+    async function spawnTun2socks({ currentProcess, mixedPort, allowMulticast = false, isCurrent = () => true, onSpawn = () => {} }) {
         if (platform === "darwin" || platform === "linux") return currentProcess;
+        if (typeof allowMulticast !== "boolean") throw Error("Invalid TAP multicast preference");
         if (!isCurrent()) return currentProcess;
         logger.info("Spawn go-tun2socks");
         if (currentProcess) await killSpawned(currentProcess);
@@ -99,7 +113,8 @@ function createTunRuntime({
             "-tunMask", subnet,
             "-tunGw", gateway,
             "-proxyServer", `127.0.0.1:${mixedPort}`,
-            "-loglevel", "none"
+            "-loglevel", "none",
+            `-allowMulticast=${allowMulticast}`
         ];
         const binaryFolder = path.join(
             filesPath,
@@ -115,10 +130,17 @@ function createTunRuntime({
         let processError;
         processHandle.once?.("error", error => { processError = error; });
         processHandle.once?.("exit", (code, signal) => { processError = Error(`go-tun2socks exited before TAP was ready (code ${code}, signal ${signal || "none"}).`); });
+        processHandle.once?.("exit", () => { releaseMulticast(processHandle).catch(() => logger.warn?.("Could not restore TAP multicast route")); });
 
         // PnP can take longer than two seconds. Observe active routes within
         // one bounded budget, without treating a duplicate ADD as failure.
         const deadline = now() + 10000;
+        if (!allowMulticast && isCurrent()) {
+            try {
+                const lease = await getMulticast().acquire(Math.min(3000, Math.max(1, deadline - now())));
+                if (lease) routeLeases.set(processHandle, { value: lease });
+            } catch (error) { await killSpawned(processHandle); throw error; }
+        }
         let ready = false;
         let lastError;
         for (; now() < deadline;) {
@@ -162,7 +184,7 @@ function createTunRuntime({
         const pid = processHandle && processHandle.pid;
         if (!Number.isSafeInteger(pid) || pid <= 0) return;
         // Do not use a PID after its owned process exited and Windows may reuse it.
-        if (processHandle.exitCode != null || processHandle.signalCode != null) return;
+        if (processHandle.exitCode != null || processHandle.signalCode != null) { await releaseMulticast(processHandle); return; }
         if (typeof processHandle.kill === "function" && typeof processHandle.once === "function") {
             // Use the owned OS handle rather than a PID that Windows could reuse.
             await new Promise((resolve, reject) => {
@@ -182,6 +204,7 @@ function createTunRuntime({
         } else if (platform === "win32") {
             await execFileAsync(childProcess, "taskkill", ["/F", "/PID", String(pid)], { timeout: 1000 });
         }
+        await releaseMulticast(processHandle);
     }
 
     function setRoutes() {

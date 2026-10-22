@@ -25,6 +25,7 @@ assert.deepEqual(defaults, {
     connShowProcess: true,
     connProxyDisconnect: true,
     legacyTapMode: "mixin",
+    tapAllowMulticast: false,
     showTrayProxyDelayIndicator: true,
     checkForUpdates: true,
     disableLoadingAdsLink: true,
@@ -59,6 +60,8 @@ assert.equal(custom.preserved, "value");
 assert.equal(custom.connProxyDisconnect, false);
 assert.equal(mergeSettings({ legacyTapEnabled: false, proxyCore: "clash" }).legacyTapMode, "disabled");
 assert.equal(mergeSettings({ proxyCore: "clash" }).legacyTapMode, "mixin");
+assert.equal(mergeSettings({ tapAllowMulticast: true }).tapAllowMulticast, true);
+assert.equal(mergeSettings({ tapAllowMulticast: "true" }).tapAllowMulticast, false);
 assert.equal(custom.allowRemoteProfileParsers, true);
 assert.equal(custom.allowHttpExternalLinks, true);
 assert.equal(mergeSettings({ allowHttpExternalLinks: "true" }).allowHttpExternalLinks, false);

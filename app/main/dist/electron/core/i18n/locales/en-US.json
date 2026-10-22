@@ -698,6 +698,8 @@
   "profileInvalidYaml": "The profile contains invalid YAML. Parser diagnostic:",
   "tapAdapter": "TAP Adapter",
   "tapPermission": "TAP permission",
+  "tapAllowMulticast": "Allow multicast through TAP (legacy behavior)",
+  "tapAllowMulticastDescribe": "By default, local multicast prefers your other network adapters and is filtered at TAP to prevent forwarding loops. Enable only for applications that require multicast through TAP; very large connection counts may return. Changes restart TAP automatically.",
   "tapPermissionDescribe": "Manage which configurations may start the legacy TAP adapter. Native TUN remains independent.",
   "tapMixinOnly": "Mixin only",
   "tapDisable": "Disable",

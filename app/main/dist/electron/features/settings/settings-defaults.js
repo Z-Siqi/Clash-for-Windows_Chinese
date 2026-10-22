@@ -17,6 +17,7 @@ function mergeSettings(settings = {}) {
         connShowProcess: settings.connShowProcess !== false,
         connProxyDisconnect: settings.connProxyDisconnect !== false,
         legacyTapMode: resolveTapMode(settings),
+        tapAllowMulticast: settings.tapAllowMulticast === true,
         showTrayProxyDelayIndicator:
             settings.showTrayProxyDelayIndicator !== false,
         checkForUpdates: settings.checkForUpdates !== false,

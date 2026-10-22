@@ -120,6 +120,18 @@ never renderer-supplied filesystem paths. Folder and current-log navigation also
 use fixed host operations. HTTPS external links and loopback HTTP dashboard links
 are validated by the host before opening.
 
+Windows TAP filters IPv4 multicast before lwIP/SOCKS in the pinned native helper
+to prevent local discovery traffic from recursively re-entering the proxy. The
+TAP management preference `tapAllowMulticast` defaults to false; explicit true
+restores legacy forwarding and skips multicast route bypass. Preference changes
+use the shared profile operation and restore the accepted TAP policy on failure.
+`features/tun/multicast-routes.js` leases only the managed TAP's active multicast
+route and restores its previous metric on cancellation, stop, or process exit,
+without overwriting a subsequent route edit. Route bypass is best effort for
+non-admin sessions; native packet filtering remains active independently of the
+selected core and routing mode. Native source pins, builds, and portable packet
+tests are documented in `scripts/native/tap-forwarder/README.md`.
+
 ## Primary owners
 
 - `core/network/`: controller-port resolution, Axios/Got/WebSocket factories, and the semantic Clash REST API.

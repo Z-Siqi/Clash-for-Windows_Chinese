@@ -16,6 +16,7 @@ function routeFixture({ gateway = addresses.gateway, routeOutput, addError, quer
     let time = 0, added = false;
     const calls = [], processHandle = new EventEmitter(); processHandle.pid = 42;
     const runtime = createTunRuntime({ path, platform: "win32", arch: "x64", filesPath: "packaged", logger: { info() {} },
+        multicastRoutes: { acquire: async () => null, release: async () => {} },
         tapInfo: { ...addresses, gateway }, now: () => time, sleep: async ms => { time += ms; },
         readTapState: async timeout => { time += queryDelay; assert.ok(timeout <= 10000); return { exists: true, configured: true, interfaceIndex: 77 }; },
         childProcess: { spawn: () => processHandle, execFile(file, args, _options, callback) {

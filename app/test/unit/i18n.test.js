@@ -45,6 +45,7 @@ test("i18n preserves migrated catalogs apart from reviewed additions and copy up
     };
     const clarifiedEnglishMessages = { mixinAllowsDescribe: "Mixin allows you to overwrite the original configuration file" };
     const additionalMessages = new Set([
+        "tapAllowMulticast", "tapAllowMulticastDescribe",
         "connectionsProcessingFailed",
         "tapNoPreviousConfiguration", "tapRollbackFailed", "profileDeleteWithReferences",
         "anyTlsRequiresMihomo", "ipv4Required", "copiedToClipboard",

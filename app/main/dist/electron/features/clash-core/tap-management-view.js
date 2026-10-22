@@ -29,7 +29,7 @@ function createTapViews({ defineComponent, EscCapture, Hint, getLanguage }) {
 
     const TapManagementView = defineComponent({
         components: { EscCapture, TapStatusIcon },
-        props: { mode: { default: "mixin" }, installed: { default: null }, busy: Boolean }
+        props: { mode: { default: "mixin" }, installed: { default: null }, busy: Boolean, allowMulticast: Boolean }
     }, function renderTapManagementView() {
         const createElement = this._self._c, labels = getLanguage();
         const choices = [labels.enable(), labels.tapMixinOnly(), labels.tapDisable()];
@@ -45,6 +45,12 @@ function createTapViews({ defineComponent, EscCapture, Hint, getLanguage }) {
             on: { click: () => { if (!this.busy && mode !== this.mode) this.$emit("change-mode", mode); } }
         }, [this._v(choices[index])]))),
         createElement("p", { staticClass: "cfw-tap-description" }, [this._v(descriptions[TAP_MODES.indexOf(this.mode)] || descriptions[1])]),
+        createElement("label", { staticClass: "cfw-tap-multicast", style: { display: "flex", alignItems: "center", gap: "8px" } }, [
+            createElement("input", { attrs: { type: "checkbox", disabled: this.busy }, domProps: { checked: this.allowMulticast },
+                on: { change: event => { if (!this.busy) this.$emit("change-multicast", event.target.checked); } } }),
+            this._v(labels.tapAllowMulticast())
+        ]),
+        createElement("p", { staticClass: "cfw-tap-description" }, [this._v(labels.tapAllowMulticastDescribe())]),
         this.mode === "mixin" ? createElement("details", { staticClass: "cfw-tap-examples" }, [createElement("summary", [this._v(labels.tapAuthorizationExample())]),
             createElement("p", [this._v(labels.tapYamlAuthorization())]), createElement("pre", [this._v("mixin:\n  dns:\n    enable: true\n    listen: :53\n    nameserver: [1.1.1.1]")]),
             createElement("p", [this._v(labels.tapJsAuthorization())]), createElement("pre", [this._v('module.exports.parse = ({ content }) => ({\n  ...content,\n  "cfw-tap": true,\n  dns: { ...content.dns, enable: true, listen: ":53" }\n})')])]) : this._e(),
