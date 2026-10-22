@@ -240,7 +240,44 @@ async function verifyInteractionAudit() {
             const item = [...menu.$el.querySelectorAll(".item.clickable")].find(element => element.innerText.trim().endsWith(text));
             assert(item, `profile menu item ${text}`); item.click(); await tick();
             const graphics = profiles.$children.find(child => child.$options.props?.profileName && child.$el?.nodeType === 1);
-            if (graphics) { await models(graphics, "Profiles/editor"); graphics.$emit("cancel"); }
+            if (graphics) {
+                if (graphics.proxy2group) {
+                    const original = graphics.conf;
+                    graphics.conf = {
+                        proxies: [{ name: "Drag Node", type: "http", server: "127.0.0.1", port: 1234 }],
+                        "proxy-groups": [{ name: "Drag Source", type: "select", proxies: ["DIRECT"] },
+                            { name: "Drag Target", type: "select", proxies: ["REJECT"] }],
+                        rules: ["MATCH,Drag Target"]
+                    };
+                    await tick();
+                    const sources = graphics.$children.filter(child => child._sortable && child.$attrs.group?.pull === "clone");
+                    const target = graphics.$children.find(child => child.realList === graphics.conf["proxy-groups"][1].proxies);
+                    assert(sources.length === 3 && target, "all mounted drag sources and destination");
+                    for (const [source, index] of [[sources[0], 0], [sources[0], 1], [sources[1], 0], [sources[2], 0]]) {
+                        const originalList = source.realList;
+                        const item = source.$el.children[index];
+                        const clone = item.cloneNode(true);
+                        const event = { item, clone, oldIndex: index, newIndex: target.realList.length,
+                            from: source.$el, to: target.$el, pullMode: "clone" };
+                        // Drive the installed Sortable callbacks with real DOM
+                        // nodes, including Vue.Draggable's source clone lifecycle.
+                        source._sortable.option("onStart")(event);
+                        source.$el.insertBefore(clone, item);
+                        target.$el.appendChild(item);
+                        target._sortable.option("onAdd")(event);
+                        source._sortable.option("onRemove")(event);
+                        source._sortable.option("onEnd")(event);
+                        await tick();
+                        assert(source.realList === originalList, "clone retains the source collection");
+                        assert(target.realList.every(member => typeof member === "string"), "drag inserts string names");
+                    }
+                    assert(JSON.stringify(target.realList) === JSON.stringify(["REJECT", "DIRECT", "REJECT", "Drag Source", "Drag Node"]), "all drag names reach the group");
+                    assert(target.$el.children.length === target.realList.length, "dragged group renders all members");
+                    graphics.conf = original; await tick();
+                    result.Profiles.push("drag/nodes/groups/builtins");
+                }
+                await models(graphics, "Profiles/editor"); graphics.$emit("cancel");
+            }
             const qr = profiles.$children.find(child => child.$options.name === "QRCodeView");
             if (qr) { await wait(100); assert(qr.src.startsWith("data:image/png"), "QR image"); qr.$el.querySelector(".btn").click(); await tick(); qr.$emit("hide"); }
             const selection = activePlugin();

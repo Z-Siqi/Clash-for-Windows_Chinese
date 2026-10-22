@@ -480,13 +480,18 @@ function createProfileEditor({
         const viewModel = this;
         const createElement = viewModel._self._c;
         const labels = getLanguage();
-        const dragAttrs = {
-            group: { name: "people", pull: "clone", put: false, revertClone: true },
-            clone: viewModel.proxy2group,
-            delay: 300,
-            animation: 200,
-            "delay-on-touch-only": true
-        };
+        // Vue consumes declared props from attrs. Each source needs its own
+        // vnode data and explicit clone prop, or later lists clone whole objects.
+        const sourceDragData = () => ({
+            staticClass: "dragArea",
+            props: { clone: viewModel.proxy2group },
+            attrs: {
+                group: { name: "people", pull: "clone", put: false, revertClone: true },
+                delay: 300,
+                animation: 200,
+                "delay-on-touch-only": true
+            }
+        });
         const renderSourceItem = (item, index, edit, remove) => createElement("div", {
             key: index,
             staticClass: "proxy-item left-item",
@@ -531,7 +536,7 @@ function createProfileEditor({
         }, [createElement("div", {
             staticClass: "section-title"
         }, [createElement("h2", [viewModel._v(labels.specialProxies())])]), viewModel._v(" "), createElement("draggable", {
-            staticClass: "dragArea", attrs: dragAttrs,
+            ...sourceDragData(),
             model: {
                 value: viewModel.specialProxies,
                 callback: value => { viewModel.specialProxies = value; },
@@ -545,7 +550,7 @@ function createProfileEditor({
         renderSectionTitle(labels.proxyGroups(), viewModel.newGroup),
         viewModel._v(" "),
         createElement("draggable", {
-            staticClass: "dragArea", attrs: dragAttrs,
+            ...sourceDragData(),
             model: {
                 value: viewModel.conf[GROUPS],
                 callback: value => viewModel.$set(viewModel.conf, GROUPS, value),
@@ -558,7 +563,7 @@ function createProfileEditor({
         renderSectionTitle(labels.proxies(), viewModel.newProxy),
         viewModel._v(" "),
         createElement("draggable", {
-            staticClass: "dragArea", attrs: dragAttrs,
+            ...sourceDragData(),
             model: {
                 value: viewModel.conf.proxies,
                 callback: value => viewModel.$set(viewModel.conf, PROXIES, value),

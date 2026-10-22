@@ -7,8 +7,10 @@ const os = require("node:os");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const Vue = require("../../main/node_modules/vue");
+const draggable = require("../../main/node_modules/vuedraggable");
 const yaml = require("../../main/node_modules/yaml");
 const { defineComponent } = require("../../main/dist/electron/features/renderer-ui/component");
+const { createTranslator } = require("../../main/dist/electron/core/i18n/language");
 const { createProfileEditor } = require("../../main/dist/electron/features/profiles/profile-editor-page");
 const { buildProxyConfig } = require("../../main/dist/electron/features/profiles/proxy-editor-config");
 const { parseRule, serializeRule } = require("../../main/dist/electron/features/profiles/rule-syntax");
@@ -38,7 +40,10 @@ for (const coreType of ["clash", "mihomo"]) {
             const result = spawnSync(binary, ["-t", "-d", home, "-f", file], { encoding: "utf8", windowsHide: true, timeout: 15000 });
             assert.equal(result.status, 0, result.stderr || result.stdout || result.error?.message);
         }
-        const Profile = createProfileEditor({ defineComponent, Vuex: { mapState: () => ({}) }, buildProxyConfig });
+        let saved;
+        const Profile = createProfileEditor({ defineComponent, Vuex: { mapState: () => ({}) }, buildProxyConfig,
+            draggable, yaml, getLanguage: () => createTranslator(1),
+            profileFiles: { writeProfile: async (_directory, _name, text) => { saved = text; } } });
         function edit(node, type, changes) {
             const vm = new (Vue.extend(Profile.components.AppendProxyView))({ propsData: { type, data: { ...node, _index: 0 } } });
             vm.$options.mounted.forEach(hook => hook.call(vm));
@@ -63,6 +68,26 @@ for (const coreType of ["clash", "mihomo"]) {
         assert.equal(config.proxies[0].plugin, "v2ray-plugin");
         assert.equal(config.rules.some(rule => rule.endsWith(",no-resolve")), true);
         assert.deepEqual(config["proxy-groups"][0].use, ["local"]);
+        const target = { name: "Drag Test", type: "select", proxies: [] };
+        config["proxy-groups"].push(target);
+        const editor = new (Vue.extend(Profile))();
+        editor.conf = config;
+        editor.proxyCore = coreType;
+        function dragSources(vnode) {
+            if (vnode.componentOptions?.tag === "draggable" && vnode.data.attrs.group.pull === "clone") {
+                const source = new vnode.componentOptions.Ctor({ propsData: vnode.componentOptions.propsData });
+                target.proxies.push(source.clone(vnode.data.model.value[0]));
+                source.$destroy();
+            }
+            for (const child of vnode.children || vnode.componentOptions?.children || []) dragSources(child);
+        }
+        dragSources(editor._render());
+        await editor.saveData();
+        assert.equal(typeof saved, "string");
+        const dragged = yaml.parse(saved);
+        assert.deepEqual(dragged["proxy-groups"][1].proxies, ["DIRECT", "Auto", "renamed"]);
+        validate(dragged);
+        editor.$destroy();
         replaceReferences(config, "Auto", "DIRECT");
         config["proxy-groups"] = [];
         validate(config);

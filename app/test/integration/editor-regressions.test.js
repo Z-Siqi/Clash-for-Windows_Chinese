@@ -4,6 +4,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const path = require("node:path");
 const Vue = require("../../main/node_modules/vue");
+const draggable = require("../../main/node_modules/vuedraggable");
 const yaml = require("../../main/node_modules/yaml");
 const { defineComponent } = require("../../main/dist/electron/features/renderer-ui/component");
 const { createTranslator } = require("../../main/dist/electron/core/i18n/language");
@@ -17,7 +18,7 @@ function fixture(config) {
     let source = yaml.stringify(config);
     const dependencies = {
         defineComponent, Vuex, yaml, path, getLanguage: () => labels, buildProxyConfig,
-        draggable: { render: h => h("div") }, lodash: { debounce: fn => fn },
+        draggable, lodash: { debounce: fn => fn },
         moment: () => ({ locale() { return this; }, fromNow: () => "now" }),
         notify() {}, cloneJson: value => JSON.parse(JSON.stringify(value)), schedule() {},
         profileFiles: {
@@ -52,8 +53,45 @@ function fixture(config) {
         };
         return vm;
     }
-    return { Profile, instance, append, rules, saved: () => yaml.parse(source) };
+    return { Profile, instance, append, rules, saved: () => yaml.parse(source), savedText: () => source };
 }
+
+test("every graphical drag source clones names and saves string members across repeated renders", async () => {
+    const node = { name: "001 & Tokyo", type: "http", server: "127.0.0.1", port: 443 };
+    const group = { name: "Auto", type: "select", proxies: ["DIRECT"] };
+    const target = { name: "Test", type: "select", proxies: [] };
+    const f = fixture({ proxies: [node], "proxy-groups": [group, target], rules: ["MATCH,Test"] });
+    const vm = f.instance(f.Profile);
+    await vm.loadData();
+    for (let pass = 0; pass < 2; pass++) {
+        const widgets = [];
+        function walk(vnode) {
+            if (vnode.componentOptions?.tag === "draggable") widgets.push(vnode);
+            for (const child of vnode.children || vnode.componentOptions?.children || []) walk(child);
+        }
+        // Use the shipped Vue's prop extraction and vuedraggable's real clone
+        // default, so sharing a mutable attrs object reproduces the regression.
+        walk(vm._render());
+        const sources = widgets.filter(vnode => vnode.data.attrs.group.pull === "clone");
+        assert.equal(sources.length, 3);
+        const destination = widgets.find(vnode => vnode.data.model.value === vm.conf["proxy-groups"][1].proxies);
+        for (const source of sources) {
+            const drag = new source.componentOptions.Ctor({ propsData: source.componentOptions.propsData });
+            const original = source.data.model.value[0];
+            const cloned = drag.clone(original);
+            assert.equal(cloned, original.name, source.data.model.expression);
+            destination.data.model.callback([...vm.conf["proxy-groups"][1].proxies, cloned]);
+            drag.$destroy();
+        }
+        await Vue.nextTick();
+    }
+    await vm.saveData();
+    assert.deepEqual(f.saved()["proxy-groups"][1].proxies, ["DIRECT", "Auto", node.name, "DIRECT", "Auto", node.name]);
+    assert.deepEqual(f.saved().proxies, [node]);
+    assert.deepEqual(f.saved()["proxy-groups"][0], group);
+    assert.doesNotMatch(f.savedText(), /[&*]a\d+/);
+    vm.$destroy();
+});
 
 test("rule editing preserves nested logical rules, unknown extensions and exact rule text", async () => {
     const rules = ["AND,((NETWORK,UDP),(DST-PORT,443)),REJECT", "IP-CIDR,10.0.0.0/8,DIRECT,no-resolve", "MATCH,DIRECT"];
