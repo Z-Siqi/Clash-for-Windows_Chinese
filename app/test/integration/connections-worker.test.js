@@ -12,7 +12,7 @@ test("built browser worker processes 100k raw connections off-thread and returns
     const source = fs.readFileSync(path.resolve(__dirname, "../../build/generated/renderer/connections-worker.js"), "utf8");
     const thread = new Worker(`const { parentPort } = require('node:worker_threads');
         globalThis.self = { postMessage: value => parentPort.postMessage(value) };
-        parentPort.on('message', data => self.onmessage({data}));\n${source}`, { eval: true });
+        parentPort.on('message', data => self.onmessage({data, origin: ''}));\n${source}`, { eval: true });
     const worker = { postMessage: value => thread.postMessage(value), terminate: () => thread.terminate() };
     thread.on("message", data => worker.onmessage({ data }));
     thread.on("error", error => worker.onerror(error));

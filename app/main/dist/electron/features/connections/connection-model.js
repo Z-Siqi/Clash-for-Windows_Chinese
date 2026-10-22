@@ -57,13 +57,19 @@ function createConnectionModel({ normalizeSnapshot = value => value } = {}) {
         ordered = (data.connections || []).filter(connection => !search || (exact
             ? connection.metadata?.[exact[1]] === exact[2]
             : !regex || regex.test(flattenValues(connection))));
-        const numeric = [connection => connection.speed.upload, connection => connection.speed.download,
-            connection => connection.upload, connection => connection.download];
-        const metric = numeric[query.sort];
         const destination = connection => connection.metadata?.host || connection.metadata?.destinationIP || "";
-        ordered.sort(metric ? (left, right) => metric(right) - metric(left) : query.sort === 5
-            ? (left, right) => destination(right).localeCompare(destination(left))
-            : (left, right) => timestamps.get(left) - timestamps.get(right));
+        // Worker queries are messages, not trusted property names. Literal cases
+        // prevent inherited array methods (for example "sort") being invoked.
+        let compare;
+        switch (query.sort) {
+            case 0: compare = (left, right) => right.speed.upload - left.speed.upload; break;
+            case 1: compare = (left, right) => right.speed.download - left.speed.download; break;
+            case 2: compare = (left, right) => right.upload - left.upload; break;
+            case 3: compare = (left, right) => right.download - left.download; break;
+            case 5: compare = (left, right) => destination(right).localeCompare(destination(left)); break;
+            default: compare = (left, right) => timestamps.get(left) - timestamps.get(right);
+        }
+        ordered.sort(compare);
         if (query.reverse) ordered.reverse();
         orderKey = key;
         return ordered;

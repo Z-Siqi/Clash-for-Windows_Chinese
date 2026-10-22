@@ -51,3 +51,15 @@ test("sorting, reversal, counter resets and stable filtered-close batches", () =
     assert.deepEqual(windowRange(0), { start: 0, end: 0, height: 0, offset: 0 });
     assert.ok(windowRange(100000, 0, 1000000).end <= MAX_VISIBLE);
 });
+
+test("sort messages accept only supported numeric choices without invoking inherited methods", () => {
+    const model = createConnectionModel();
+    model.ingest({ connections: largeConnections(5).reverse() });
+    for (const sort of ["sort", "reverse", "constructor", "__proto__", "toString", "0", -1, 99, null, {}]) {
+        const view = model.view({ sort });
+        assert.deepEqual(view.rows.map(row => row.id), ["connection-0", "connection-1", "connection-2", "connection-3", "connection-4"]);
+        model.beginClose({ sort });
+        assert.equal(model.closeBatch().length, 5);
+    }
+    for (const sort of [0, 1, 2, 3, 4, 5]) assert.equal(model.view({ sort }).count, 5);
+});

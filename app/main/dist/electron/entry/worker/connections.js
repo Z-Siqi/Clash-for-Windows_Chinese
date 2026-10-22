@@ -4,7 +4,12 @@ const { createConnectionModel } = require("../../features/connections/connection
 const { normalizeConnectionsSnapshot } = require("../../features/clash-core/core-api-compat");
 
 const model = createConnectionModel({ normalizeSnapshot: normalizeConnectionsSnapshot });
-self.onmessage = ({ data }) => {
+self.onmessage = event => {
+    // Dedicated-worker messages use an empty origin. Window-style messages from
+    // another origin must never enter this worker's state or command handling.
+    if (event.origin !== "") return;
+    const { data } = event;
+    if (!data || typeof data !== "object" || !Number.isSafeInteger(data.id) || data.id < 1) return;
     try {
         if (data.operation === "beginClose") model.beginClose(data.query);
         if (data.operation === "closeBatch") {

@@ -6,6 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const { spawnSync } = require("node:child_process");
+const { packetResult, FIRST_USE_NOTICE } = require("../fixtures/tap-packet-result");
 const root = path.resolve(__dirname, "../../..");
 const manifest = require("../../clash_core/tap-forwarder-manifest.json");
 
@@ -26,8 +27,19 @@ test("both packaged Windows helpers filter all IPv4 multicast and preserve legac
             for (const allow of [false, true]) {
                 const result = spawnSync(path.join(root, target.file), [`-allowMulticast=${allow}`, "-checkPacket", packet.toString("hex")], { encoding: "utf8", windowsHide: true, timeout: 5000 });
                 assert.equal(result.status, 0, result.stderr);
-                assert.equal(result.stdout.trim(), filtered && !allow ? "DROP" : "FORWARD", `${target.arch} ${destination} compatibility=${allow}`);
+                assert.equal(packetResult(result.stdout), filtered && !allow ? "DROP" : "FORWARD", `${target.arch} ${destination} compatibility=${allow}`);
             }
         }
+    }
+});
+
+test("native packet result accepts only the known fresh-account CryptoAPI notice in addition to one decision", () => {
+    for (const decision of ["DROP", "FORWARD"]) {
+        assert.equal(packetResult(`${decision}\r\n`), decision);
+        assert.equal(packetResult(`${decision}\n${FIRST_USE_NOTICE}\n`), decision);
+        assert.equal(packetResult(`${FIRST_USE_NOTICE}\r\n${decision}\r\n`), decision);
+    }
+    for (const output of ["", FIRST_USE_NOTICE, "DROP\nFORWARD", "DROP\nUnknown runtime error", "DROP\nCryptAcquireContext failed with error 5"]) {
+        assert.throws(() => packetResult(output), /Unexpected native/);
     }
 });
