@@ -2,7 +2,7 @@
   "version": "v1.16.11-cfw.1",
   "upstreamCommit": "0ced89adec90debc056b38fe9a0bf51f4ae5cc38",
   "sources": {
-    "scripts/build/build-tap-forwarder.js": "ab495bc81a6085c94d9568f4f98b6d81fc0aac3d682570b612a68677196f179f",
+    "scripts/build/build-tap-forwarder.js": "759aa52560b3c88fea506287ea1204f22ce75df5573885763b161871fc6566b2",
     "scripts/native/tap-forwarder/upstream.json": "94f93b9173bac77ef1ed5373489291d890b9b85335a0527046f5b6041039e238",
     "scripts/native/tap-forwarder/multicast_policy.go": "987df6aa0ff43483a5a9057a6c3de6277b56ed84e30f09671d9551a2a88cec35",
     "scripts/native/tap-forwarder/multicast_policy_test.go": "15d1a3b226f45794af95cd84dd258d6744cd435eb4cc84e3f40f35c2dfe64f7b",

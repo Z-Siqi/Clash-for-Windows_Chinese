@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const { spawnSync } = require("node:child_process");
+const { downloadFile } = require("./mihomo-download");
 
 const root = path.resolve(__dirname, "../..");
 const overlay = path.join(root, "scripts/native/tap-forwarder");
@@ -37,19 +38,27 @@ async function installBinary(source, destination) {
     }
 }
 
+async function prepareSourceArchive(directory, metadata = pin, download = downloadFile) {
+    // Each build owns a fresh directory; the downloader creates the archive
+    // exclusively, with a bounded HTTPS transfer. Never overwrite a shared cache.
+    const archive = path.join(directory, "upstream.tar.gz");
+    await download(metadata.archive, archive, { maximum: 8 * 1024 * 1024 });
+    const descriptor = fs.openSync(archive, "r");
+    try {
+        if (!fs.fstatSync(descriptor).isFile() || hash(fs.readFileSync(descriptor)) !== metadata.sha256) {
+            throw new Error("TAP upstream archive integrity check failed");
+        }
+    } finally { fs.closeSync(descriptor); }
+    return archive;
+}
+
 async function main() {
     if (!compilerBin) throw new Error("Set CFW_MINGW_BIN to the LLVM-MinGW bin directory");
     const version = spawnSync(go, ["version"], { encoding: "utf8", windowsHide: true });
     if (version.status !== 0 || !version.stdout.includes(` ${pin.goVersion} `)) throw new Error(`Use pinned ${pin.goVersion} via CFW_GO_PATH`);
     fs.mkdirSync(buildRoot, { recursive: true });
-    const archive = path.join(buildRoot, `${pin.commit}.tar.gz`);
-    if (!fs.existsSync(archive)) {
-        const response = await fetch(pin.archive);
-        if (!response.ok) throw new Error(`Upstream download returned ${response.status}`);
-        fs.writeFileSync(archive, Buffer.from(await response.arrayBuffer()));
-    }
-    if (hash(fs.readFileSync(archive)) !== pin.sha256) throw new Error("TAP upstream archive integrity check failed");
     const build = fs.mkdtempSync(path.join(buildRoot, "build-"));
+    const archive = await prepareSourceArchive(build);
     run("tar", ["-xzf", archive, "-C", build]);
     const source = path.join(build, `go-tun2socks-${pin.commit}`);
     for (const file of ["multicast_policy.go", "multicast_policy_test.go"]) fs.copyFileSync(path.join(overlay, file), path.join(source, "tun", file));
@@ -93,4 +102,5 @@ async function main() {
     console.log(`Built ${pin.version} for Windows amd64 and x86`);
 }
 
-main().catch(error => { console.error(error.message); process.exitCode = 1; });
+if (require.main === module) main().catch(error => { console.error(error.message); process.exitCode = 1; });
+module.exports = { prepareSourceArchive };
