@@ -11,7 +11,7 @@ function createRendererUtilities(deps) {
     return {
         ...values,
         ...createNativeActions({ ...deps, getSettings: () => store.state.app.settings }),
-        buildTunConfig,
+        buildTunConfig: (settings, platform = deps.platform, coreType = store.state.app.settings.proxyCore) => buildTunConfig(settings, platform, coreType),
         async updateYaml(file, key, value) {
             if (path.resolve(file) !== path.resolve(store.state.app.clashPath, "config.yaml")) throw new Error("Unsupported renderer configuration file");
             return deps.updateConfig(key, value);

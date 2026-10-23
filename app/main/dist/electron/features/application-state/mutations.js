@@ -11,6 +11,7 @@ function createAppMutations({ path, connectionStatus, schedule = setTimeout }) {
         SET_MENU_ITEMS: ["menuItems", "items"], SET_UPDATE_DOWNLOAD_PROGRESS: ["updateDownloadProgress", "progress"],
         SET_IS_SYSTEM_PROXY_ON: ["isSystemProxyOn", "isOn"], SET_CURRENT_ROUTE_PATH: ["currentRoutePath", "path"],
         SET_ROUTER_HIJACK_MAC_ADDRESSES: ["routerHijackMacAddresses", "addresses"], SET_CURRENT_PROFILE_PAYLOAD: ["currentProfilePayload", "payload"],
+        SET_ROUTER_HIJACK_IDENTITY_TOKENS: ["routerHijackIdentityTokens", "tokens"],
         SET_IS_SILENT_UPGRADED: ["isSilentUpgraded", "isUpgraded"], SET_TUN_SETTINGS: ["tunSettings", "settings"],
         CHANGE_IS_TUN_ENABLE: ["isTunEnable", "isTun"], SET_IS_FIREWALL_RULE_EXIST: ["isFirewallRuleExist", "isExist"],
         SET_PROXY_OPERATION_STATE: ["proxyOperationState", "state"],

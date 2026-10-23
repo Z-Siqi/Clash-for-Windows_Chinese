@@ -4,6 +4,8 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { homePage } = require("../fixtures/home-page");
 const { createUpdateFeed, assetName } = require("../../main/dist/electron/core/release/release-info");
+const { createGeneralPageWorkflow } = require("../../main/dist/electron/features/clash-core/general-page-workflow");
+const { createTranslator } = require("../../main/dist/electron/core/i18n/language");
 
 test("production update check recognizes the published Windows installer and compares four-part versions", async () => {
     const feed = createUpdateFeed({ version: "0.2039.4.1", displayVersion: "Opt-4.1" });
@@ -30,4 +32,21 @@ test("a larger display label alone does not trigger an update", async () => {
     const vm = { portableMode: false };
     await page.methods.checkForUpdate.call(vm);
     assert.equal(vm.newVersionInfo, undefined);
+});
+
+test("manual update checks report HTTP and transport failures without claiming the current version is latest", async () => {
+    for (const locale of [0, 1]) {
+        const labels = createTranslator(locale);
+        for (const getUpdate of [async () => ({ status: 503 }), async () => { throw Error("network unavailable"); }]) {
+            const home = homePage({ publicContent: { getUpdate } });
+            const oldInfo = { url: "previous-result" }, state = { newVersionInfo: oldInfo };
+            const alerts = [];
+            const workflow = createGeneralPageWorkflow({ cache: { get() {} }, keys: {}, getLanguage: () => labels, platform: { isMacOS: () => false } });
+            await workflow.methods.openGithubRelease.call({ $parent: { ...state, checkForUpdate: () => home.methods.checkForUpdate.call(state) },
+                $alert: async options => alerts.push(options), $select() { assert.fail("failed checks must not offer stale downloads"); } });
+            assert.equal(alerts.length, 1);
+            assert.equal(alerts[0].content, labels.updateCheckFailed());
+            assert.equal(state.newVersionInfo, oldInfo);
+        }
+    }
 });

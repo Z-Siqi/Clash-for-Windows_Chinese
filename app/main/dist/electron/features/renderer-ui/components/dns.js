@@ -1,6 +1,7 @@
 "use strict";
 
 const { defineComponent } = require("../component");
+const searches = new WeakMap();
 
 const DNS_STATUS_NAMES = {
     0: "NOERROR",
@@ -85,6 +86,7 @@ function createDns({ Vuex, escCaptureComponent, getLanguage } = {}) {
         },
         methods: {
             show() {
+                searches.delete(this);
                 this.isShow = true;
                 this.$nextTick(() => this.$refs["search-input"].focus());
                 return new Promise((resolve, reject) => {
@@ -129,6 +131,8 @@ function createDns({ Vuex, escCaptureComponent, getLanguage } = {}) {
                 this.server = "";
             },
             async handleSearch() {
+                const request = {};
+                searches.set(this, request);
                 const labels = getLanguage();
                 this.error = "";
                 if (!this.searchHost) {
@@ -139,18 +143,22 @@ function createDns({ Vuex, escCaptureComponent, getLanguage } = {}) {
 
                 try {
                     const response = await this.clashApi.queryDns(this.searchHost, this.searchType);
+                    if (searches.get(this) !== request) return;
                     this.parseDoHData(response?.data);
                 } catch (error) {
+                    if (searches.get(this) !== request) return;
                     this.error = error.response?.data?.message || error.message;
                     this.clearResults();
                 }
             },
             handleKeyDown() {},
             handleCancel() {
+                searches.delete(this);
                 this.isShow = false;
                 this.reject();
             }
-        }
+        },
+        beforeDestroy() { searches.delete(this); }
     };
 
     return defineComponent(options, function renderDns() {

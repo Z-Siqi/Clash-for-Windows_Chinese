@@ -8,11 +8,10 @@ const { createPacFeedback } = require("./pac-feedback");
 const { bindMenuShortcuts } = require("./menu-shortcuts");
 const { supportsScriptMode } = require("../../core/clash-core/core-capabilities");
 const { parsePort } = require("../../core/network/tcp-port");
+const { setManualMixedPort } = require("../../core/network/manual-mixed-port");
 const { waitForProfileRefresh } = require("../../core/network/profile-refresh-state");
 const { TAP_MODES, resolveTapMode } = require("../../core/network/legacy-tap-policy");
 const {
-    isTcpPortAvailable,
-    applyAndVerifyMixedPort,
     confirmMixedPortConflict,
     recoverWithRandomPort
 } = require("../../core/network/mixed-port-recovery");
@@ -218,7 +217,12 @@ function createHomePageOptions(dependencies) {
                 this.updateTrayIcon();
                 electron.ipcRenderer.send("mixin-changed", value);
             },
-            "settings.mixinText"() { if (this.isMixinEnable && this.settings.mixinType === 0) this.refreshProfile(); },
+            "settings.mixinText"() {
+                const type = this.settings.mixinType;
+                // Default YAML edits apply after startup; loading old settings must not add a startup apply.
+                const defaultYamlEdit = Number(type || 0) === 0 && !this.isLaunching && !this.restoringAppliedProfileState;
+                if (this.isMixinEnable && (type === 0 || defaultYamlEdit)) this.refreshProfile();
+            },
             "settings.mixinCode"() { if (this.isMixinEnable && this.settings.mixinType === 1) this.refreshProfile(); },
             "settings.mixinType"() { this.refreshProfile(); },
             "settings.legacyTapMode"(_value, previous) {
@@ -282,7 +286,7 @@ function createHomePageOptions(dependencies) {
                 return this.serviceOperation === "restarting" ? getLanguage().serviceRestarting() : getLanguage().serviceApplying();
             },
             proxyBusy() {
-                return !!(this.proxyOperation || this.profileApplyCount || this.serviceOperation || this.isCoreRestarting || this.isLaunching);
+                return !!(this.proxyOperation || this.profileApplyCount || this.serviceOperation || this.isCoreRestarting || this.isLaunching || this.isResolvingMixedPortConflict);
             },
             ...Vuex.mapState({
                 pfs: state => state.app.profiles,
@@ -549,28 +553,30 @@ function createHomePageOptions(dependencies) {
                             }).catch(() => null);
                             if (!result) return;
                             port = parsePort(result.port);
-                            if (port === null || !(await isTcpPortAvailable({ net, port, checkPort: dependencies.checkPort }))) {
+                            try {
+                                await setManualMixedPort({
+                                    clashApi: this.clashApi, port, checkAvailable: dependencies.checkMixedPort, sleep,
+                                    persist: value => updateYaml(path.join(this.clashPath, "config.yaml"), "mixed-port", value)
+                                });
+                            } catch (error) {
                                 await showMessageBox({
                                     type: "error",
                                     title: labels.changeMixedPort(),
-                                    message: labels.portUnavailable(),
+                                    message: error.reason === "rollback" ? labels.mixedPortRollbackFailed()
+                                        : error.reason === "persist" ? labels.mixedPortSaveFailed() : labels.portUnavailable(),
                                     buttons: [labels.ok()]
                                 });
-                                continue;
-                            }
-                            if (!(await applyAndVerifyMixedPort({ clashApi: this.clashApi, port, sleep }))) {
-                                await showMessageBox({
-                                    type: "error",
-                                    title: labels.changeMixedPort(),
-                                    message: labels.portUnavailable(),
-                                    buttons: [labels.ok()]
-                                });
+                                if (error.reason === "rollback") {
+                                    if (error.actualPort !== undefined) this.clashMixedPort = error.actualPort;
+                                    return;
+                                }
                                 continue;
                             }
                         } else {
                             try {
                                 port = await recoverWithRandomPort({
-                                    getPort, net, checkPort: dependencies.checkPort, clashApi: this.clashApi, sleep
+                                    getPort, checkPort: async value => await dependencies.checkMixedPort(value) !== false,
+                                    clashApi: this.clashApi, sleep
                                 });
                             } catch (_error) {
                                 await showMessageBox({
@@ -583,7 +589,7 @@ function createHomePageOptions(dependencies) {
                             }
                         }
 
-                        await updateYaml(path.join(this.clashPath, "config.yaml"), "mixed-port", port);
+                        if (!manual) await updateYaml(path.join(this.clashPath, "config.yaml"), "mixed-port", port);
                         if (manual) this.settings.randomMixedPort = false;
                         this.setConfData({ data: { ...this.confData, "mixed-port": port } });
                         this.clashMixedPort = port;
@@ -595,7 +601,7 @@ function createHomePageOptions(dependencies) {
                 }
             },
             async checkMixedPortConflict() {
-                if (this.isCoreRestarting || this.isResolvingMixedPortConflict
+                if (this.proxyBusy
                     || this.clashStatus !== connectionStatus.CONNECTED || this.clashMixedPort !== 0) {
                     return false;
                 }
@@ -603,7 +609,7 @@ function createHomePageOptions(dependencies) {
                     clashApi: this.clashApi,
                     sleep
                 });
-                if (!confirmed || this.isCoreRestarting
+                if (!confirmed || this.proxyBusy
                     || this.clashStatus !== connectionStatus.CONNECTED || this.clashMixedPort !== 0) {
                     return false;
                 }
@@ -731,9 +737,9 @@ function createHomePageOptions(dependencies) {
                 const currentVersion = await electron.ipcRenderer.invoke("app", "getVersion");
                 logger.info(`check for app update, current: ${currentVersion}`);
                 const response = await dependencies.publicContent.getUpdate();
-                if (response.status !== 200) return;
+                if (response.status !== 200) return false;
                 const version = response.data.tag_name;
-                if (compareVersions(version, currentVersion) <= 0) return;
+                if (compareVersions(version, currentVersion) <= 0) return true;
 
                 const asset = selectReleaseAsset(response.data, {
                     platform: runtimeProcess.platform, arch: runtimeProcess.arch, portable: this.portableMode
@@ -749,6 +755,7 @@ function createHomePageOptions(dependencies) {
                     reactions: response.data?.reactions || null,
                     reactionClick: () => electron.shell.openExternal(page)
                 };
+                return true;
             },
             createConfigurationRuntime() {
                 return createRendererConfiguration(this, {

@@ -713,5 +713,15 @@
   "tapDisabledDescribe": "Prevent automatic TAP startup and stop the managed TAP process after the configuration is applied. This does not uninstall the adapter or disable native TUN.",
   "tapAuthorizationExample": "Local authorization examples",
   "tapYamlAuthorization": "YAML Mixin must define both DNS enable and listen. Preserve the other DNS settings you need.",
-  "tapJsAuthorization": "JavaScript Mixin uses an explicit local authorization marker. The marker is removed before sending configuration to the core."
+  "tapJsAuthorization": "JavaScript Mixin uses an explicit local authorization marker. The marker is removed before sending configuration to the core.",
+  "updateCheckFailed": "Could not check for updates. Please try again later.",
+  "mixedPortChangeFailed": "Could not activate the requested port. Check the core status or choose another port.",
+  "mixedPortSaveFailed": "Could not save the port setting. The previous port has been restored. Check configuration file permissions.",
+  "mixedPortRollbackFailed": "Could not restore the previous port. Check the current core status before continuing.",
+  "autoRedirectConfirm": "Enable Auto Redir for Mihomo? This changes Linux TCP redirection rules and uses TUN automatic routing. Existing VPN, Docker or LAN routes may need exclusions.",
+  "autoRedirectConfirmationPending": "The old Auto Redir choice has not been enabled for Mihomo. Turn this switch on, then save and confirm to enable it.",
+  "autoRedirectRequiresRoute": "Mihomo Auto Redir uses TUN automatic routing. The legacy Auto Route sub-option is available with Clash.",
+  "dhcpIdentityReselect": "A saved selection may contain a shortened client identifier. Select this device again to apply its gateway and DNS policy.",
+  "autoRedirectNeedsAutoRoute": "Mihomo Auto Redir requires TUN automatic routing. Enable auto-route or disable auto-redirect in the final configuration.",
+  "dhcpPolicyLimit": "The DHCP selection limit has been reached. Remove an existing selection before adding another device."
 }

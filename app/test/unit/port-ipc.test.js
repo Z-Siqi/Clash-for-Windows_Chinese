@@ -3,6 +3,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const net = require("node:net");
+const dgram = require("node:dgram");
 const getPort = require("../../main/node_modules/get-port");
 const { registerPortIpc } = require("../../main/dist/electron/features/network/register-port-ipc");
 const { recoverWithRandomPort } = require("../../main/dist/electron/core/network/mixed-port-recovery");
@@ -10,15 +11,18 @@ const { recoverWithRandomPort } = require("../../main/dist/electron/core/network
 test("port IPC checks real loopback sockets and rejects foreign frames and invalid ports", async t => {
     const owner = { mainFrame: {} };
     let handler;
-    registerPortIpc({ ipcMain: { handle(channel, callback) { assert.equal(channel, "loopback-port"); handler = callback; } }, getMainWindow: () => ({ webContents: owner }), net, getPort });
+    registerPortIpc({ ipcMain: { handle(channel, callback) { assert.equal(channel, "loopback-port"); handler = callback; } }, getMainWindow: () => ({ webContents: owner }), net, dgram, getPort,
+        clashApi: { getConfig: async () => ({ status: 200, data: { "allow-lan": false, "bind-address": "*" } }) } });
     const event = { sender: owner, senderFrame: owner.mainFrame };
     await assert.rejects(handler({ ...event, senderFrame: {} }, "random"), /sender/);
+    await assert.rejects(handler({ ...event, senderFrame: {} }, "mixed-available", 23456), /sender/);
     for (const port of [0, 65536, 2.5, "bad"]) await assert.rejects(handler(event, "available", port), /Invalid/);
     await assert.rejects(handler(event, "connect", 1), /unavailable/);
     const listener = net.createServer();
     await new Promise(resolve => listener.listen(0, "127.0.0.1", resolve));
     t.after(() => new Promise(resolve => listener.close(resolve)));
     assert.equal(await handler(event, "available", listener.address().port), false);
+    assert.equal(await handler(event, "mixed-available", listener.address().port), false);
     const random = await handler(event, "random");
     assert.ok(Number.isInteger(random) && random > 0 && random <= 65535);
     assert.equal(await handler(event, "available", random), true);

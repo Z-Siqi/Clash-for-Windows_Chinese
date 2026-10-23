@@ -73,13 +73,13 @@ test("macOS TUN DNS tooltip and reset dialog follow both languages and preserve 
             assert.ok(rendered.includes(labels[key]()), `${language}/${key}`);
         }
         assert.ok(hints(general._render()).includes(labels.resetDNSSettingsHint()));
-        assert.deepEqual(dns.servers, ["8.8.8.8"]);
+        assert.deepEqual(Array.from(dns.servers), ["8.8.8.8"]);
     }
     dns.servers = ["9.9.9.9"];
     dns.handleSave();
-    assert.deepEqual(settings.resetDNSServers, ["9.9.9.9"]);
+    assert.deepEqual(Array.from(settings.resetDNSServers), ["9.9.9.9"]);
     assert.equal(settings.isUsingResetDNSServers, true);
-    assert.deepEqual(store.state.app.userDNS, ["1.1.1.1"]);
+    assert.deepEqual(Array.from(store.state.app.userDNS), ["1.1.1.1"]);
     dns.$destroy(); general.$destroy();
 });
 

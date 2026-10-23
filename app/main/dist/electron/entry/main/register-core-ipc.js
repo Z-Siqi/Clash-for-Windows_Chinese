@@ -80,7 +80,8 @@ function registerCoreIpc({
                 url, allowsCertificate: value => unsafeUrlPolicy?.allowsCertificate(value, getMainWindow()?.webContents) === true
             })
         });
-        registerPortIpc({ ipcMain, getMainWindow, net: require("net"), getPort: require("get-port") });
+        registerPortIpc({ ipcMain, getMainWindow, net: require("net"), dgram: require("dgram"), getPort: require("get-port"), clashApi,
+            permissionMayDiffer: process.platform !== "win32" });
         registerApplicationLogIpc({ ipcMain, getMainWindow, app, shell, fs: require("fs"), path: require("path"), logger: require("electron-log"), getSensitiveValues: () => [clashClientRegistry.getConnectionInfo()?.secret] });
         registerDhcpIpc({ ipcMain, app, getMainWindow, powerSaveBlocker, dhcp: require("dhcp"), networkInterfaces: require("os").networkInterfaces, isIPv4: require("net").isIPv4 });
         let appliedProviders = {};

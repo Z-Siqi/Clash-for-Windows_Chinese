@@ -12,6 +12,27 @@ const { homePage } = require("../fixtures/home-page");
 const Vuex = { mapState: () => ({}), mapGetters: () => ({}), mapMutations: () => ({}), mapActions: () => ({}) };
 function pending() { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; }
 
+test("editing the default YAML Mixin applies it without introducing an extra startup refresh", async () => {
+    const Vue = require("../../main/node_modules/vue");
+    const watcher = homePage().watch["settings.mixinText"];
+    let refreshes = 0;
+    const home = new Vue({ data: () => ({ settings: {}, isMixinEnable: true, isLaunching: true, restoringAppliedProfileState: false }),
+        watch: { "settings.mixinText": watcher }, methods: { refreshProfile() { refreshes++; } } });
+    Vue.set(home.settings, "mixinText", "mixin: {}\n"); await Vue.nextTick();
+    assert.equal(refreshes, 0);
+    home.isLaunching = false;
+    const workflow = createGeneralPageWorkflow({ getLanguage: () => createTranslator(1), cache: { get() {} }, keys: {} });
+    await workflow.methods.handleEditMixin.call({ settings: home.settings, $code: async () => ({ code: "mixin:\n  ipv6: true\n" }) });
+    await Vue.nextTick();
+    assert.equal(refreshes, 1); assert.equal(home.settings.mixinType, undefined);
+    home.restoringAppliedProfileState = true; home.settings.mixinText = "mixin: {}\n"; await Vue.nextTick();
+    assert.equal(refreshes, 1, "restoring state must not introduce a default-type reload");
+    home.restoringAppliedProfileState = false; home.settings.mixinType = 1;
+    home.settings.mixinText = "mixin:\n  ipv6: false\n"; await Vue.nextTick();
+    assert.equal(refreshes, 1, "explicit JavaScript mode remains unchanged");
+    home.$destroy();
+});
+
 test("Logs opens one stream only, preserves Pause through hide/reconnect, and cannot reopen after route leave", () => {
     const clients = [];
     const page = createLogsPage({ defineComponent: options => options, Vuex, connectedStatus: "connected", cache: { get() {} }, keys: {} });

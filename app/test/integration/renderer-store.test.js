@@ -62,6 +62,16 @@ test("Application: failed settings and profiles writes leave Vuex and saved file
     assert.deepEqual(fs.readdirSync(home), ["list.yml"]);
 });
 
+test("Application: DHCP raw identities and long identity tokens persist independently across restart", t => {
+    const home = temporary(t), first = buildStore({ home });
+    const token = "a".repeat(64);
+    first.store.commit("SET_ROUTER_HIJACK_MAC_ADDRESSES", { addresses: [token, "legacy-client"] });
+    first.store.commit("SET_ROUTER_HIJACK_IDENTITY_TOKENS", { tokens: [token] });
+    const restarted = buildStore({ home, storage: first.storage }).store;
+    assert.deepEqual(Array.from(restarted.state.app.routerHijackMacAddresses), [token, "legacy-client"]);
+    assert.deepEqual(Array.from(restarted.state.app.routerHijackIdentityTokens), [token]);
+});
+
 test("Application: SSID overrides remain temporary; ordinary TUN/mixin preferences restore", t => {
     const home = temporary(t);
     const h = buildStore({ home });

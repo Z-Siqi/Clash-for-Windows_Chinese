@@ -40,6 +40,7 @@ function createRendererAppModule(deps) {
         SET_DETECTED_INTERFACE_NAME: ["detectedInterfaceName", "DETECTED_INTERFACE_NAME"],
         SET_CURRENT_ROUTE_PATH: ["currentRoutePath", "CURRENT_ROUTE_PATH"],
         SET_ROUTER_HIJACK_MAC_ADDRESSES: ["routerHijackMacAddresses", "ROUTER_HIJACK_MAC_ADDRESSES"],
+        SET_ROUTER_HIJACK_IDENTITY_TOKENS: ["routerHijackIdentityTokens", "ROUTER_HIJACK_IDENTITY_TOKENS"],
         SET_TUN_SETTINGS: ["tunSettings", "TUN_SETTINGS"],
         SET_IS_SYSTEM_PROXY_ON: ["isSystemProxyOn", "SYSTEM_PROXY", true],
         CHANGE_IS_TUN_ENABLE: ["isTunEnable", "IS_TUN", true, "isTun"],

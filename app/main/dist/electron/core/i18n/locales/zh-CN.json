@@ -713,5 +713,15 @@
   "tapDisabledDescribe": "禁止自动启动 TAP，并在配置应用成功后停止正在运行的 TAP 转发进程。不会卸载网卡，也不影响原生 TUN。",
   "tapAuthorizationExample": "本地授权示例",
   "tapYamlAuthorization": "YAML 配置覆写必须同时定义 DNS 的 enable 和 listen，并保留你需要的其他 DNS 设置。",
-  "tapJsAuthorization": "JavaScript 配置覆写使用显式本地授权标记，该标记会在配置提交给核心前移除。"
+  "tapJsAuthorization": "JavaScript 配置覆写使用显式本地授权标记，该标记会在配置提交给核心前移除。",
+  "updateCheckFailed": "检查更新失败，请稍后重试。",
+  "mixedPortChangeFailed": "无法启用指定端口，请检查内核状态或选择其他端口。",
+  "mixedPortSaveFailed": "无法保存端口设置，已恢复原端口。请检查配置文件权限。",
+  "mixedPortRollbackFailed": "无法恢复原端口，请检查当前内核状态后再继续。",
+  "autoRedirectConfirm": "为 Mihomo 启用 Auto Redir？这会改变 Linux TCP 重定向规则，并使用 TUN 自动路由。已有 VPN、Docker 或局域网路由可能需要排除规则。",
+  "autoRedirectConfirmationPending": "旧的 Auto Redir 选择尚未在 Mihomo 中启用。请打开此开关，再保存并确认后启用。",
+  "autoRedirectRequiresRoute": "Mihomo Auto Redir 使用 TUN 自动路由。旧的 Auto Route 子选项仅在选择 Clash 时提供。",
+  "dhcpIdentityReselect": "已保存的选择可能使用了截短的客户端标识。请重新选择此设备，以应用其网关和 DNS 策略。",
+  "autoRedirectNeedsAutoRoute": "Mihomo Auto Redir 需要 TUN 自动路由。请在最终配置中启用 auto-route，或关闭 auto-redirect。",
+  "dhcpPolicyLimit": "DHCP 选择数量已达上限，请先移除已有选择，再添加其他设备。"
 }

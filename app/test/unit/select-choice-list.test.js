@@ -23,7 +23,7 @@ test("a large selection uses a bounded native list and confirms only the chosen 
     vm.handleItemSelect(1);
     assert.deepEqual(await result, [1, 499]);
     const later = vm.show({ items: ["OK"] });
-    assert.deepEqual(vm.choiceItems, []);
+    assert.deepEqual(Array.from(vm.choiceItems), []);
     vm.handleItemSelect(0);
     assert.deepEqual(await later, [0], "ordinary dialogs preserve their existing response shape");
     vm.$destroy();

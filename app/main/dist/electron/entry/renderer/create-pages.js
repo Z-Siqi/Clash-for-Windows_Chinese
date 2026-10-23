@@ -60,6 +60,7 @@ function createRendererPages({ Vuex, modifyState, runtime, components, version }
         sleep: utilities.delay, shouldReplaceWintun: utilities.isNewVersion,
         detectInterface: getDefaultInterface, store, defaultPac, getPort,
         checkPort: runtime.checkPort,
+        checkMixedPort: runtime.checkMixedPort,
         openCoreLog: runtime.openCoreLog,
         startPacServer: async home => {
             const result = await runtime.coreConfigRepository.startPac(home);
@@ -106,11 +107,12 @@ function createRendererPages({ Vuex, modifyState, runtime, components, version }
 
     const generalWorkflow = createGeneralPageWorkflow({
         getLanguage: language, path, moment, yaml, electron, cache, keys,
+        checkMixedPort: runtime.checkMixedPort,
         getNetworkInterfaces,
         getTapInstalled: runtime.profileNetworkEffects.hasTap,
         getNetworkDiagnostics: vm => networkModeDiagnostics({
             config: vm.currentProfilePayload, tunRequested: vm.isTunEnable,
-            tunConfig: buildTunConfig(vm.$parent.tunSettings, runtime.processObject.platform),
+            tunConfig: buildTunConfig(vm.$parent.tunSettings, runtime.processObject.platform, vm.settings.proxyCore),
             systemProxyOn: vm.isSystemProxyOn, tapActive: !!vm.$parent.tun2socks
         }),
         terminal: runtime.terminal,
@@ -143,7 +145,7 @@ function createRendererPages({ Vuex, modifyState, runtime, components, version }
         components, shell: electron.shell, fs, yaml, readCoreLog: runtime.readCoreLog,
         platform: { isMacOS: platform.isMacOS, isWindows: platform.isWindows },
         utilities: {
-            buildTunConfig: settings => buildTunConfig(settings, runtime.processObject.platform),
+            buildTunConfig: (settings, coreType) => buildTunConfig(settings, runtime.processObject.platform, coreType),
             showMessageBox: utilities.showMessageBox
         },
         scheduler,

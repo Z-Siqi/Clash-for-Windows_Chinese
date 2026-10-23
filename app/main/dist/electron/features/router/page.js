@@ -1,5 +1,7 @@
 "use strict";
 
+const { clientPolicyIdentity, savedIdentities, savedIdentityTokens, broadcastAddress } = require("./dhcp-policy");
+
 function createRouterPage({
     defineComponent,
     Vuex,
@@ -35,7 +37,7 @@ function createRouterPage({
                 this.rangeFrom = [...segments.slice(0, 3), "100"].join(".");
                 this.rangeTo = [...segments.slice(0, 3), "200"].join(".");
                 this.defaultRouter = [...segments.slice(0, 3), "1"].join(".");
-                this.broadAddress = [...segments.slice(0, 3), "255"].join(".");
+                this.broadAddress = broadcastAddress(address, this.netmask);
             },
             async handleInterfaceSelect() {
                 const items = this.interfaces.map(item => item.name);
@@ -45,6 +47,7 @@ function createRouterPage({
                 this.selectedName = items[selection];
             },
             handleContinueClick() {
+                this.broadAddress = broadcastAddress(this.localAddress, this.netmask);
                 this.$emit("confirm", {
                     localAddress: this.localAddress,
                     rangeFrom: this.rangeFrom,
@@ -177,6 +180,7 @@ function createRouterPage({
         computed: {
             ...Vuex.mapState({
                 routerHijackMacAddresses: state => state.app.routerHijackMacAddresses,
+                routerHijackIdentityTokens: state => state.app.routerHijackIdentityTokens,
                 currentProfilePayload: state => state.app.currentProfilePayload
             }),
             serverRunning() { return this.server !== null; },
@@ -184,10 +188,36 @@ function createRouterPage({
         },
         watch: {
             routerHijackMacAddresses() { this.updateDhcpPolicy(); },
+            routerHijackIdentityTokens() { this.updateDhcpPolicy(); },
             currentProfilePayload() { this.updateDhcpPolicy(); }
         },
         methods: {
             ...Vuex.mapMutations({ setRouterHijackMacAddresses: "SET_ROUTER_HIJACK_MAC_ADDRESSES" }),
+            ...Vuex.mapMutations({ setRouterHijackIdentityTokens: "SET_ROUTER_HIJACK_IDENTITY_TOKENS" }),
+            isClientHijacked(client) {
+                const identity = clientPolicyIdentity(client);
+                return !!identity && (identity.kind === "raw" ? savedIdentities(this.routerHijackMacAddresses)
+                    : savedIdentityTokens(this.routerHijackIdentityTokens)).includes(identity.value);
+            },
+            needsIdentityReselect(client) {
+                return clientPolicyIdentity(client)?.kind === "sha256" && !this.isClientHijacked(client)
+                    && savedIdentities(this.routerHijackMacAddresses).includes(client.options?.[61]);
+            },
+            canAddIdentity() {
+                const count = new Set(savedIdentities(this.routerHijackMacAddresses)).size + new Set(savedIdentityTokens(this.routerHijackIdentityTokens)).size;
+                if (count < 2048) return true;
+                this.$alert({ title: "DHCP", content: getLanguage().dhcpPolicyLimit() });
+                return false;
+            },
+            handleClientHijack(client) {
+                const identity = clientPolicyIdentity(client);
+                if (!identity) return;
+                if (identity.kind === "raw") return this.handleMacToHijack(identity.value);
+                const tokens = savedIdentityTokens(this.routerHijackIdentityTokens);
+                if (!tokens.includes(identity.value) && !this.canAddIdentity()) return false;
+                this.setRouterHijackIdentityTokens({ tokens: tokens.includes(identity.value)
+                    ? tokens.filter(value => value !== identity.value) : [...tokens, identity.value] });
+            },
             clientName(client) { return this.clientAlias[client.chaddr] || client.options[12] || "Unknown"; },
             handleClientRename(event, address) {
                 this.clientAlias = { ...this.clientAlias, [address]: event.target.value };
@@ -215,7 +245,7 @@ function createRouterPage({
                     const [host, port] = String(value).split(":");
                     return port === undefined || port === "53" ? [host === "any" ? "8.8.8.8" : host] : [];
                 }).slice(0, 2);
-                return { hijackAddresses: this.routerHijackMacAddresses || [], hijackDns };
+                return { hijackAddresses: savedIdentities(this.routerHijackMacAddresses), hijackIdentityTokens: savedIdentityTokens(this.routerHijackIdentityTokens), hijackDns };
             },
             updateDhcpPolicy() {
                 if (this.serverRunning) dhcpService.updatePolicy(this.dhcpPolicy()).catch(() => {});
@@ -226,7 +256,10 @@ function createRouterPage({
                 this.starting = true;
                 try {
                     await dhcpService.start({ config, ...this.dhcpPolicy() }, (type, value) => {
-                        if (type === "message" && !this.clients.some(item => item.chaddr === value.chaddr)) this.clients = [...this.clients, value];
+                        if (type === "message") {
+                            const index = this.clients.findIndex(item => item.chaddr === value.chaddr);
+                            this.clients = index < 0 ? [...this.clients, value] : this.clients.map((item, current) => current === index ? value : item);
+                        }
                         if (type === "bound") this.boundState = value;
                         if (type === "close") { this.server = null; this.clients = []; this.boundState = {}; }
                     });
@@ -237,10 +270,13 @@ function createRouterPage({
                 } finally { this.starting = false; }
             },
             handleMacToHijack(address) {
+                if (typeof address !== "string" || !address) return;
+                const addresses = savedIdentities(this.routerHijackMacAddresses);
+                if (!addresses.includes(address) && !this.canAddIdentity()) return false;
                 this.setRouterHijackMacAddresses({
-                    addresses: this.routerHijackMacAddresses.includes(address)
-                        ? this.routerHijackMacAddresses.filter(value => value !== address)
-                        : [...this.routerHijackMacAddresses, address]
+                    addresses: addresses.includes(address)
+                        ? addresses.filter(value => value !== address)
+                        : [...addresses, address]
                 });
             },
             addressFromBound(address) { return this.boundState[address]?.address || ""; }
@@ -280,7 +316,7 @@ function createRouterPage({
                 ]),
                 viewModel._v(" "),
                 createElement("div", { staticClass: "right" }, [
-                    viewModel.routerHijackMacAddresses.includes(client.options[61])
+                    viewModel.isClientHijacked(client)
                         ? createElement("div", {
                             staticClass: "btn",
                             on: { click: () => viewModel.handleGotoConnections(client.chaddr) }
@@ -289,12 +325,15 @@ function createRouterPage({
                     viewModel._v(" "),
                     createElement("div", {
                         staticClass: "btn hijack-button",
-                        on: { click: () => viewModel.handleMacToHijack(client.options[61]) }
+                        on: { click: () => viewModel.handleClientHijack(client) }
                     }, [viewModel._v(`\n          ${viewModel._s(
-                        viewModel.routerHijackMacAddresses.includes(client.options[61])
+                        viewModel.isClientHijacked(client)
                             ? "Clash TUN"
                             : labels.defaultGateway()
-                    )}\n        `)])
+                    )}\n        `)]),
+                    viewModel.needsIdentityReselect(client) ? createElement("div", { staticClass: "text-sm opacity-70" }, [
+                        viewModel._v(labels.dhcpIdentityReselect())
+                    ]) : viewModel._e()
                 ])
             ])), 0),
             viewModel._v(" "),

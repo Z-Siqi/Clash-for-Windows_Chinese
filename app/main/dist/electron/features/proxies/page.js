@@ -23,6 +23,7 @@ function createProxiesPage({
     getLanguage
 }) {
     const latestFetch = new WeakMap();
+    const selections = new WeakMap();
     const latencyRequests = new WeakMap();
     const ProxyModeSwitcher = defineComponent({
         components: { Hint },
@@ -328,16 +329,29 @@ function createProxiesPage({
                 if (isUnselectable || this.$parent?.proxyBusy) return false;
                 const payload = this.currentProfilePayload, revision = this.profileRefreshTimes, core = this.settings.proxyCore;
                 this.cancelLatencyTest();
-                const response = await this.clashApi.selectProxy(groupName, proxyName);
-                if (response.status !== 204) return;
-                if (this.$parent?.proxyBusy || payload !== this.currentProfilePayload
-                    || revision !== this.profileRefreshTimes || core !== this.settings.proxyCore) return false;
-                const proxies = [...this.proxies];
-                const group = proxies.find(item => item.name === groupName);
-                if (group) group.data.now = proxyName;
-                this.proxies = proxies.length > 500 ? Object.freeze(proxies) : proxies;
-                this.$parent.persistSelectedProxy();
-                this.$parent.breakConnections(groupName);
+                let groups = selections.get(this);
+                if (!groups) { groups = new Map(); selections.set(this, groups); }
+                const previous = groups.get(groupName), request = {};
+                groups.set(groupName, request);
+                const currentProfile = () => !this.$parent?.proxyBusy && payload === this.currentProfilePayload
+                    && revision === this.profileRefreshTimes && core === this.settings.proxyCore;
+                const select = async () => {
+                    if (!currentProfile()) return false;
+                    const response = await this.clashApi.selectProxy(groupName, proxyName);
+                    if (response.status !== 204 || !currentProfile()) return false;
+                    latestFetch.set(this, {});
+                    const proxies = [...this.proxies];
+                    const group = proxies.find(item => item.name === groupName);
+                    if (group) group.data.now = proxyName;
+                    this.proxies = proxies.length > 500 ? Object.freeze(proxies) : proxies;
+                    this.$parent.persistSelectedProxy();
+                    this.$parent.breakConnections(groupName);
+                };
+                // Publish every successful ordered write: the next choice may
+                // fail, in which case this remains the core's actual selection.
+                request.promise = previous ? previous.promise.catch(() => {}).then(select) : select();
+                try { return await request.promise; }
+                finally { if (groups.get(groupName) === request) groups.delete(groupName); }
             },
             async startLatencyTest(groupName, groupIndex) {
                 this.cancelLatencyTest();

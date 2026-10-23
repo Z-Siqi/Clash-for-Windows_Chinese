@@ -31,6 +31,7 @@ function homePageDependencies(overrides = {}) {
         store: { state: { app: { settings: {} } }, getters: { mixedPort: 7890 }, commit() {} },
         defaultPac: "", Koa: class { use() { return this; } listen() {} }, getPort: async () => 1234,
         downloadProfile: async () => ({}), net: { isIP: () => true }, runMacCommand: async () => ({ success: false }),
+        checkMixedPort: async () => true,
         uuid: { v4: () => "uuid" }, firewallRuleExists: async () => false,
         getWlanInterfaces: () => [], mousetrap: { bind() {} }, cron: function cron() {},
         serviceStatus: async () => false, serviceActiveStatus: "active",

@@ -144,7 +144,7 @@ test("group edits preserve provider references and all unexposed group options",
     const vm = f.instance(f.Profile);
     await vm.loadData();
     vm.handleInputDone(f.append(group, 0).result);
-    assert.deepEqual(JSON.parse(JSON.stringify(vm.conf["proxy-groups"][0])), group);
+    assert.deepEqual(JSON.parse(JSON.stringify(vm.conf["proxy-groups"][0])), { ...group, use: Array.from(group.use) });
     vm.$destroy();
 });
 
@@ -155,9 +155,9 @@ test("node edits and removal tolerate provider-only groups and preserve rule fla
     const vm = f.instance(f.Profile);
     await vm.loadData();
     vm.handleInputDone(f.append(node, 1, { proxyName: "renamed" }).result);
-    assert.deepEqual(vm.conf.rules, ["IP-CIDR,10.0.0.0/8,renamed,no-resolve", "AND,((NETWORK,UDP),(DST-PORT,443)),renamed", "MATCH,Auto"]);
+    assert.deepEqual(Array.from(vm.conf.rules), ["IP-CIDR,10.0.0.0/8,renamed,no-resolve", "AND,((NETWORK,UDP),(DST-PORT,443)),renamed", "MATCH,Auto"]);
     vm.removeFromProxies({ stopPropagation() {} }, 0);
-    assert.deepEqual(vm.conf["proxy-groups"][0].use, ["local"]);
+    assert.deepEqual(Array.from(vm.conf["proxy-groups"][0].use), ["local"]);
     vm.$destroy();
 });
 

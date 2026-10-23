@@ -74,7 +74,7 @@ function refreshProfile(vm, dependencies) {
         const result = await apply({
             profiles: vm.profiles, profilesPath: vm.profilesPath,
             confData: vm.confData, settings: vm.settings,
-            tunConfig: state.tun ? buildTunConfig(vm.tunSettings, platform) : null,
+            tunConfig: state.tun ? buildTunConfig(vm.tunSettings, platform, vm.settings.proxyCore) : null,
             mixinEnabled: state.mixin, isCurrent, signal: request.controller.signal
         });
         if (result.success) {

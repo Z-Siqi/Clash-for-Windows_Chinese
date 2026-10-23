@@ -296,7 +296,7 @@ function registerNativeAdminIpc({
             throw new Error("Core binary is outside the packaged files directory");
         }
         const names = new Set([
-            "clash-win64.exe", "clash-windows-arm64.exe",
+            "clash-win64.exe", "clash-win-arm64.exe",
             "mihomo-windows-amd64.exe", "mihomo-windows-arm64.exe"
         ]);
         if (!names.has(path.basename(resolved).toLowerCase())) {

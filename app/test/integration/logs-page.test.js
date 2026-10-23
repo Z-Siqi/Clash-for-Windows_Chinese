@@ -60,6 +60,16 @@ test("Logs page: stream lifecycle normalizes messages and terminates the active 
     assert.equal(context.client, null);
 });
 
+test("Logs details retain a different routing mode and nodes named like a mode", () => {
+    const page = createPage();
+    const context = { listData: [], mode: "rule" };
+    const fields = [{ key: "mode", value: "direct" }, { key: "proxy", value: "rule" }, { key: "rAddr", value: "example.test:443" }];
+    page.methods.parseLog.call(context, { level: "info", message: "accepted", fields });
+    assert.deepEqual(context.listData[0].fields, fields);
+    page.methods.parseLog.call(context, { level: "info", message: "accepted", fields: [{ key: "mode", value: "rule" }, ...fields.slice(1)] });
+    assert.deepEqual(context.listData[1].fields, fields.slice(1), "only the redundant mode field is hidden");
+});
+
 test("Logs page: production entry delegates to the named factory", () => {
     assertRendererComposition("createLogsPage", [
         "openLogStream: function", "parseStringLog: function", "handleWindwEvent: function"

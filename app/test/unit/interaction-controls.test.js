@@ -124,3 +124,29 @@ test("shortcut capture ignores held-key repeats instead of saving an invalid rep
     assert.equal(vm.shortcut, "Control+a");
     vm.$destroy();
 });
+
+test("new shortcut recordings normalize arrows and space without migrating existing settings", async () => {
+    const { KeyCapture } = createSettingsPageComponents({ defineComponent,
+        Vuex: { mapState: () => ({}) }, getLanguage: () => createTranslator(1) });
+    const Parent = Vue.extend({ data: () => ({ saved: "Control+ArrowUp" }) });
+    const parent = new Parent();
+    const vm = new (Vue.extend(KeyCapture))({ propsData: { value: parent.saved } });
+    KeyCapture.mounted.call(vm);
+    vm.$on("change", value => { parent.saved = value; });
+    parent.$watch("saved", value => { vm.value = value; });
+    assert.equal(vm.shortcut, "Control+ArrowUp", "existing strings must not be silently registered in a new form");
+    for (const [key, expected] of [["ArrowUp", "Up"], ["ArrowDown", "Down"], ["ArrowLeft", "Left"], ["ArrowRight", "Right"], [" ", "Space"], ["é", "é"], ["+", "+"]]) {
+        vm.handleClick();
+        vm.handleKeyDown({ key: "Control" }); vm.handleKeyDown({ key });
+        await Vue.nextTick();
+        assert.equal(vm.shortcut, `Control+${expected}`, "empty parent feedback must preserve a recording");
+        vm.handleKeyDown({ keyCode: 13, key: "Enter" });
+        await Vue.nextTick(); await Vue.nextTick();
+        assert.equal(parent.saved, `Control+${expected}`);
+    }
+    let emissions = 0; vm.$on("change", () => emissions++);
+    parent.saved = "";
+    await Vue.nextTick(); await Vue.nextTick();
+    assert.equal(vm.shortcut, ""); assert.equal(emissions, 0, "external reset is display synchronization, not another edit");
+    vm.$destroy(); parent.$destroy();
+});

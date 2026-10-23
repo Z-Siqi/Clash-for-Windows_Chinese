@@ -125,7 +125,7 @@ function createLogsPage({
                     type: level,
                     msg: message,
                     time: time || moment().format("HH:mm:ss"),
-                    fields: fields.filter(field => field.key !== "mode" && field.value !== this.mode),
+                    fields: fields.filter(field => field.key !== "mode" || field.value !== this.mode),
                     id: uniqueId()
                 }];
             },

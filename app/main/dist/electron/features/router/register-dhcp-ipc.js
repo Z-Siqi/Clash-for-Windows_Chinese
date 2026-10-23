@@ -1,5 +1,15 @@
 "use strict";
 
+const { clientIdentity } = require("./dhcp-policy");
+const { createHash } = require("crypto");
+
+function policyIdentity(client) {
+    const value = clientIdentity(client);
+    if (typeof value !== "string") return undefined;
+    return value.length <= 128 ? { kind: "raw", value }
+        : { kind: "sha256", value: createHash("sha256").update("cfw-dhcp-client\0").update(value).digest("hex") };
+}
+
 function registerDhcpIpc({ ipcMain, app, getMainWindow, dhcp, networkInterfaces, isIPv4, powerSaveBlocker }) {
     let active;
     function send(owner, type, value) {
@@ -21,8 +31,10 @@ function registerDhcpIpc({ ipcMain, app, getMainWindow, dhcp, networkInterfaces,
     }
     function policy(request) {
         const hijacked = addresses(request.hijackAddresses || [], 2048);
+        const tokens = addresses(request.hijackIdentityTokens || [], 2048);
+        if (tokens.some(value => !/^[a-f0-9]{64}$/.test(value)) || hijacked.length + tokens.length > 2048) throw new Error("Invalid DHCP policy");
         const dns = addresses(request.hijackDns || [], 2).filter(isIPv4);
-        return { hijacked, dns };
+        return { hijacked, tokens, dns };
     }
     function validate(config) {
         const fields = ["localAddress", "rangeFrom", "rangeTo", "netmask", "defaultRouter", "primaryDns", "broadAddress"];
@@ -61,39 +73,68 @@ function registerDhcpIpc({ ipcMain, app, getMainWindow, dhcp, networkInterfaces,
             owner.once("destroyed", stop);
             owner.on("did-start-loading", stop);
         }
-        const job = { owner, policy: selectedPolicy, leaseOwners: new Map() };
-        const clientIdentity = client => client.options?.[61] || client.clientId || client.chaddr;
+        const job = { owner, policy: selectedPolicy, leaseOwners: new Map(), currentLeaseKeys: new Map() };
+        const isHijacked = client => {
+            const identity = policyIdentity(client);
+            return !!identity && (identity.kind === "raw" ? job.policy.hijacked : job.policy.tokens).includes(identity.value);
+        };
         // A fixed DHCP port is required for broadcasts; callers cannot choose a socket or native command.
         job.server = dhcp.createServer({
             range: [config.rangeFrom, config.rangeTo], forceOptions: ["hostname"], randomIP: true, static: {},
             netmask: config.netmask, broadcast: config.broadAddress, server: config.localAddress,
-            router: client => [job.policy.hijacked.includes(clientIdentity(client)) ? config.localAddress : config.defaultRouter],
-            dns: client => job.policy.hijacked.includes(clientIdentity(client))
+            router: client => [isHijacked(client) ? config.localAddress : config.defaultRouter],
+            dns: client => isHijacked(client)
                 ? (job.policy.dns.length ? job.policy.dns : [config.localAddress])
                 : [config.primaryDns, config.secondlyDns].filter(Boolean),
             maxMessageSize: 1500, leaseTime: 86400, renewalTime: 60, rebindingTime: 120, bootFile: "", hostname: "cfw"
         });
         active = job;
-        const clients = new Set();
+        const clients = new Map();
         job.server.on("message", client => {
-            if (active !== job || typeof client.chaddr !== "string" || client.chaddr.length > 128 || clients.has(client.chaddr) || clients.size >= 2048) return;
-            clients.add(client.chaddr);
+            if (active !== job || typeof client.chaddr !== "string" || client.chaddr.length > 128 || (!clients.has(client.chaddr) && clients.size >= 2048)) return;
             // dhcp 1.x keys leases by encoded option 61, while the UI identifies clients by MAC.
             const identity = typeof client.options?.[61] === "string"
                 ? `client-id:${Buffer.from(client.options[61]).toString("base64url")}`
                 : client.chaddr.replace(/:/g, "-").toUpperCase();
             const key = client.giaddr && client.giaddr !== "0.0.0.0" ? `relay:${client.giaddr}:${identity}` : identity;
+            job.currentLeaseKeys.set(client.chaddr, key);
             job.leaseOwners.set(key, client.chaddr);
+            // Retain old client-ID leases, but bound identity churn while
+            // protecting every currently observed client's lease mapping.
+            if (job.leaseOwners.size > 4096) {
+                const currentKeys = new Set(job.currentLeaseKeys.values());
+                for (const previousKey of job.leaseOwners.keys()) {
+                    if (!currentKeys.has(previousKey)) { job.leaseOwners.delete(previousKey); break; }
+                }
+            }
             const options = {};
             for (const key of [12, 61]) if (typeof client.options?.[key] === "string") options[key] = client.options[key].slice(0, 128);
-            send(owner, "message", { chaddr: client.chaddr, options });
+            const value = { chaddr: client.chaddr, options, policyIdentity: policyIdentity(client) };
+            const projection = JSON.stringify(value);
+            if (clients.get(client.chaddr) !== projection) {
+                clients.set(client.chaddr, projection);
+                send(owner, "message", value);
+            }
         });
         job.server.on("bound", value => {
             if (active !== job) return;
             const result = {};
+            let count = 0;
+            // A MAC can retain old client-ID leases. Prefer its current identity
+            // regardless of the snapshot order, and publish each row only once.
+            for (const [mac, key] of job.currentLeaseKeys) {
+                if (job.leaseOwners.get(key) === mac && Object.hasOwn(value || {}, key) && isIPv4(value[key]?.address)) {
+                    Object.defineProperty(result, mac, { enumerable: true, value: { address: value[key].address } });
+                    count++;
+                }
+            }
             for (const [key, lease] of Object.entries(value || {}).slice(0, 2048)) {
-                const mac = job.leaseOwners.get(key) || key;
-                if (mac.length <= 128 && isIPv4(lease?.address)) Object.defineProperty(result, mac, { enumerable: true, value: { address: lease.address } });
+                if (count >= 2048) break;
+                const mac = job.leaseOwners.get(key) || (!/^(?:client-id:|relay:)/.test(key) ? key : null);
+                if (mac && mac.length <= 128 && !Object.hasOwn(result, mac) && isIPv4(lease?.address)) {
+                    Object.defineProperty(result, mac, { enumerable: true, value: { address: lease.address } });
+                    count++;
+                }
             }
             send(owner, "bound", result);
         });

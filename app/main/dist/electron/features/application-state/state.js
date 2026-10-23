@@ -16,6 +16,7 @@ function createAppState({ connectionStatus, proxyStatus, cache, keys }) {
         updateDownloadProgress: null, isSystemProxyOn: cache.get(keys.SYSTEM_PROXY) || false,
         isSubViewShow: false, currentRoutePath: cache.get(keys.CURRENT_ROUTE_PATH) || "/home/general",
         profileRefreshTimes: 0, proxyRefreshTimes: 0, mode: "rule", routerHijackMacAddresses: cache.get(keys.ROUTER_HIJACK_MAC_ADDRESSES) || [],
+        routerHijackIdentityTokens: cache.get(keys.ROUTER_HIJACK_IDENTITY_TOKENS) || [],
         currentProfilePayload: {}, isSilentUpgraded: false, tunSettings: cache.get(keys.TUN_SETTINGS),
         proxyOperationState: { busy: false, operation: "", target: null },
         isTunEnable: cache.get(keys.IS_TUN) || false, isFirewallRuleExist: false, userDNS: null, matchedSSID: ""

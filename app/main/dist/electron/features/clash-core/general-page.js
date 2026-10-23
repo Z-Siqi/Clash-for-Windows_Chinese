@@ -27,6 +27,7 @@ function createGeneralPage({
         Hint
     } = components;
     const { TapManagementView, TapStatusIcon } = createTapViews({ defineComponent, EscCapture, Hint, getLanguage });
+    const pendingTunSaves = new WeakSet();
 
     const ErrorView = defineComponent({
         data() {
@@ -236,23 +237,51 @@ function createGeneralPage({
                 interfaceName: "",
                 dnsHijacks: [],
                 isAutoRedir: false,
-                isAutoRedirAutoRoute: false
+                isAutoRedirAutoRoute: false,
+                mihomoAutoRedirect: null
             };
         },
         computed: {
             ...Vuex.mapState({ tunSettings: state => state.app.tunSettings }),
+            proxyCore() { return this.$store.state.app.settings?.proxyCore === "clash" ? "clash" : "mihomo"; },
+            autoRedirEnabled: {
+                get() { return this.proxyCore === "clash" ? this.isAutoRedir : this.mihomoAutoRedirect === true; },
+                set(value) {
+                    if (this.proxyCore === "clash") this.isAutoRedir = value;
+                    else this.mihomoAutoRedirect = value === true;
+                }
+            },
             proxyBusy() { return !!this.$parent?.proxyBusy; },
-            obj() { return utilities.buildTunConfig(this.$data); },
+            obj() { return utilities.buildTunConfig(this.$data, this.proxyCore); },
             text() { return yaml.stringify(this.obj); }
         },
         methods: {
             ...Vuex.mapMutations({ setTunSettings: "SET_TUN_SETTINGS" }),
-            handleSave() {
-                if (this.proxyBusy) return false;
-                this.setTunSettings({ settings: this.$data });
-                this.$emit("close");
+            async handleSave() {
+                if (this.proxyBusy || pendingTunSaves.has(this)) return false;
+                pendingTunSaves.add(this);
+                try {
+                    const core = this.proxyCore;
+                    if (this.isLinux && core === "mihomo" && this.mihomoAutoRedirect === true && this.tunSettings?.mihomoAutoRedirect !== true) {
+                        const labels = getLanguage();
+                        let selection;
+                        try {
+                            [selection] = await this.$select({ title: "Auto Redir", message: labels.autoRedirectConfirm(), items: [labels.enable(), labels.cancel()] });
+                        } catch { return false; }
+                        if (selection !== 0 || this.proxyBusy || this.proxyCore !== core || this._isDestroyed || this._isBeingDestroyed) return false;
+                    }
+                    this.setTunSettings({ settings: { ...this.$data } });
+                    this.$emit("close");
+                    return true;
+                } finally {
+                    pendingTunSaves.delete(this);
+                }
             },
-            handleReset() { this.setupComponent({}); },
+            handleReset() {
+                const otherCore = this.proxyCore === "clash" ? { mihomoAutoRedirect: this.mihomoAutoRedirect }
+                    : { isAutoRedir: this.isAutoRedir, isAutoRedirAutoRoute: this.isAutoRedirAutoRoute };
+                this.setupComponent(otherCore);
+            },
             handleOpenDocument() {
                 shell.openExternal("https://web.archive.org/web/20231001060822/dreamacro.github.io/clash/configuration/configuration-reference.html");
             },
@@ -269,7 +298,8 @@ function createGeneralPage({
                     interfaceName,
                     dnsHijacks,
                     isAutoRedir,
-                    isAutoRedirAutoRoute
+                    isAutoRedirAutoRoute,
+                    mihomoAutoRedirect
                 } = settings;
                 this.ipv6 = ipv6 !== undefined && ipv6;
                 this.stackType = [0, 1].includes(stackType) ? stackType : 0;
@@ -289,6 +319,7 @@ function createGeneralPage({
                 this.dnsHijacks = dnsHijacks || ["any:53"];
                 this.isAutoRedir = isAutoRedir !== undefined && isAutoRedir;
                 this.isAutoRedirAutoRoute = isAutoRedirAutoRoute !== undefined && isAutoRedirAutoRoute;
+                this.mihomoAutoRedirect = typeof mihomoAutoRedirect === "boolean" ? mihomoAutoRedirect : null;
             }
         },
         mounted() { this.setupComponent(this.tunSettings || {}); }
@@ -384,10 +415,16 @@ function createGeneralPage({
                     ]),
                     viewModel._v(" "),
                     viewModel.isLinux
-                        ? renderSection("Auto Redir", renderModelComponent("SwitchView", "isAutoRedir"), "flex")
+                        ? renderSection("Auto Redir", renderModelComponent("SwitchView", "autoRedirEnabled"), "flex")
                         : viewModel._e(),
                     viewModel._v(" "),
-                    viewModel.isLinux && viewModel.isAutoRedir
+                    viewModel.isLinux && viewModel.proxyCore === "mihomo"
+                        ? createElement("div", { staticClass: "text-sm opacity-70" }, [viewModel._v(
+                            viewModel.mihomoAutoRedirect === null && viewModel.isAutoRedir
+                                ? labels.autoRedirectConfirmationPending() : labels.autoRedirectRequiresRoute()
+                        )]) : viewModel._e(),
+                    viewModel._v(" "),
+                    viewModel.isLinux && viewModel.proxyCore === "clash" && viewModel.isAutoRedir
                         ? renderSection(
                             "Auto Route(Auto Redir)",
                             renderModelComponent("SwitchView", "isAutoRedirAutoRoute"),

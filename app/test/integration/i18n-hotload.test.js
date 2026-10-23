@@ -122,7 +122,7 @@ test("cached connection filters and profile save buttons follow language changes
     assert.equal(connections.filterTypes[0].title, "Source IP");
     assert.deepEqual(connections.filterTypes.map(item => item.key), originalFilters);
     assert.equal(connections.searchText, "network=tcp");
-    assert.deepEqual(editor.conf.rules, ["MATCH,DIRECT"]);
+    assert.deepEqual(Array.from(editor.conf.rules), ["MATCH,DIRECT"]);
     assert.equal(editor.addData.name, "unsaved proxy");
     await editor.saveData();
     assert.deepEqual(yaml.parse(writes[0][2]).rules, ["MATCH,DIRECT"]);

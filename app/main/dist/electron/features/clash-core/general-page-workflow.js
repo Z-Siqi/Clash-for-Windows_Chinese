@@ -5,6 +5,7 @@ const { isIPv4 } = require("../../core/network/browser-ip");
 const { normalizeCoreVersion } = require("./core-api-compat");
 const { supportsScriptMode } = require("../../core/clash-core/core-capabilities");
 const { TAP_MODES, resolveTapMode } = require("../../core/network/legacy-tap-policy");
+const { setManualMixedPort } = require("../../core/network/manual-mixed-port");
 
 const { DEFAULT_YAML_MIXIN: DEFAULT_MIXIN, DEFAULT_CODE_MIXIN: DEFAULT_MIXIN_CODE } = require("../../core/config/mixin-defaults");
 
@@ -26,6 +27,7 @@ function createGeneralPageWorkflow({
     service,
     firewall,
     utilities,
+    checkMixedPort,
     schedule = setTimeout,
     repeat = setInterval
 }) {
@@ -381,9 +383,11 @@ function createGeneralPageWorkflow({
             } catch (_error) {}
         },
         async handleEditMixedPort() {
+            if (this.proxyBusy) return false;
             const labels = getLanguage();
+            let result;
             try {
-                const result = await this.$input({
+                result = await this.$input({
                     title: labels.changeMixedPort(),
                     data: [{
                         name: labels.newPort(), key: "port", placeholder: this.port, value: "",
@@ -391,15 +395,29 @@ function createGeneralPageWorkflow({
                     }],
                     hint: "mixed = http + socks"
                 });
-                const port = parsePort(result.port);
-                if (port !== null && (await this.clashApi.patchConfig({ "mixed-port": port })).status === 204) {
+            } catch (_cancelled) { return false; }
+            const port = parsePort(result.port);
+            if (port === null) return false;
+            return this.$parent.runProxyOperation("port", async () => {
+                try {
+                    await setManualMixedPort({
+                        clashApi: this.clashApi, port, checkAvailable: checkMixedPort,
+                        sleep: delay => new Promise(resolve => schedule(resolve, delay)),
+                        persist: value => utilities.updateYaml(path.join(this.clashPath, "config.yaml"), "mixed-port", value)
+                    });
                     this.port = port;
                     this.settings.randomMixedPort = false;
-                    await utilities.updateYaml(path.join(this.clashPath, "config.yaml"), "mixed-port", port);
                     this.setConfData({ data: { ...this.confData, "mixed-port": port } });
-                }
-            } catch (_error) {}
-            this.setupComponent();
+                    return true;
+                } catch (error) {
+                    if (error.actualPort !== undefined) this.port = error.actualPort;
+                    const content = error.reason === "unavailable" ? labels.portUnavailable()
+                        : error.reason === "rollback" ? labels.mixedPortRollbackFailed()
+                            : error.reason === "persist" ? labels.mixedPortSaveFailed() : labels.mixedPortChangeFailed();
+                    await this.$alert({ title: labels.changeMixedPort(), content });
+                    return false;
+                } finally { await this.setupComponent(); }
+            });
         },
         async handleEditBindAddress() {
             const labels = getLanguage();
@@ -433,7 +451,13 @@ function createGeneralPageWorkflow({
                 if (selection === 0) await this.reloadElectron();
                 return;
             }
-            await this.$parent.checkForUpdate();
+            let checked;
+            try { checked = await this.$parent.checkForUpdate(); }
+            catch (_error) { checked = false; }
+            if (checked === false) {
+                await this.$alert({ title: labels.checkForUpdate(), content: labels.updateCheckFailed() });
+                return false;
+            }
             const { url, version, displayVersion, log, releasePage, reactions, reactionClick } = this.$parent.newVersionInfo;
             if (!url) {
                 this.$alert({ title: labels.nowVersionUpToDate(), content: labels.nowVersionUpToDateDescribe() });

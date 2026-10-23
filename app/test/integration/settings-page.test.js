@@ -74,6 +74,31 @@ test("external editor waiting dialog translates the sentence while keeping the e
         vm.isLinux = false; vm.isMacOS = false; vm.isWindows = true;
         const text = node => !node ? "" : (node.text || "") + (node.children || node.componentOptions?.children || []).map(text).join("");
         assert.ok(text(vm._render()).includes(labels.externalEditorLaunching({ editor: "Visual Studio Code" })));
+        vm.settings = { editor: 2, editorCustomCommand: "notepad.exe private-argument" };
+        const custom = text(vm._render());
+        assert.ok(custom.includes(labels.externalEditorLaunching({ editor: labels.custom() })));
+        assert.equal(custom.includes("Sublime Text"), false);
+        assert.equal(custom.includes("private-argument"), false);
+        vm.$destroy();
+    }
+});
+
+test("Settings navigation matches the visible sections on all platforms and ignores stale indexes", () => {
+    Vue.use(Vuex);
+    for (const platform of ["win32", "linux", "darwin"]) {
+        const store = new Vuex.Store({ state: { app: { settings: {}, confData: {} } }, getters: { secret: () => "", clashAxiosClient: () => null } });
+        const vm = new (Vue.extend(createPage()))({ store });
+        vm.settings = {};
+        vm.isWindows = platform === "win32"; vm.isMacOS = platform === "darwin"; vm.isLinux = platform === "linux";
+        const nodes = node => !node ? [] : [node, ...(node.children || node.componentOptions?.children || []).flatMap(nodes)];
+        const visible = nodes(vm._render()).filter(node => node.componentOptions?.tag === "Section"
+            && node.componentOptions.children.some(child => child.tag)).map(node => node.componentOptions.propsData.title);
+        assert.deepEqual(Array.from(vm.sections), visible);
+        const container = { children: visible.map((_item, i) => ({ offsetTop: i * 200 })), scrollTop: 7 };
+        const context = { $refs: { "mixin-scroll-content": container }, $nextTick: callback => callback() };
+        vm.$options.methods.handleNavigateToGroup.call(context, visible.length - 1);
+        assert.equal(container.scrollTop, (visible.length - 1) * 200 - 110);
+        assert.doesNotThrow(() => vm.$options.methods.handleNavigateToGroup.call(context, visible.length));
         vm.$destroy();
     }
 });

@@ -45,8 +45,11 @@ test("DHCP main owner fixes broadcast and port, updates policy and strips packet
     assert.deepEqual(host.options.dns({ chaddr: "mac", options: { 61: "client" } }), ["10.0.0.53"]);
     await host.handler(host.event, "policy", { hijackAddresses: [], hijackDns: [] });
     assert.deepEqual(host.options.router({ clientId: "client" }), ["10.0.0.1"]);
+    await host.handler(host.event, "policy", { hijackAddresses: ["mac"], hijackDns: [] });
+    assert.deepEqual(host.options.router({ chaddr: "mac", options: {} }), ["10.0.0.2"]);
+    assert.deepEqual(host.options.router({ chaddr: "mac", options: { 61: "different-client" } }), ["10.0.0.1"]);
     host.server.emit("message", { chaddr: "mac", options: { 12: "name", 61: "client", 99: "secret" }, private: "packet" });
-    assert.deepEqual(host.events.at(-1), ["dhcp-event", { type: "message", value: { chaddr: "mac", options: { 12: "name", 61: "client" } } }]);
+    assert.deepEqual(host.events.at(-1), ["dhcp-event", { type: "message", value: { chaddr: "mac", options: { 12: "name", 61: "client" }, policyIdentity: { kind: "raw", value: "client" } } }]);
     host.server.emit("bound", { [`client-id:${Buffer.from("client").toString("base64url")}`]: { address: "10.0.0.101" } });
     assert.deepEqual(host.events.at(-1)[1].value, { mac: { address: "10.0.0.101" } });
     await host.handler(host.event, "stop");
@@ -63,6 +66,74 @@ test("DHCP startup handles bind failures and navigation releases only owned reso
     await host.handler(host.event, "start", { config: host.config });
     host.owner.emit("did-start-loading");
     assert.equal(host.calls.filter(item => item[0] === "unblock").length, 1);
+});
+
+test("DHCP long identities match complete values in a separate namespace without changing raw identity precedence", async t => {
+    const host = harness(t);
+    await host.handler(host.event, "start", { config: host.config });
+    const prefix = "x".repeat(128), one = prefix + "one", two = prefix + "two";
+    const packet = value => ({ chaddr: "long-client", options: { 61: value } });
+    host.server.emit("message", packet(one));
+    const first = host.events.at(-1)[1].value;
+    assert.equal(first.options[61], prefix);
+    assert.equal(first.policyIdentity.kind, "sha256");
+    assert.match(first.policyIdentity.value, /^[a-f0-9]{64}$/);
+    const count = host.events.length;
+    host.server.emit("message", packet(one));
+    assert.equal(host.events.length, count, "unchanged packets do not flood the UI");
+    host.server.emit("message", packet(two));
+    assert.notEqual(host.events.at(-1)[1].value.policyIdentity.value, first.policyIdentity.value, "full identity changes survive identical display prefixes");
+    await host.handler(host.event, "policy", { hijackAddresses: [prefix], hijackIdentityTokens: [first.policyIdentity.value], hijackDns: ["10.0.0.53"] });
+    assert.deepEqual(host.options.router(packet(one)), ["10.0.0.2"]);
+    assert.deepEqual(host.options.dns(packet(one)), ["10.0.0.53"]);
+    assert.deepEqual(host.options.router(packet(two)), ["10.0.0.1"]);
+    assert.deepEqual(host.options.router(packet(first.policyIdentity.value)), ["10.0.0.1"], "a raw ID equal to a digest must not inherit its policy");
+    assert.deepEqual(host.options.router(packet(prefix)), ["10.0.0.2"], "existing short raw selections remain intact");
+    await host.handler(host.event, "policy", { hijackAddresses: [first.policyIdentity.value], hijackIdentityTokens: [] });
+    assert.deepEqual(host.options.router(packet(one)), ["10.0.0.1"]);
+    assert.deepEqual(host.options.router(packet(first.policyIdentity.value)), ["10.0.0.2"]);
+    host.server.emit("message", { chaddr: "fallback-client", clientId: "fallback-id", options: {} });
+    assert.deepEqual(host.events.at(-1)[1].value.policyIdentity, { kind: "raw", value: "fallback-id" });
+    const restarted = harness(t);
+    await restarted.handler(restarted.event, "start", { config: restarted.config });
+    restarted.server.emit("message", packet(one));
+    assert.deepEqual(restarted.events.at(-1)[1].value.policyIdentity, first.policyIdentity, "long selections survive service restart");
+});
+
+test("DHCP token IPC preserves validation and a combined selection budget", async t => {
+    const host = harness(t), token = "a".repeat(64);
+    for (const tokens of ["bad", [null], ["A".repeat(64)], ["a".repeat(63)], Array(2049).fill(token)]) {
+        await assert.rejects(host.handler(host.event, "policy", { hijackIdentityTokens: tokens }), /Invalid DHCP policy/);
+    }
+    await assert.rejects(host.handler(host.event, "policy", { hijackAddresses: Array.from({ length: 2048 }, (_value, index) => `client-${index}`), hijackIdentityTokens: [token] }), /Invalid DHCP policy/);
+    await assert.rejects(host.handler({ ...host.event, senderFrame: {} }, "policy", { hijackIdentityTokens: [token] }), /Unauthorized/);
+});
+
+test("DHCP identity churn keeps current and recent lease owners while bounding history without exposing encoded keys", async t => {
+    const host = harness(t);
+    await host.handler(host.event, "start", { config: host.config });
+    const key = value => `client-id:${Buffer.from(value).toString("base64url")}`;
+    host.server.emit("message", { chaddr: "stable-mac", options: { 61: "stable" } });
+    host.server.emit("message", { chaddr: "changing-mac", options: { 61: "old" } });
+    for (let index = 0; index < 4100; index++) host.server.emit("message", { chaddr: "changing-mac", options: { 61: `change-${index}` } });
+    host.server.emit("bound", { [key("old")]: { address: "10.0.0.101" }, [key("stable")]: { address: "10.0.0.102" }, [key("change-4099")]: { address: "10.0.0.103" } });
+    assert.deepEqual(host.events.at(-1)[1].value, { "stable-mac": { address: "10.0.0.102" }, "changing-mac": { address: "10.0.0.103" } });
+});
+
+test("DHCP bound snapshots aggregate old/new identities for one MAC and prioritize the current lease in either order", async t => {
+    const host = harness(t);
+    await host.handler(host.event, "start", { config: host.config });
+    const key = value => `client-id:${Buffer.from(value).toString("base64url")}`;
+    host.server.emit("message", { chaddr: "same-mac", options: { 61: "first-id" } });
+    host.server.emit("message", { chaddr: "same-mac", options: { 61: "second-id" } });
+    const entries = [[key("first-id"), { address: "10.0.0.101" }], [key("second-id"), { address: "10.0.0.102" }]];
+    for (const snapshot of [entries, [...entries].reverse()]) {
+        assert.doesNotThrow(() => host.server.emit("bound", Object.fromEntries(snapshot)));
+        assert.deepEqual(host.events.at(-1)[1].value, { "same-mac": { address: "10.0.0.102" } });
+    }
+    host.server.emit("message", { chaddr: "new-mac", options: { 61: "second-id" } });
+    host.server.emit("bound", { [key("second-id")]: { address: "10.0.0.103" } });
+    assert.deepEqual(host.events.at(-1)[1].value, { "new-mac": { address: "10.0.0.103" } }, "a moved client ID belongs to its latest MAC");
 });
 
 test("DHCP routing options work with the pinned package using an injected socket and no real DHCP traffic", async t => {

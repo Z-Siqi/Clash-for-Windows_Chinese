@@ -88,6 +88,7 @@ function createRendererRuntime({
     });
     store = createRendererStore({ Vue, Vuex, modules: { app: appModule } });
     const utilities = createRendererUtilities({
+        platform: processObject.platform,
         updateConfig: (key, value) => coreConfigRepository.update(store.state.app.clashPath, key, value),
         path,
         yaml,
@@ -144,6 +145,7 @@ function createRendererRuntime({
         firewall,
         getPort: () => electron.ipcRenderer.invoke("loopback-port", "random"),
         checkPort: port => electron.ipcRenderer.invoke("loopback-port", "available", port),
+        checkMixedPort: port => electron.ipcRenderer.invoke("loopback-port", "mixed-available", port),
         ...networkInfo,
         keys: preferenceKeys,
         lodash,

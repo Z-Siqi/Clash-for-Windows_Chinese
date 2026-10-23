@@ -14,6 +14,8 @@ const { bundledRefresh } = require("../fixtures/bundled-refresh");
 const { verifyDisconnect } = require("../fixtures/core-disconnect");
 const { waitForInitialConfig } = require("../fixtures/core-startup-readiness");
 const { createClashApi } = require("../../main/dist/electron/core/network/clash-api");
+const { isMixedPortAvailable } = require("../../main/dist/electron/core/network/mixed-port-availability");
+const { setManualMixedPort } = require("../../main/dist/electron/core/network/manual-mixed-port");
 const { buildStore } = require("../fixtures/renderer-store");
 const { homePage } = require("../fixtures/home-page");
 const { persistSelection } = require("../../main/dist/electron/features/profiles/persist-selection");
@@ -182,6 +184,47 @@ async function verifyTapRollback(api) {
     assert.equal(rules.data.rules.at(-1).proxy, "DIRECT");
 }
 
+async function verifyManualPortEdit(api, initialPort, home) {
+    const file = path.join(home, "config.yaml");
+    const persist = async port => {
+        const config = yaml.parse(fs.readFileSync(file, "utf8"));
+        config["mixed-port"] = port;
+        fs.writeFileSync(file, yaml.stringify(config));
+    };
+    const options = { clashApi: api, persist, sleep: delay => new Promise(resolve => setTimeout(resolve, delay)),
+        checkAvailable: async port => isMixedPortAvailable({ net, dgram, port, config: (await api.getConfig()).data }) };
+    for (const protocol of ["tcp", "udp"]) {
+        const port = await freePort([initialPort]);
+        const socket = protocol === "tcp" ? net.createServer() : dgram.createSocket("udp4");
+        await new Promise((resolve, reject) => {
+            socket.once("error", reject);
+            if (protocol === "tcp") socket.listen(port, "127.0.0.1", resolve);
+            else socket.bind(port, "127.0.0.1", resolve);
+        });
+        try {
+            await assert.rejects(setManualMixedPort({ ...options, port }), { reason: "unavailable" });
+            assert.equal((await api.getConfig()).data["mixed-port"], initialPort);
+            assert.equal(yaml.parse(fs.readFileSync(file, "utf8"))["mixed-port"], initialPort);
+        } finally { await new Promise(resolve => socket.close(resolve)); }
+    }
+    const candidate = await freePort([initialPort]);
+    await assert.rejects(setManualMixedPort({ ...options, port: candidate, persist: async () => { throw Error("simulated read-only profile"); } }), { reason: "persist" });
+    assert.equal((await api.getConfig()).data["mixed-port"], initialPort, "disk failures must restore the real listener");
+    assert.equal(await options.checkAvailable(candidate), true, "rollback must release the attempted port");
+    const tcp = net.createServer(), udp = dgram.createSocket("udp4");
+    try {
+        await new Promise((resolve, reject) => { tcp.once("error", reject); tcp.listen(candidate, "127.0.0.2", resolve); });
+        await new Promise((resolve, reject) => { udp.once("error", reject); udp.bind(candidate, "127.0.0.2", resolve); });
+        assert.equal(await setManualMixedPort({ ...options, port: candidate }), candidate);
+        assert.equal((await api.getConfig()).data["mixed-port"], candidate);
+        assert.equal(yaml.parse(fs.readFileSync(file, "utf8"))["mixed-port"], candidate);
+        await setManualMixedPort({ ...options, port: candidate, checkAvailable: () => { throw Error("same-port edit must not rebind"); } });
+        await setManualMixedPort({ ...options, port: initialPort });
+    } finally {
+        await Promise.all([tcp, udp].map(socket => new Promise(resolve => { try { socket.close(resolve); } catch { resolve(); } })));
+    }
+}
+
 async function verifyCore(coreName, relativeBinary) {
     const binary = path.join(root, relativeBinary);
     if (process.platform !== "win32") fs.chmodSync(binary, 0o755);
@@ -226,6 +269,7 @@ async function verifyCore(coreName, relativeBinary) {
         // /version responds before the initial YAML finishes applying. A mode
         // PATCH sent in that window can be overwritten by startup's Direct mode.
         await waitForInitialConfig({ request: () => request(controllerPort, "GET", "/configs"), child, mixedPort: initialMixedPort });
+        await verifyManualPortEdit(api, initialMixedPort, home);
         // Confirm forwarding is running before changing any configuration.
         try { await verifyDisconnect(api, initialMixedPort); }
         catch (error) {

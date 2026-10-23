@@ -25,6 +25,7 @@ const preferenceKeys = {
     IS_MIXIN: "isProfileMixin",
     LAST_VERSION_CODE: "lastVersionCode",
     ROUTER_HIJACK_MAC_ADDRESSES: "routerHijackMacAddresses",
+    ROUTER_HIJACK_IDENTITY_TOKENS: "routerHijackIdentityTokens",
     DHCP_MAC_ALIAS: "dhcpMacAlias",
     TUN_SETTINGS: "tunSettings",
     IS_TUN: "isTunEnabled",

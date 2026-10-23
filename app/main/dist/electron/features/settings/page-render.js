@@ -1368,7 +1368,7 @@ function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, 
                         }
                     }), viewModel._v(" "), viewModel.isEditingExternal ? createElement("div", {
                         staticClass: "edit-hint"
-                    }, [createElement("div", [viewModel._v(labels.externalEditorLaunching({ editor: ["", "Visual Studio Code", "Sublime Text"][viewModel.settings.editor] }))]), viewModel._v(" "), createElement("div", [viewModel._v(labels.closeEditingFileSave())]), viewModel._v(" "), createElement("div", {
+                    }, [createElement("div", [viewModel._v(labels.externalEditorLaunching({ editor: ["", "Visual Studio Code", labels.custom()][viewModel.settings.editor] }))]), viewModel._v(" "), createElement("div", [viewModel._v(labels.closeEditingFileSave())]), viewModel._v(" "), createElement("div", {
                         staticClass: "btn",
                         on: {
                             click: viewModel.cancelExternalEdit

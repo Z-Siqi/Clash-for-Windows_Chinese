@@ -55,7 +55,7 @@ test("delete and recreate preserves group membership; saving unresolved deletion
     const document = config();
     const f = editor(document, [3]); await f.vm.loadData();
     assert.equal(await f.vm.removeFromProxies({ stopPropagation() {} }, 0), true);
-    assert.deepEqual(f.vm.conf["proxy-groups"][0].proxies, ["A", "DIRECT"]);
+    assert.deepEqual(Array.from(f.vm.conf["proxy-groups"][0].proxies), ["A", "DIRECT"]);
     assert.equal(await f.vm.saveData(), false);
     assert.equal(f.writes, 0); assert.equal(f.alerts.length, 1);
     f.vm.conf.proxies.push(document.proxies[0]);
@@ -149,9 +149,9 @@ test("plain deletion removes associated rules, duplicate members and optional re
     document.tunnels = [{ proxy: "A" }];
     const f = editor(document, [2]); await f.vm.loadData();
     assert.equal(await f.vm.removeObject("proxies", 0), true);
-    assert.deepEqual(f.vm.conf.rules, ["SUB-RULE,(NETWORK,TCP),A", "DOMAIN,retained.example,DIRECT"]);
-    assert.deepEqual(f.vm.conf["sub-rules"].A, []);
-    assert.deepEqual(f.vm.conf["proxy-groups"][0].proxies, ["DIRECT"]);
+    assert.deepEqual(Array.from(f.vm.conf.rules), ["SUB-RULE,(NETWORK,TCP),A", "DOMAIN,retained.example,DIRECT"]);
+    assert.deepEqual(Array.from(f.vm.conf["sub-rules"].A), []);
+    assert.deepEqual(Array.from(f.vm.conf["proxy-groups"][0].proxies), ["DIRECT"]);
     assert.equal(Object.hasOwn(f.vm.conf.proxies[0], "dialer-proxy"), false);
     assert.deepEqual(references(f.vm.conf).filter(item => item.target === "A"), []);
     await f.vm.saveData();

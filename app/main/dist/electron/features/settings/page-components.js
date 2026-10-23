@@ -27,6 +27,10 @@ function createSettingsPageComponents({ defineComponent, Vuex, draggable, getLan
             return { isRecording: false, keyChain: [] };
         },
         watch: {
+            value(value) {
+                // Starting a recording emits an empty value back through the parent.
+                if (!this.isRecording) this.keyChain = String(value || "").split("+");
+            },
             isRecording(value) {
                 if (!value) this.$emit("change", this.shortcut);
             }
@@ -40,7 +44,10 @@ function createSettingsPageComponents({ defineComponent, Vuex, draggable, getLan
             handleKeyDown(event) {
                 if (!this.isRecording) return;
                 if (event.keyCode === 13) this.isRecording = false;
-                else if (event.key && !event.repeat && !this.keyChain.includes(event.key)) this.keyChain.push(event.key);
+                else if (event.key && !event.repeat) {
+                    const key = ({ ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right", " ": "Space" })[event.key] || event.key;
+                    if (!this.keyChain.includes(key)) this.keyChain.push(key);
+                }
             },
             handleClick() {
                 this.keyChain = [];

@@ -152,6 +152,15 @@ async function run() {
     await failed;
     assert.equal(await handler(event, "service", "install", base), true);
 
+    for (const name of ["clash-win-arm64.exe", "mihomo-windows-arm64.exe"]) {
+        const binaryPath = path.win32.join(base.filesPath, "win", "arm64", name);
+        for (const action of ["status", "add", "remove"]) {
+            await assert.doesNotReject(handler(event, "firewall", action, { ...base, binaryPath }));
+        }
+    }
+    await assert.rejects(handler(event, "firewall", "add", { ...base,
+        binaryPath: path.win32.join(base.filesPath, "win", "arm64", "clash-windows-arm64.exe") }), /not an allowed packaged executable/);
+
     console.log("native administrator IPC smoke: PASS");
 }
 

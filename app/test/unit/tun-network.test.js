@@ -35,7 +35,7 @@ const linuxConfig = buildTunConfig({
     isAutoRedir: true,
     isAutoRedirAutoRoute: false,
     defaultNameservers: ["1.1.1.1"]
-}, "linux");
+}, "linux", "clash");
 assert.equal(linuxConfig.tun.stack, "system");
 assert.equal(linuxConfig["interface-name"], "eth0");
 assert.deepEqual(linuxConfig["auto-redir"], { enable: true, "auto-route": false });

@@ -138,6 +138,41 @@ test("Home page: occupied mixed port dialog accepts a checked manual port", asyn
     assert.equal(commits[0].data["mixed-port"], manualPort);
 });
 
+test("Home recovery checks mixed protocol scope for manual and random choices without committing rejected candidates", async () => {
+    for (const manual of [true, false]) {
+        const checked = [], patches = [], writes = [], messages = [], candidates = [24001, 24002];
+        let actual = 0;
+        const page = homePage({
+            getPort: async () => candidates.shift(),
+            checkMixedPort: async port => { checked.push(port); return port !== 24001; },
+            showMessageBox: async options => { messages.push(options); return { response: manual ? 0 : 1 }; },
+            updateYaml: async (...args) => writes.push(args)
+        });
+        const vm = { ...page.methods, clashMixedPort: 0, mixedPort: 7890, clashPath: "profile", confData: {},
+            settings: { randomMixedPort: true }, $input: async () => ({ port: String(candidates.shift()) }),
+            clashApi: { getConfig: async () => ({ status: 200, data: { "mixed-port": actual } }),
+                patchConfig: async value => { actual = value["mixed-port"]; patches.push(actual); return { status: 204 }; } },
+            setConfData({ data }) { this.confData = data; } };
+        await vm.resolveMixedPortConflict();
+        assert.deepEqual(checked, [24001, 24002]);
+        assert.deepEqual(patches, [24002]);
+        assert.equal(writes.length, 1);
+        assert.equal(vm.settings.randomMixedPort, !manual);
+        assert.equal(vm.confData["mixed-port"], 24002);
+        assert.equal(vm.isResolvingMixedPortConflict, false);
+        assert.equal(messages.filter(message => message.type === "error").length, manual ? 1 : 0);
+    }
+});
+
+test("Home recovery holds the proxy operation guard until its port dialog is dismissed", async () => {
+    const page = homePage({ showMessageBox: async () => ({ response: 2 }) });
+    const vm = { ...page.methods, clashMixedPort: 0, isResolvingMixedPortConflict: false };
+    const recovering = vm.resolveMixedPortConflict();
+    assert.equal(page.computed.proxyBusy.call(vm), true);
+    await recovering;
+    assert.equal(page.computed.proxyBusy.call(vm), false);
+});
+
 test("Home page: restart transients cannot open the mixed-port recovery dialog", async () => {
     const page = homePage({ sleep: async () => {} });
     let probes = 0;
@@ -146,6 +181,7 @@ test("Home page: restart transients cannot open the mixed-port recovery dialog",
         ...page.methods,
         isCoreRestarting: true,
         isResolvingMixedPortConflict: false,
+        get proxyBusy() { return page.computed.proxyBusy.call(this); },
         clashStatus: "connected",
         clashMixedPort: 0,
         clashApi: {
@@ -168,6 +204,23 @@ test("Home page: restart transients cannot open the mixed-port recovery dialog",
     assert.equal(await model.checkMixedPortConflict(), true);
     assert.equal(probes, 3);
     assert.equal(dialogs, 1);
+});
+
+test("Home recovery rechecks every shared busy state after asynchronous conflict confirmation", async () => {
+    for (const busy of ["proxyOperation", "profileApplyCount", "serviceOperation", "isResolvingMixedPortConflict", "isCoreRestarting"]) {
+        const page = homePage({ sleep: async () => {} });
+        let confirm, dialogs = 0;
+        const vm = { ...page.methods, clashMixedPort: 0, clashStatus: "connected",
+            get proxyBusy() { return page.computed.proxyBusy.call(this); },
+            clashApi: { getConfig: () => new Promise(resolve => { confirm = resolve; }) },
+            resolveMixedPortConflict: async () => { dialogs++; } };
+        const checking = vm.checkMixedPortConflict();
+        vm[busy] = busy === "proxyOperation" ? "port" : true;
+        vm.clashApi.getConfig = async () => ({ status: 200, data: { "mixed-port": 0 } });
+        confirm({ status: 200, data: { "mixed-port": 0 } });
+        assert.equal(await checking, false, busy);
+        assert.equal(dialogs, 0, busy);
+    }
 });
 
 test("Home page: routing mode changes publish both the tray image and menu mode", async () => {

@@ -45,7 +45,9 @@ function createSettingsPageOptions({
             sections() {
                 const labels = getLanguage();
                 // The experimental section currently renders only macOS DHCP controls.
-                const keys = this.isMacOS ? SECTION_KEYS : SECTION_KEYS.filter(key => key !== "experimentalFeatures");
+                const keys = SECTION_KEYS.filter(key =>
+                    (key !== "experimentalFeatures" || this.isMacOS)
+                    && (key !== "sysProxy" || this.isWindows || this.isMacOS));
                 return keys.map(key => labels[key]());
             },
             ...Vuex.mapState({
@@ -84,9 +86,11 @@ function createSettingsPageOptions({
                 await this.$parent.handlerRestartClash();
             },
             handleNavigateToGroup(index) {
-                const scrollContainer = this.$refs["mixin-scroll-content"];
-                const section = scrollContainer.children[index];
-                this.$nextTick(() => { scrollContainer.scrollTop = section.offsetTop - 110; });
+                this.$nextTick(() => {
+                    const scrollContainer = this.$refs["mixin-scroll-content"];
+                    const section = scrollContainer?.children[index];
+                    if (section) scrollContainer.scrollTop = section.offsetTop - 110;
+                });
             },
             cancelExternalEdit() {
                 externalEditor.cancel();

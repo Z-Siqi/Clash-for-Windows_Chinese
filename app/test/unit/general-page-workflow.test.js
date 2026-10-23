@@ -21,6 +21,7 @@ function createWorkflow(overrides = {}) {
         cache: { get: key => cacheValues.get(key), put: (key, value) => cacheValues.set(key, value) },
         keys: { AUTO_LAUNCH: "auto", TAP_INFO: "tap", SYSTEM_PROXY_COMMAND: "command", GEOIP_TOKEN: "token", GEOIP_URL: "url" },
         getNetworkInterfaces: () => [],
+        checkMixedPort: async () => true,
         platform: { isMacOS: () => false, isWindows: () => false, isLinux: () => true },
         updateApplication: async () => "update.exe",
         logger: { info: value => calls.push(["log", value]) },
@@ -130,6 +131,7 @@ test("the Mihomo version action opens an HTTPS dashboard accepted by navigation 
 test("general page mixed-port edit validates, patches and persists one integer value", async () => {
     const patches = [], commits = [];
     const { workflow, calls } = createWorkflow();
+    let actualPort = 7890;
     const page = {
         ...workflow.methods,
         port: 7890,
@@ -137,7 +139,11 @@ test("general page mixed-port edit validates, patches and persists one integer v
         clashPath: "profile",
         confData: { mode: "rule" },
         $input: async () => ({ port: "65535" }),
-        clashApi: { patchConfig: async value => { patches.push(value); return { status: 204 }; } },
+        $parent: { runProxyOperation: async (name, action) => { assert.equal(name, "port"); return action(); } },
+        clashApi: {
+            getConfig: async () => ({ status: 200, data: { "mixed-port": actualPort } }),
+            patchConfig: async value => { patches.push(value); actualPort = value["mixed-port"]; return { status: 204 }; }
+        },
         setConfData: value => commits.push(value),
         setupComponent() { calls.push(["setup"]); }
     };

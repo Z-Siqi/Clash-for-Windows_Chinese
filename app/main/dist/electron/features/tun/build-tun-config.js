@@ -1,5 +1,7 @@
 "use strict";
 
+const { normalizeCoreType, CORE_TYPES } = require("../../core/clash-core/core-selection");
+
 const BASE_FAKE_IP_FILTERS = [
     "+.stun.*.*",
     "+.stun.*.*.*",
@@ -11,7 +13,7 @@ const BASE_FAKE_IP_FILTERS = [
     "*.*.xboxlive.com"
 ];
 
-function buildTunConfig(settings = {}, platform = process.platform) {
+function buildTunConfig(settings = {}, platform = process.platform, coreType) {
     settings = settings || {};
     const {
         ipv6 = false,
@@ -55,11 +57,15 @@ function buildTunConfig(settings = {}, platform = process.platform) {
     if (isAutoDetectInterface) config.tun["auto-detect-interface"] = true;
     else config["interface-name"] = interfaceName;
 
-    if (platform === "linux") {
+    if (platform === "linux" && normalizeCoreType(coreType) === CORE_TYPES.CLASH) {
         config["auto-redir"] = {
             enable: isAutoRedir,
             "auto-route": isAutoRedirAutoRoute
         };
+    } else if (platform === "linux" && typeof settings.mihomoAutoRedirect === "boolean") {
+        // A separate, explicitly confirmed choice prevents old ignored UI values
+        // from starting Linux redirection rules during an upgrade or core switch.
+        config.tun["auto-redirect"] = settings.mihomoAutoRedirect;
     }
     if (defaultNameservers.length === 0) delete config.dns["default-nameserver"];
     return config;

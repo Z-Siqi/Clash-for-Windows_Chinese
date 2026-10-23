@@ -3,6 +3,7 @@
 const { prepareProfile } = require("./prepare-profile");
 const { createTranslator } = require("../../core/i18n/language");
 const { allowsLegacyTap, isTapDns } = require("../../core/network/legacy-tap-policy");
+const { normalizeCoreType, CORE_TYPES } = require("../../core/clash-core/core-selection");
 
 function dnsHijackAddresses(hijacks = []) {
     return hijacks.reduce((addresses, value) => {
@@ -51,6 +52,12 @@ function createProfileApplication(deps) {
             const { config, hasProviders, tapAuthorized } = await prepareProfile({ ...input, source, profile }, deps);
             if (!isCurrent()) return superseded();
             const tun = config.tun || {};
+            // The packaged Mihomo passes syntax validation for this unsupported
+            // combination, then panics when creating the redirect listener.
+            if (platform === "linux" && normalizeCoreType(input.settings?.proxyCore) === CORE_TYPES.MIHOMO
+                && tun.enable === true && tun["auto-redirect"] === true && tun["auto-route"] !== true) {
+                throw Object.assign(new Error("Auto Redir requires automatic routing"), { code: "CFW_AUTO_REDIRECT_ROUTE" });
+            }
             const dns = config.dns || {};
             const autoDetect = tun["auto-detect-interface"] || tun["macOS-auto-detect-interface"];
             let needsTap = false;
@@ -112,7 +119,7 @@ function createProfileApplication(deps) {
             const labels = deps.getLanguage?.() || createTranslator(1);
             const position = error.linePos?.[0] || error.linePos?.start;
             const location = position ? labels.profileErrorLocation({ line: position.line, column: position.col }) : "";
-            const key = { CFW_PROFILE_NOT_MAPPING: "profileNotMapping", CFW_MIXIN_NOT_MAPPING: "mixinNotMapping", CFW_PROFILE_MISSING: "selectedProfileMissing" }[error.code];
+            const key = { CFW_PROFILE_NOT_MAPPING: "profileNotMapping", CFW_MIXIN_NOT_MAPPING: "mixinNotMapping", CFW_PROFILE_MISSING: "selectedProfileMissing", CFW_AUTO_REDIRECT_ROUTE: "autoRedirectNeedsAutoRoute" }[error.code];
             // Localize owned validation failures; keep third-party diagnostics intact.
             const reason = key ? labels[key]() : error.name === "YAMLParseError"
                 ? `${labels.profileInvalidYaml()}\n\n${error.message}` : error.message;
