@@ -76,6 +76,16 @@ and its shared release functions. Windows installer names have a distinct
 `.arm64.exe` suffix; the Inno script limits each installer to the matching OS
 architecture. Portable archives retain their package directory at the root.
 
+Every release package filename uses `displayVersion`, including Windows/macOS
+portable archives, DMGs, Linux tarballs and Debian packages. For example, the
+label `Opt-4.test` produces `Clash.for.Windows.Setup_Opt-4.test.exe`,
+`Clash.for.Windows-Opt-4.test-win.7z` and
+`Clash.for.Windows-Opt-4.test-linux-x64.deb`. The numeric `version` still identifies
+release tags, build directories and package-internal version metadata. The
+build manifest records both values. See the
+[filename reference](../../docs/development/releases.md#package-filenames-and-version-metadata)
+for all platform and architecture suffixes.
+
 Publish packages from `Build/Output/<version>/<run-id>`, not the unpacked `work` directory. Its
 `update` feed lists only files this run actually produced. Combine the
 per-host artifacts and feed entries for a full release, upload the packages
@@ -92,9 +102,9 @@ sandbox; no `--no-sandbox` workaround is used. They do not install or enable
 Service Mode, change system proxies, or modify the user's CFW data directory.
 
 ```sh
-sudo apt install ./Clash.for.Windows-<version>-linux-x64.deb
+sudo apt install ./Clash.for.Windows-<displayVersion>-linux-x64.deb
 # Reinstall a rebuilt package whose version is already installed:
-sudo apt install --reinstall ./Clash.for.Windows-<version>-linux-x64.deb
+sudo apt install --reinstall ./Clash.for.Windows-<displayVersion>-linux-x64.deb
 # Removal:
 sudo apt remove clash-for-windows
 ```

@@ -99,7 +99,7 @@ async function main(args = process.argv.slice(2)) {
     const cache = path.join(__dirname, "Build/cache/electron");
     seedElectronCache(cache);
     const env = { ...process.env, CFW_BUILD_ROOT: work, CFW_ELECTRON_CACHE: cache, TEMP: temporary, TMP: temporary, TMPDIR: temporary };
-    const manifest = { version: release.config.version, host: process.platform, targets: plan.targets, skipped: plan.skipped, artifacts: [], status: "building" };
+    const manifest = { version: release.config.version, displayVersion: release.displayVersion(), host: process.platform, targets: plan.targets, skipped: plan.skipped, artifacts: [], status: "building" };
     const manifestPath = path.join(runRoot, "manifest.json");
     const save = () => fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
     let sequence = 0;
@@ -144,7 +144,7 @@ async function main(args = process.argv.slice(2)) {
                 const archive = path.join(artifacts, release.assetName(target));
                 await createTarGz(packagePath, archive, { prefix: path.basename(packagePath) });
                 await record(target, archive, "portable");
-                const deb = path.join(artifacts, `Clash.for.Windows-${release.config.version}-${target}.deb`);
+                const deb = path.join(artifacts, release.debianAssetName(target));
                 await createDeb({ packagePath, target, version: release.config.version, output: deb, staging: path.join(runRoot, "staging", target), applicationId: release.config.applicationId });
                 await record(target, deb, "deb");
                 continue;

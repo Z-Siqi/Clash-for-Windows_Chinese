@@ -6,8 +6,11 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { gunzipSync } = require("node:zlib");
+const { createHash } = require("node:crypto");
+const vm = require("node:vm");
+const release = require("../../main/dist/electron/core/release/release-info");
 const { planTargets, resolveContained } = require("../../../CFW/BuildRelease/build-release");
-const { createDeb } = require("../../../CFW/BuildRelease/linux-packages");
+const { createDeb, createTarGz } = require("../../../CFW/BuildRelease/linux-packages");
 
 function tarEntries(buffer) {
     const entries = [];
@@ -29,6 +32,61 @@ test("release target planning reports host limits and rejects an impossible all-
     assert.throws(() => planTargets("win32", ["mac-x64"]), /another host/);
     assert.throws(() => planTargets("win32", ["win-x64", "win-x64"]), /unique/);
     assert.throws(() => resolveContained(os.tmpdir(), "../outside"), /outside/);
+});
+
+test("the release runner writes display-labelled archives, Debian files, checksums and feed entries with numeric package versions", async t => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "cfw-release-names-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const script = path.resolve(__dirname, "../../../CFW/BuildRelease/build-release.js");
+    const buildDirectory = path.join(root, "CFW", "BuildRelease");
+    const runner = { exports: {} };
+    const dependencies = {
+        "node:fs": fs, "node:path": path, "node:crypto": require("node:crypto"),
+        "../../app/main/dist/electron/core/release/release-info": release,
+        "./linux-packages": { createDeb, createTarGz },
+        "../../scripts/build/sync-release": { synchronizeRelease() {} },
+        "node:child_process": { spawnSync(_command, args, options) {
+            assert.equal(args[0], "scripts/build/package-application.js");
+            const target = args[1];
+            const targetRoot = path.join(options.env.CFW_BUILD_ROOT, "packages", target);
+            const packagePath = path.join(targetRoot, `application-${target}`);
+            fs.mkdirSync(path.join(packagePath, "resources/static/imgs"), { recursive: true });
+            fs.writeFileSync(path.join(packagePath, "resources/static/imgs/icon_512.png"), "fixture image");
+            for (const name of ["cfw", "chrome-sandbox"]) fs.writeFileSync(path.join(packagePath, name), Buffer.from([0x7f, 69, 76, 70]));
+            fs.writeFileSync(path.join(targetRoot, "latest.json"), JSON.stringify({ outputPath: path.relative(path.join(root, "app"), packagePath) }));
+            return { status: 0 };
+        } }
+    };
+    vm.runInNewContext(fs.readFileSync(script, "utf8"), {
+        module: runner, __dirname: buildDirectory, console: { log() {} },
+        process: { platform: "linux", pid: process.pid, execPath: process.execPath, env: {} },
+        require(request) { assert.ok(Object.hasOwn(dependencies, request), `unexpected dependency: ${request}`); return dependencies[request]; }
+    }, { filename: script });
+    await runner.exports.main(["--skip-tests", "--targets=linux-x64,linux-arm64"]);
+    const latest = JSON.parse(fs.readFileSync(path.join(buildDirectory, "Build/latest.json"), "utf8"));
+    const manifest = JSON.parse(fs.readFileSync(latest.manifestPath, "utf8"));
+    assert.equal(manifest.status, "complete");
+    assert.equal(manifest.version, release.config.version);
+    assert.equal(manifest.displayVersion, release.config.displayVersion);
+    const expected = ["linux-x64", "linux-arm64"].flatMap(target => [release.assetName(target), release.debianAssetName(target)]);
+    assert.deepEqual(manifest.artifacts.map(asset => asset.name), expected);
+    const sums = fs.readFileSync(path.join(latest.artifacts, "SHA256SUMS"), "utf8");
+    for (const asset of manifest.artifacts) {
+        assert.ok(asset.name.includes(release.config.displayVersion));
+        const bytes = fs.readFileSync(path.join(latest.artifacts, asset.name));
+        assert.equal(asset.sha256, createHash("sha256").update(bytes).digest("hex"));
+        assert.ok(sums.includes(`${asset.sha256}  ${asset.name}\n`));
+    }
+    for (const target of ["linux-x64", "linux-arm64"]) {
+        const control = fs.readFileSync(path.join(latest.runRoot, "staging", target, "control/control"), "utf8");
+        assert.ok(control.includes(`Version: ${release.config.version}\n`));
+        assert.equal(control.includes(`Version: ${release.config.displayVersion}\n`), false);
+    }
+    const feed = JSON.parse(fs.readFileSync(path.join(latest.artifacts, "update"), "utf8"));
+    assert.equal(feed.tag_name, release.config.version);
+    assert.equal(feed.display_version, release.config.displayVersion);
+    assert.deepEqual(feed.assets.map(asset => asset.name), expected);
+    for (const asset of feed.assets) assert.equal(asset.browser_download_url, release.assetUrl(asset.name));
 });
 
 for (const target of ["linux-x64", "linux-arm64"]) {

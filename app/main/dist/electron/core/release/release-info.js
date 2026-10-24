@@ -22,7 +22,7 @@ function compareVersions(left, right) {
 }
 
 function displayVersion(value = config.displayVersion) {
-    // The label also appears in installer filenames; keep it path-safe.
+    // Every published package includes this label; keep it path-safe.
     if (typeof value !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(value)) throw new Error("Invalid display version");
     return value;
 }
@@ -47,7 +47,12 @@ function assetName(target, version = config.version, portable = false, label = c
     if (!portable && target.startsWith("win-")) {
         return `Clash.for.Windows.Setup_${displayVersion(label)}${target === "win-arm64" ? ".arm64" : ""}.exe`;
     }
-    return `Clash.for.Windows-${version}${suffixes[target]}`;
+    return `Clash.for.Windows-${displayVersion(label)}${suffixes[target]}`;
+}
+
+function debianAssetName(target, label = config.displayVersion) {
+    if (!["linux-x64", "linux-arm64"].includes(target)) throw new Error("Unsupported Debian release target");
+    return `Clash.for.Windows-${displayVersion(label)}-${target}.deb`;
 }
 
 function assetUrl(name, version = config.version) {
@@ -64,4 +69,4 @@ function createUpdateFeed({ version = config.version, displayVersion: label = co
     };
 }
 
-module.exports = { config, releasesUrl, updateUrl, versionParts, compareVersions, displayVersion, releasePage, assetName, assetUrl, createUpdateFeed };
+module.exports = { config, releasesUrl, updateUrl, versionParts, compareVersions, displayVersion, releasePage, assetName, debianAssetName, assetUrl, createUpdateFeed };

@@ -4,11 +4,12 @@
 for the application version, Electron version, display revision, repository,
 update branch, application identity, default subscription User-Agent and
 published platform targets. `version` is a four-component numeric version
-used for packaging, release tags and update comparison. `displayVersion` is
-an independent label (for example `Opt-4.1`) used in the UI, update dialogs
-and Windows installer names. Changing only the label does not make a newer
-release; increase `version` to trigger update detection. Dependency versions and the historical upstream
-version mentioned in credits are independent of this release version.
+used for package metadata, release tags and update comparison. `displayVersion`
+is an independent label (for example `Opt-4.test`) used in the UI, update dialogs
+and every published package filename. Changing only the label does not make a
+newer release; increase `version` to trigger update detection. Dependency
+versions and the historical upstream version mentioned in credits are
+independent of this release version.
 
 ## Preparing a release
 
@@ -20,7 +21,7 @@ running the release checks. See [native dependencies](native-dependencies.md).
 1. Increase `version` in the release configuration, and set `displayVersion`
    independently. For example, `version: "0.2039.4.1"` and
    `displayVersion: "Opt-4.1"`. Labels use letters, digits, dots, underscores
-   and hyphens (up to 64 characters) so installer filenames stay valid.
+   and hyphens (up to 64 characters) so package filenames stay valid.
    Change `electronVersion` only
    when upgrading Electron. Add a `publishedTargets` entry only when its asset
    will actually be published; supported build targets and published assets are
@@ -35,8 +36,10 @@ running the release checks. See [native dependencies](native-dependencies.md).
 4. Run `npm run build:release` for all targets supported by the current host,
    or select targets with `--targets`. Windows Inno Setup includes the generated
    definitions and architecture-specific paths from the runner. DMG and portable
-   names use the same `assetName()` function as the update feed. See
-   `CFW/BuildRelease/README.md` for host requirements and output layout.
+   names use the same `assetName()` function as the update feed; Debian names
+   use `debianAssetName()` from the same release module. See the
+   [release runner guide](../../CFW/BuildRelease/README.md) for host requirements
+   and output layout.
 5. Publish the assets under the configured version tag before publishing the
    generated `update` file. The release runner creates Windows installers,
    portable archives and Linux Debian packages; it does not upload releases.
@@ -45,9 +48,34 @@ Runtime code reads the configuration directly. Packaging takes its Electron
 version, application version and bundle identity from it. The Electron package
 manifest must still contain a version because Electron and npm require one;
 the synchronization check catches drift rather than maintaining a second
-editable version. Subscription downloads use `ClashforWindows/Optimize` by
-default. Per-profile headers override it; global headers override profile
+editable version. Subscription downloads take their default User-Agent from
+`subscriptionUserAgent`. Per-profile headers override it; global headers override profile
 headers, including case-insensitive User-Agent names.
+
+## Package filenames and version metadata
+
+All download filenames use `displayVersion`, with platform and architecture
+suffixes identifying the package type:
+
+| Target | Installer or disk image | Portable archive |
+| --- | --- | --- |
+| Windows x64 | `Clash.for.Windows.Setup_<displayVersion>.exe` | `Clash.for.Windows-<displayVersion>-win.7z` |
+| Windows ARM64 | `Clash.for.Windows.Setup_<displayVersion>.arm64.exe` | `Clash.for.Windows-<displayVersion>-arm64-win.7z` |
+| macOS x64 | `Clash.for.Windows-<displayVersion>.dmg` | `Clash.for.Windows-<displayVersion>-mac.7z` |
+| macOS ARM64 | `Clash.for.Windows-<displayVersion>-arm64.dmg` | `Clash.for.Windows-<displayVersion>-arm64-mac.7z` |
+| Linux x64 | `Clash.for.Windows-<displayVersion>-linux-x64.deb` | `Clash.for.Windows-<displayVersion>-x64-linux.tar.gz` |
+| Linux ARM64 | `Clash.for.Windows-<displayVersion>-linux-arm64.deb` | `Clash.for.Windows-<displayVersion>-arm64-linux.tar.gz` |
+
+For a display label of `Opt-4.test`, the Windows x64 portable archive is
+`Clash.for.Windows-Opt-4.test-win.7z` and the Linux x64 Debian package is
+`Clash.for.Windows-Opt-4.test-linux-x64.deb`.
+
+The numeric `version` remains in Electron/npm metadata, Inno Setup's internal
+application version, the Debian control file and the GitHub release tag. Build
+directories are grouped by that numeric version and a unique run ID; the build
+manifest records both versions. The generated feed uses the numeric `tag_name`
+for comparison and URLs, and `display_version` for the visible label. Update
+selection also accepts the numeric filenames from older releases.
 
 ## Current update path
 
@@ -68,33 +96,30 @@ Saved `silentUpdate` and `isSilentUpgraded` values are retained for compatibilit
 the inactive automatic-update control is hidden. URL restrictions on the dormant
 download IPC remain in force.
 
-## Diagnosed failure points and recovery strategy
+## Update capability boundaries
 
-The following findings come from the current code and repository history, not
-from running an installer on a developer machine.
+Update detection and installation are separate capabilities. The supported
+application flow checks the feed and opens the release page; users install or
+extract the downloaded package with the procedure for their operating system.
+A successful feed check or completed download does not confirm installation.
+The shared CFW data directory and Service Mode allow-lists remain part of the
+installation contract.
 
-| Finding | Evidence and consequence | Strategy |
-| --- | --- | --- |
-| Published installer was not recognized | The feed advertises `Clash.for.Windows.Setup_Opt-4.exe`; the old Home regex required a numeric application version in the filename. | Fixed by sharing asset naming and recognizing the published name, with tests for both architectures and legacy names. |
-| Version sources drifted | Manifest/lock, renderer display, Inno version/name and update tag were independently edited. Inno reported only `4` while Electron reported four components. | Fixed by the release configuration and synchronization gate. |
-| Four-component and decorated tags | The old comparison folded components into a base-1000 number; `v`/`Opt` tags could yield NaN, and large components could collide. | Fixed by validated component comparison and historical `v`/`-Opt.N` support. |
-| Automatic installation was removed | Commit `d532c2f` removed the General page update/install action and replaced it with opening the release page. Current code has no runtime factory caller or `silentUpdate` consumer. | Restore a complete main-process update service if automatic installation is required; wiring a switch to the old helper alone is insufficient. |
-| Completion listener race | In the helper at `12e50d8`, `start-download` was awaited before attaching `download` listeners. A fast completion could leave the promise pending. | Current helper registers first and handles completion before the IPC target reply. Preserve this regression test in a replacement updater. |
-| Wrong Windows silent flags | Historical General workflow used `/S`; this repository ships an Inno Setup script. Inno documents `/SILENT` and `/VERYSILENT`, not `/S`. | Use an Inno-specific argument list, for example `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-`, with `/DIR` set to the installed location and a diagnostic log. Actual historical failures still need installer logs to attribute them to this mismatch. |
-| Incomplete download lifecycle | Download IPC clears `pending` when `will-download` fires, so another active download can share the uncorrelated `download` event channel. Interrupted/paused states and a request that never produces `will-download` lack a complete timeout/retry contract. | Use operation IDs, one active update, terminal cleanup, cancellation, timeouts, resume/retry and an owned temporary directory. Commit progress to state only for the matching operation. |
-| Replacement while running | Old workflow used synchronous installer spawning. The Inno script deletes `{app}\\*`; a running app/core or service can hold those files. macOS helper merges via `cp -R`, can retain stale files, assumes a mount-name regex and may report a downloaded target without a successful copy. | Use an external installer/helper after graceful app/core shutdown, handle service state, explicit exit codes, verified replacement, rollback and relaunch. Do not delete a live installation. For macOS use a structured mount result, signature verification, staging and cleanup in `finally`. |
-| Missing integrity and format contract | Feed has URLs and names but no digest/signature, size or installer type. Download IPC accepts only exe/dmg; portable/Linux packages have no installer path. | Publish a versioned per-platform manifest with hashes, signatures and install types; verify in the main process before granting install capability. Define separate Windows installed/portable, macOS and Linux replacement adapters. |
-| Network availability | Feed retrieval uses raw GitHub in the main process; downloads use the Electron session. There is no explicit common update proxy policy. The current feed has only a Windows x64 asset. | Make routing explicit and consistent, surface fetch failures separately from “up to date”, and publish assets for each advertised target. Failure on a specific network or a historical machine needs network logs to establish it. |
+The dormant download/install helper is compatibility code, not an automatic
+update service. It accepts executable and DMG downloads, but has no supported
+portable or Linux replacement path. Its event channel does not identify
+concurrent update operations, and interruption, cancellation and retry do not
+have a complete lifecycle contract. Its presence does not establish rollback,
+signature verification or a confirmed application replacement.
 
-A practical restoration sequence is: publish and validate per-platform
-metadata; implement a main-process download/verification state machine; add
-Windows installation and rollback with exit-code reporting; then add macOS,
-portable and Linux adapters. Test interrupted downloads, completion ordering,
-wrong-architecture packages, failed signatures, UAC cancellation, non-default
-installation paths, running services and rollback in isolated VMs. Native
-installation must preserve the shared CFW data directory and service core hash
-allow-lists. Only report “updated” after the new application starts and confirms
-its version. Background download completion alone is not installation success.
+The release runner emits `SHA256SUMS` and records artifact sizes and hashes in
+its build manifest. The current update feed advertises names and URLs without
+a signed installation manifest, and the application does not perform automatic
+package verification or installation. Matching the configured repository and
+release tag constrains asset selection; it is not a package signature check.
 
-References: [Inno Setup command-line parameters](https://jrsoftware.org/ishelp/topic_setupcmdline.htm),
-[published update feed](https://raw.githubusercontent.com/Z-Siqi/Clash-for-Windows_Chinese/main/update).
+Feed retrieval requires access to the configured raw GitHub endpoint. Retrieval
+failures are reported separately from a successful check that finds no newer
+version. Feed requests and dormant Electron-session downloads use different
+transports; there is no shared update-routing policy. Only targets with actual
+published assets belong in `publishedTargets` and the published feed.
