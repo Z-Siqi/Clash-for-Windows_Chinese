@@ -15,12 +15,13 @@ function deferred() {
 }
 
 function fixture(t, { rollbackStatus = 204, systemProxy = false, disconnect = true, blockRollback = false } = {}) {
-    const writes = [], closed = [], alerts = [], entered = deferred(), gate = deferred();
+    const writes = [], deadlines = [], closed = [], alerts = [], entered = deferred(), gate = deferred();
     let active, refreshes = 0, starts = 0, failTap = true;
     const api = {
         isReady: () => true,
-        async putConfig({ payload }) {
+        async putConfig({ payload }, options) {
             writes.push(payload);
+            deadlines.push(options.timeout);
             if (writes.length === 3) { entered.resolve(); if (blockRollback) await gate.promise; if (rollbackStatus !== 204) return { status: rollbackStatus }; }
             active = yaml.parse(payload); return { status: 204 };
         },
@@ -50,7 +51,7 @@ function fixture(t, { rollbackStatus = 204, systemProxy = false, disconnect = tr
         }
     });
     t.after(() => vm.$destroy());
-    return { vm, writes, closed, alerts, entered, gate, get active() { return active; }, get refreshes() { return refreshes; },
+    return { vm, writes, deadlines, closed, alerts, entered, gate, get active() { return active; }, get refreshes() { return refreshes; },
         get starts() { return starts; }, allowTap: () => { failTap = false; } };
 }
 
@@ -68,6 +69,7 @@ test("failed :53 Mixin activation restores the actual core payload before turnin
     assert.equal(h.active.dns.enable, false);
     assert.deepEqual(h.active.rules, ["MATCH,DIRECT"]);
     assert.equal(h.writes[2], h.writes[0], "restore the exact serialized completed payload");
+    assert.deepEqual(h.deadlines, [60000, 60000, 60000], "Mixin compensation needs the same reload budget as activation");
     assert.equal(h.vm.currentProfilePayload.dns.enable, false);
     assert.equal(h.vm.tun2socks, null);
     assert.deepEqual(h.closed.sort(), ["tap", "tun"]);

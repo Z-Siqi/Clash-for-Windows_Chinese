@@ -111,8 +111,8 @@ function createGeneralPageWorkflow({
             const request = this.tapStatusRequest = (this.tapStatusRequest || 0) + 1;
             try {
                 const installed = await getTapInstalled();
-                if (request === this.tapStatusRequest) this.tapInstalled = installed === true;
-            } catch (_error) { if (request === this.tapStatusRequest) this.tapInstalled = null; }
+                if (request === this.tapStatusRequest && (installed === true || installed === false)) this.tapInstalled = installed;
+            } catch (_error) { /* Keep the last confirmed status during transient OS/IPC failures. */ }
         },
         handleTitleClick() { electron.ipcRenderer.invoke("window", "reload"); },
         handleShowDNSQueryDialog() { this.$dns().catch(() => {}); },

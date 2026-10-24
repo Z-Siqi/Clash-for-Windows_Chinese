@@ -36,8 +36,42 @@ test("profile applies overrides, restores all groups then mode and stops TAP", a
     assert.deepEqual(h.calls.map(call => call[0]), ["put", "setPayload", "setProvidersVisible", "select", "select", "switchMode", "resetDns", "stopTap"]);
     assert.equal(h.calls[0][1]["log-level"], "warning");
     assert.equal(h.calls[0][1].ipv6, false);
-    assert.equal(h.calls[0][2].timeout, 10000);
+    assert.equal(h.calls[0][2].timeout, 60000);
     assert.equal(h.calls[1][1].ipv6, undefined);
+});
+
+test("TUN creation and teardown share the bounded full-configuration deadline", async () => {
+    for (const enabling of [true, false]) {
+        const h = harness();
+        h.input.tunConfig = enabling ? { tun: { enable: true, "auto-detect-interface": true } } : null;
+        assert.equal((await h.apply(h.input)).success, true);
+        assert.equal(h.calls.find(call => call[0] === "put")[2].timeout, 60000);
+    }
+});
+
+test("YAML and JavaScript Mixin activation and removal retain the full-configuration deadline without TUN or Providers", async () => {
+    for (const mixinType of [0, 1]) {
+        const h = harness({ runMixin: async ({ content }) => ({ ...content, dns: { enable: true } }) });
+        h.input.settings = { mixinType, mixinText: "mixin:\n  dns: {enable: true}", mixinCode: "saved code" };
+        for (const enabled of [true, false]) {
+            h.input.mixinEnabled = enabled;
+            assert.equal((await h.apply(h.input)).success, true);
+            const [, config, options] = h.calls.filter(call => call[0] === "put").at(-1);
+            assert.equal(config.dns?.enable === true, enabled);
+            assert.equal(config.tun, undefined);
+            assert.equal(options.timeout, 60000);
+        }
+    }
+});
+
+test("unknown TAP installation status cannot silently disable an eligible TAP policy", async () => {
+    const h = harness({ platform: "win32", fs: { readFileSync: () => "interface-name: Ethernet\ndns: {enable: true, listen: ':53'}\nrules: []" } });
+    h.input.settings.legacyTapMode = "enabled";
+    h.deps.effects.hasTap = async () => null;
+    const result = await h.apply(h.input);
+    assert.equal(result.success, false);
+    assert.match(result.message, /TAP/);
+    assert.deepEqual(h.calls, []);
 });
 
 test("TUN then async code mixin, secured HTTP providers and file aliases", async () => {

@@ -68,7 +68,7 @@ function createRendererPages({ Vuex, modifyState, runtime, components, version }
             return result;
         },
         refreshTapRuntime: (vm, installed) => refreshTapAfterSetup(vm, {
-            hasTap: runtime.profileNetworkEffects.hasTap, connectedStatus: connectionStatus.CONNECTED
+            hasTap: runtime.profileNetworkEffects.hasTap, connectedStatus: connectionStatus.CONNECTED, getLanguage: language
         }, installed),
         downloadProfile: profileParser.downloadProfile, net,
         runMacCommand: runMacSystemProxyCommand, uuid,

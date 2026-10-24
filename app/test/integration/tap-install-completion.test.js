@@ -67,3 +67,12 @@ test("cancelled elevation restores an installed adapter using the accepted polic
     assert.equal((await refreshTapAfterSetup(vm, { connectedStatus: "connected" }, true)).success, false);
     assert.deepEqual(calls, ["stop-tap"]);
 });
+
+test("an unknown post-setup TAP observation reports uncertainty instead of claiming the policy was restored", async () => {
+    const { vm, dependencies, calls } = fixture();
+    await refreshProfile(vm, dependencies); calls.length = 0;
+    const result = await refreshTapAfterSetup(vm, { connectedStatus: "connected", hasTap: async () => null,
+        getLanguage: () => ({ tapStatusUnknown: () => "TAP status unavailable" }) }, undefined);
+    assert.deepEqual(result, { success: false, message: "TAP status unavailable" });
+    assert.deepEqual(calls, ["stop-tap"]);
+});

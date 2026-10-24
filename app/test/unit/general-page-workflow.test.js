@@ -49,6 +49,31 @@ test("the legacy Script tester is available only for Clash, including direct act
     assert.equal(opened, 1);
 });
 
+test("TAP status keeps its last confirmed value on transient failures and accepts confirmed removal", async () => {
+    let state = true;
+    const { workflow } = createWorkflow({ platform: { isWindows: () => true }, getTapInstalled: async () => {
+        if (state instanceof Error) throw state;
+        return state;
+    } });
+    const page = { ...workflow.data(), ...workflow.methods };
+    state = null; await page.refreshTapStatus(); assert.equal(page.tapInstalled, null);
+    state = true; await page.refreshTapStatus(); assert.equal(page.tapInstalled, true);
+    for (state of [null, undefined, Error("temporary native failure")]) {
+        await page.refreshTapStatus(); assert.equal(page.tapInstalled, true);
+    }
+    state = false; await page.refreshTapStatus(); assert.equal(page.tapInstalled, false);
+});
+
+test("late TAP observations cannot overwrite a newer confirmed result", async () => {
+    const answers = [];
+    const { workflow } = createWorkflow({ platform: { isWindows: () => true }, getTapInstalled: () => new Promise(resolve => answers.push(resolve)) });
+    const page = { ...workflow.data(), ...workflow.methods, tapInstalled: true };
+    const old = page.refreshTapStatus(), current = page.refreshTapStatus();
+    answers[1](false); await current;
+    answers[0](true); await old;
+    assert.equal(page.tapInstalled, false);
+});
+
 test("General dialogs localize service status, later/copy buttons, port validation and GeoIP fields", async () => {
     for (const language of [0, 1]) {
         const labels = createTranslator(language), dialogs = [], inputs = [], alerts = [];

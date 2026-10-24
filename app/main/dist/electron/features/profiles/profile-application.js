@@ -4,6 +4,7 @@ const { prepareProfile } = require("./prepare-profile");
 const { createTranslator } = require("../../core/i18n/language");
 const { allowsLegacyTap, isTapDns } = require("../../core/network/legacy-tap-policy");
 const { normalizeCoreType, CORE_TYPES } = require("../../core/clash-core/core-selection");
+const { configApplyTimeout } = require("../../core/network/config-apply-policy");
 
 function dnsHijackAddresses(hijacks = []) {
     return hijacks.reduce((addresses, value) => {
@@ -70,6 +71,7 @@ function createProfileApplication(deps) {
             if (tapEligible) {
                 needsTap = await effects.hasTap();
                 if (!isCurrent()) return superseded();
+                if (needsTap !== true && needsTap !== false) throw Object.assign(new Error("TAP adapter status could not be verified"), { code: "CFW_TAP_STATUS_UNKNOWN" });
                 if (!config["interface-name"] && !tun["auto-detect-interface"]) {
                     let detected;
                     try { detected = await effects.detectInterface(); }
@@ -83,7 +85,7 @@ function createProfileApplication(deps) {
             const submitted = yaml.stringify({ ...config, ipv6: confData.ipv6, "log-level": confData["log-level"] });
             const response = await clashApi.putConfig({
                 payload: submitted
-            }, { validateStatus: () => true, timeout: hasProviders ? 0 : 10000 });
+            }, { validateStatus: () => true, timeout: configApplyTimeout({ hasProviders }) });
             nextStage("network-effects");
             success = response.status === 204;
             message = response.data && response.data.message || (deps.getLanguage?.() || createTranslator(1)).profileSwitchStatus({ status: response.status });
@@ -119,7 +121,7 @@ function createProfileApplication(deps) {
             const labels = deps.getLanguage?.() || createTranslator(1);
             const position = error.linePos?.[0] || error.linePos?.start;
             const location = position ? labels.profileErrorLocation({ line: position.line, column: position.col }) : "";
-            const key = { CFW_PROFILE_NOT_MAPPING: "profileNotMapping", CFW_MIXIN_NOT_MAPPING: "mixinNotMapping", CFW_PROFILE_MISSING: "selectedProfileMissing", CFW_AUTO_REDIRECT_ROUTE: "autoRedirectNeedsAutoRoute" }[error.code];
+            const key = { CFW_PROFILE_NOT_MAPPING: "profileNotMapping", CFW_MIXIN_NOT_MAPPING: "mixinNotMapping", CFW_PROFILE_MISSING: "selectedProfileMissing", CFW_AUTO_REDIRECT_ROUTE: "autoRedirectNeedsAutoRoute", CFW_TAP_STATUS_UNKNOWN: "tapStatusUnknown" }[error.code];
             // Localize owned validation failures; keep third-party diagnostics intact.
             const reason = key ? labels[key]() : error.name === "YAMLParseError"
                 ? `${labels.profileInvalidYaml()}\n\n${error.message}` : error.message;

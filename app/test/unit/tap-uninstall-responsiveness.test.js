@@ -27,7 +27,7 @@ test("a pending TAP lookup leaves the event loop responsive and coalesces concur
         execFileSync() { assert.fail("TAP discovery must not block Electron's main process"); },
         execFile(file, args, options, callback) {
             assert.equal(file, "netsh");
-            assert.deepEqual(args, ["interface", "show", "interface", "name=cfw-tap"]);
+            assert.deepEqual(args, ["interface", "show", "interface"]);
             assert.ok(options.timeout > 0 && options.timeout <= 10000);
             requests++; finish = callback;
         }
@@ -36,11 +36,11 @@ test("a pending TAP lookup leaves the event loop responsive and coalesces concur
     assert.equal(effects.hasTap(), lookup);
     await new Promise(setImmediate);
     assert.equal(requests, 1);
-    finish(null, "present");
+    finish(null, "Admin State    State    Type    Interface Name\n--------------------------------------------------\nEnabled    Disconnected    Dedicated    cfw-tap\n");
     assert.equal(await lookup, true);
     const missing = effects.hasTap();
     finish(Object.assign(Error("timed out"), { killed: true }));
-    assert.equal(await missing, false);
+    assert.equal(await missing, null);
 });
 
 test("uninstall elevation detection and command execution do not use synchronous child processes", async () => {
@@ -66,14 +66,17 @@ test("uninstall elevation detection and command execution do not use synchronous
 
 test("TAP setup invalidates older discovery work without letting its completion clear a newer lookup", async () => {
     const callbacks = [];
-    const effects = createProfileNetworkEffects({ childProcess: { execFile(_file, _args, _options, callback) { callbacks.push(callback); } } });
+    const effects = createProfileNetworkEffects({ sleep: async () => {}, childProcess: { execFile(_file, _args, _options, callback) { callbacks.push(callback); } } });
     const old = effects.hasTap();
     effects.invalidateTap();
     const current = effects.hasTap();
     assert.notEqual(old, current);
-    callbacks[0](null, "present before removal"); await old;
+    callbacks[0](null, "Admin State    State    Type    Interface Name\n--------------------------------------------------\nEnabled    Disconnected    Dedicated    cfw-tap\n");
+    assert.equal(await old, null, "an invalidated discovery cannot publish its old observation");
     assert.equal(effects.hasTap(), current);
-    callbacks[1](Error("removed"));
+    callbacks[1](null, "Admin State    State    Type    Interface Name\n--------------------------------------------------\nEnabled    Connected    Dedicated    Ethernet\n");
+    await new Promise(setImmediate);
+    callbacks[2](null, "Admin State    State    Type    Interface Name\n--------------------------------------------------\nEnabled    Connected    Dedicated    Ethernet\n");
     assert.equal(await current, false);
 });
 
@@ -109,10 +112,23 @@ function nativeHarness(runtime, overrides = {}) {
         getMainWindow: () => ({ webContents }), fs: {}, path: path.win32,
         platform: "win32", arch: "x64", resourcesPath: "C:\\app\\resources", sudoPrompt: { exec() {} }, createTapRuntime: runtime && (() => runtime), ...overrides });
     const event = { sender: webContents, senderFrame: webContents.mainFrame };
-    return { handlers, get quits() { return quits; }, call: (action, extra = {}) => handle(event, "tun", action, {
+    return { handlers, get quits() { return quits; }, networkStatus: () => handle(event, "profile-network", "has-tap", {
+        filesPath: "C:\\app\\resources\\static\\files", clashPath: "C:\\user\\.config\\clash"
+    }), call: (action, extra = {}) => handle(event, "tun", action, {
         filesPath: "C:\\app\\resources\\static\\files", clashPath: "C:\\user\\.config\\clash", ...extra
     }) };
 }
+
+test("TAP installation status is unknown during native setup and confirmed only after enumeration", async () => {
+    const setup = deferred();
+    const h = nativeHarness({ setupTapDevice: () => setup.promise }, { childProcess: { execFile(_file, _args, _options, callback) {
+        callback(null, "Admin State    State    Type    Interface Name\n--------------------------------------------------\nEnabled    Connected    Dedicated    Ethernet\n");
+    } } });
+    const pending = h.call("setup", { install: false });
+    assert.equal(await h.networkStatus(), null);
+    setup.resolve(true); await pending;
+    assert.equal(await h.networkStatus(), false);
+});
 
 test("native TAP stop failure retains process ownership for a retry and blocks driver removal", async () => {
     let failures = 1, stopped = 0, setups = 0;

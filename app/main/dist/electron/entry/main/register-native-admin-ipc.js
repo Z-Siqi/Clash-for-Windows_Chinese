@@ -103,7 +103,7 @@ function registerNativeAdminIpc({
         if (scope === "profile-network") {
             if (!["has-tap", "renew-dhcp"].includes(action)) throw new Error("Unsupported profile network operation");
             if (platform !== "win32") return false;
-            if (action === "has-tap") return tapSetupPending ? false : profileNetworkEffects.hasTap();
+            if (action === "has-tap") return tapSetupPending ? null : profileNetworkEffects.hasTap();
             cancelDhcp?.();
             cancelDhcp = profileNetworkEffects.renewDhcp();
             return true;

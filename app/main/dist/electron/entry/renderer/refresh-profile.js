@@ -7,6 +7,7 @@ const { prepareDisconnectCleanup } = require("../../features/connections/disconn
 const { trackProfileRefresh } = require("../../core/network/profile-refresh-state");
 const { resolveTapMode, allowsLegacyTap, isTapDns } = require("../../core/network/legacy-tap-policy");
 const { createTranslator } = require("../../core/i18n/language");
+const { configApplyTimeout } = require("../../core/network/config-apply-policy");
 
 // Serialize core writes, but let a newer request retire obsolete preparation and TAP startup.
 const pending = new WeakMap();
@@ -96,7 +97,9 @@ function refreshProfile(vm, dependencies) {
                     disconnecting: true, scope: "tunnel", includeSocks: vm.isSystemProxyOn !== true,
                     onError: () => dependencies.onDisconnectCleanupError?.() }) : async () => {};
                 if (!previousPolicy?.submitted) throw Error(labels.tapNoPreviousConfiguration());
-                const rollback = await vm.clashApi.putConfig({ payload: previousPolicy.submitted }, { validateStatus: () => true, timeout: 10000 });
+                const hasProviders = ["proxy-providers", "rule-providers"].some(key => Object.keys(previousPolicy.config[key] || {}).length > 0);
+                const rollback = await vm.clashApi.putConfig({ payload: previousPolicy.submitted }, { validateStatus: () => true,
+                    timeout: configApplyTimeout({ hasProviders }) });
                 if (rollback.status !== 204) throw Error(labels.profileSwitchStatus({ status: rollback.status }));
                 restored = true;
                 acceptedTap.set(vm, previousPolicy);
@@ -124,7 +127,7 @@ function refreshProfile(vm, dependencies) {
     return result;
 }
 
-async function refreshTapAfterSetup(vm, { hasTap, connectedStatus }, installed) {
+async function refreshTapAfterSetup(vm, { hasTap, connectedStatus, getLanguage = () => createTranslator(1) }, installed) {
     // The driver did not change the core configuration. Reuse the policy the
     // core already accepted instead of re-downloading Providers or rerunning JS.
     await vm.killSpawned(vm.tun2socks);
@@ -144,7 +147,12 @@ async function refreshTapAfterSetup(vm, { hasTap, connectedStatus }, installed) 
         || policy.tapMode !== resolveTapMode(vm.settings)
         || policy.tapAllowMulticast !== (vm.settings.tapAllowMulticast === true)) return { success: false, message: "TAP policy changed; apply the current profile before starting TAP." };
     const eligible = allowsLegacyTap(vm.settings, policy.authorized) && !policy.config.tun?.enable && isTapDns(policy.config.dns);
-    if (!eligible || (installed === undefined && !await hasTap())) return { success: true };
+    if (!eligible) return { success: true };
+    if (installed === undefined) {
+        const actual = await hasTap();
+        if (actual === false) return { success: true };
+        if (actual !== true) return { success: false, message: getLanguage().tapStatusUnknown() };
+    }
     if (!policy.config["interface-name"] && !policy.config.tun?.["auto-detect-interface"]) {
         return { success: false, message: "TAP is installed, but no upstream interface was available when the core configuration was applied. Connect to a network and apply the profile again." };
     }
