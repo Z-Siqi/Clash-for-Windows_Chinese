@@ -1,8 +1,12 @@
 "use strict";
 
-function createExternalEditorClient({ ipcRenderer, getHome }) {
+function createExternalEditorClient({ ipcRenderer, getHome, activity }) {
     return {
-        edit: (language, content) => ipcRenderer.invoke("external-editor", "edit", { home: getHome(), language, content }),
+        async edit(language, content) {
+            const release = activity?.begin();
+            try { return await ipcRenderer.invoke("external-editor", "edit", { home: getHome(), language, content }); }
+            finally { release?.(); }
+        },
         cancel: () => ipcRenderer.invoke("external-editor", "cancel").catch(() => {})
     };
 }

@@ -723,5 +723,20 @@
   "autoRedirectRequiresRoute": "Mihomo Auto Redir 使用 TUN 自动路由。旧的 Auto Route 子选项仅在选择 Clash 时提供。",
   "dhcpIdentityReselect": "已保存的选择可能使用了截短的客户端标识。请重新选择此设备，以应用其网关和 DNS 策略。",
   "autoRedirectNeedsAutoRoute": "Mihomo Auto Redir 需要 TUN 自动路由。请在最终配置中启用 auto-route，或关闭 auto-redirect。",
-  "dhcpPolicyLimit": "DHCP 选择数量已达上限，请先移除已有选择，再添加其他设备。"
+  "dhcpPolicyLimit": "DHCP 选择数量已达上限，请先移除已有选择，再添加其他设备。",
+  "actionScriptsEnabled": "启用右键菜单脚本",
+  "actionScriptsEnabledDescribe": "允许从配置文件和代理的右键菜单运行已配置的 Actions 脚本。不影响 Mixin、解析器或托盘脚本。",
+  "actionScriptNotConfigured": "尚未为此操作配置脚本。请在“设置 → 操作(Actions) → 脚本”中配置对应的 profile 或 proxy 脚本。",
+  "actionScriptsDisabled": "右键菜单脚本已禁用。可在“设置 → 操作(Actions)”中开启。",
+  "advertisementsDisabled": "广告加载已禁用。可在“设置 → 安全”中调整。",
+  "advertisementRisk": "广告图片和外链由第三方提供，来源被篡改时可能出现恶意或误导内容。请勿下载或运行不明文件。",
+  "noAdvertisements": "暂无广告内容。",
+  "advertisementsFailed": "广告内容加载失败。",
+  "shortcutUnavailable": "此快捷键无法使用，原快捷键已保留。请选择其他组合。",
+  "saveAndRestart": "保存并重启",
+  "profileDirectoryConfirm": "是否重启应用以使用此配置目录？现有文件仍保留在原目录。\n{path}",
+  "profileDirectoryBusy": "仍有配置操作正在进行，请等待完成后重试。",
+  "profileDirectoryFailed": "无法保存配置目录或重启应用，已保留原设置。",
+  "profileDirectoryRecoveryFailed": "无法恢复原设置。请退出应用并检查 cfw-settings.yaml 后再启动。",
+  "settingsResetRestart": "应用将重启以使用默认设置及配置目录，现有配置文件仍保留在原目录。"
 }

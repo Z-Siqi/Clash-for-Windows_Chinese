@@ -723,5 +723,20 @@
   "autoRedirectRequiresRoute": "Mihomo Auto Redir uses TUN automatic routing. The legacy Auto Route sub-option is available with Clash.",
   "dhcpIdentityReselect": "A saved selection may contain a shortened client identifier. Select this device again to apply its gateway and DNS policy.",
   "autoRedirectNeedsAutoRoute": "Mihomo Auto Redir requires TUN automatic routing. Enable auto-route or disable auto-redirect in the final configuration.",
-  "dhcpPolicyLimit": "The DHCP selection limit has been reached. Remove an existing selection before adding another device."
+  "dhcpPolicyLimit": "The DHCP selection limit has been reached. Remove an existing selection before adding another device.",
+  "actionScriptsEnabled": "Enable context menu scripts",
+  "actionScriptsEnabledDescribe": "Run configured Actions scripts from profile and proxy context menus. This does not affect Mixin, parsers or tray scripts.",
+  "actionScriptNotConfigured": "No script is configured for this action. Configure the corresponding profile or proxy script in Settings → Actions → Script.",
+  "actionScriptsDisabled": "Context menu scripts are disabled. You can enable them in Settings → Actions.",
+  "advertisementsDisabled": "Advertisement loading is disabled. You can change this in Settings → Security.",
+  "advertisementRisk": "Advertisement images and links come from third parties. A compromised source may provide malicious or misleading content. Do not download or run unknown files.",
+  "noAdvertisements": "No advertisements are available.",
+  "advertisementsFailed": "Advertisements could not be loaded.",
+  "shortcutUnavailable": "This shortcut is unavailable. Your previous shortcut has been kept. Choose another combination.",
+  "saveAndRestart": "Save and restart",
+  "profileDirectoryConfirm": "Restart the application to use this profile directory? Existing files will stay in their current directory.\n{path}",
+  "profileDirectoryBusy": "A profile operation is still running. Wait for it to finish, then try again.",
+  "profileDirectoryFailed": "The profile directory could not be saved or the application could not restart. The previous settings have been kept.",
+  "profileDirectoryRecoveryFailed": "The previous settings could not be restored. Exit the application and check cfw-settings.yaml before starting it again.",
+  "settingsResetRestart": "The application will restart to apply the default settings and profile directory. Existing profile files will stay in their current directory."
 }

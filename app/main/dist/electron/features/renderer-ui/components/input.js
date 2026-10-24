@@ -17,7 +17,8 @@ function createInput({ Vuex, escCaptureComponent, getLanguage } = {}) {
                 hint: "",
                 resolve: null,
                 reject: null,
-                confirmText: null
+                confirmText: null,
+                submitOnEnter: false
             };
         },
         watch: {},
@@ -25,13 +26,14 @@ function createInput({ Vuex, escCaptureComponent, getLanguage } = {}) {
             ...Vuex.mapGetters(["theme"])
         },
         methods: {
-            show({ data = [], title = "", hint = "", confirmText = null }) {
+            show({ data = [], title = "", hint = "", confirmText = null, submitOnEnter = false }) {
                 this.error = "";
                 this.isShow = true;
                 this.data = data;
                 this.title = title;
                 this.hint = hint;
                 this.confirmText = confirmText;
+                this.submitOnEnter = submitOnEnter;
                 this.$nextTick(() => {
                     for (const index in data) {
                         const textarea = this.$refs[`ta${index}`][0];
@@ -49,7 +51,13 @@ function createInput({ Vuex, escCaptureComponent, getLanguage } = {}) {
                 textarea.style.height = "";
                 textarea.style.height = `${textarea.scrollHeight + 2}px`;
             },
-            handleKeyDown() {},
+            handleKeyDown(event) {
+                if (!this.submitOnEnter || event.isComposing || event.keyCode === 229
+                    || !(event.key === "Enter" || event.keyCode === 13)) return;
+                event.preventDefault();
+                event.stopPropagation();
+                if (!event.repeat) this.handleDone();
+            },
             handleCancel() {
                 this.isShow = false;
                 this.reject();

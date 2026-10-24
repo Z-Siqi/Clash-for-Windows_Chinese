@@ -1,6 +1,7 @@
 "use strict";
 
 const { posixServiceDirectory, buildPosixServiceInstall } = require("./install-posix-service");
+const { windowsServiceDirectory } = require("../../core/native/windows-service-paths");
 
 const SERVICE_STATUS = Object.freeze({
     Active: Symbol("Active"),
@@ -167,7 +168,7 @@ function createServiceModeManager(dependencies) {
     }
 
     function createWindowsManager() {
-        const installedDir = path.join(programFiles, "Clash for Windows Service");
+        const installedDir = windowsServiceDirectory(path, programFiles);
         const legacyDirectory = () => path.join(getClashPath(), "service");
         const installedScript = path.join(installedDir, "clash-core-service.ps1");
         const installedManifest = path.join(installedDir, "core-hashes.json");
@@ -203,7 +204,7 @@ function createServiceModeManager(dependencies) {
             // would condition the entire command chain and make clean installs
             // silently do nothing when the destination does not exist.
             const coreDir = path.join(installedDir, "cores");
-            const coreCopies = manifest.cores.map(entry => {
+            const coreCopies = [...manifest.cores, ...(manifest.dependencies || [])].map(entry => {
                 if (!/^[\w.-]+$/.test(entry.name) || entry.name === "." || entry.name === "..") throw new Error("Invalid service manifest");
                 return `copy "${path.join(source, "..", entry.name)}" "${coreDir}" /Y >nul`;
             }).join(" && ");

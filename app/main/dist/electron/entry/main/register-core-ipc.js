@@ -35,6 +35,7 @@ const { registerPublicContentIpc } = require("../../features/network/register-pu
 const { readServiceCredentials } = require("../../core/network/service-credentials");
 const { registerNavigationIpc } = require("../../features/navigation/register-navigation-ipc");
 const { createCertificateRequestOptions } = require("../../core/network/certificate-request-options");
+const { createOperationActivity } = require("../../core/native/operation-activity");
 
 function registerCoreIpc({
     ipcMain,
@@ -52,6 +53,14 @@ function registerCoreIpc({
     unsafeUrlPolicy,
     getLanguage
 }) {
+    const profileActivity = createOperationActivity();
+    const profileIpc = {
+        on: ipcMain.on.bind(ipcMain),
+        handle(channel, handler) {
+            ipcMain.handle(channel, (...args) => channel === "external-editor" && args[1] === "cancel"
+                ? handler(...args) : profileActivity.run(() => handler(...args)));
+        }
+    };
     registerApplicationIpc({ ipcMain, app, getMainWindow, fs: require("fs"), path: require("path"), os: require("os") });
     registerWindowIpc({ ipcMain, getMainWindow, app });
     registerDialogIpc({ ipcMain, dialog, getMainWindow, getLanguage });
@@ -63,7 +72,7 @@ function registerCoreIpc({
         ipcMain, app, getMainWindow, fs: require("fs"), path: require("path"), yaml: require("yaml"),
         filesPath: staticRoot && (app.isPackaged ? require("path").join(staticRoot, "files") : require("path").resolve("static", "files")),
         getPort: require("get-port"), uuid: require("crypto").randomUUID, Koa: require("koa"), dialog, shell, getLanguage,
-        got: require("got"), zlib: require("zlib"), tarStream: require("tar-stream")
+        got: require("got"), zlib: require("zlib"), tarStream: require("tar-stream"), activity: profileActivity
     });
     registerNetworkInfoIpc({
         ipcMain, getMainWindow, platform: process.platform,
@@ -72,6 +81,7 @@ function registerCoreIpc({
         isIP: require("net").isIP,
         isIPv4: require("net").isIPv4
     });
+    let coreLifecycle;
     if (clashApi && staticRoot) {
         registerNavigationIpc({ ipcMain, app, getMainWindow, fs: require("fs"), path: require("path"), shell,
             allowExternalHttp: () => unsafeUrlPolicy?.allowsExternalHttp() === true });
@@ -85,7 +95,7 @@ function registerCoreIpc({
         registerApplicationLogIpc({ ipcMain, getMainWindow, app, shell, fs: require("fs"), path: require("path"), logger: require("electron-log"), getSensitiveValues: () => [clashClientRegistry.getConnectionInfo()?.secret] });
         registerDhcpIpc({ ipcMain, app, getMainWindow, powerSaveBlocker, dhcp: require("dhcp"), networkInterfaces: require("os").networkInterfaces, isIPv4: require("net").isIPv4 });
         let appliedProviders = {};
-        registerClashApiIpc({ ipcMain, getMainWindow, clashApi, onConfigApplied(config) {
+        registerClashApiIpc({ ipcMain, getMainWindow, clashApi, activity: profileActivity, onConfigApplied(config) {
             appliedProviders = {};
             try {
                 const payload = require("yaml").parse(config.payload, { prettyErrors: false, strict: false });
@@ -97,9 +107,9 @@ function registerCoreIpc({
         const fs = require("fs");
         const path = require("path");
         registerUserProcessIpc({ ipcMain, app, getMainWindow, fs, path, yaml: require("yaml"), childProcess: require("child_process") });
-        registerExternalEditorIpc({ ipcMain, app, getMainWindow, fs, path, yaml: require("yaml"), childProcess: require("child_process") });
+        registerExternalEditorIpc({ ipcMain: profileIpc, app, getMainWindow, fs, path, yaml: require("yaml"), childProcess: require("child_process") });
         registerProfileDownloadIpc({
-            ipcMain, app, getMainWindow, fs, path, yaml: require("yaml"),
+            ipcMain: profileIpc, app, getMainWindow, fs, path, yaml: require("yaml"),
             Notification: require("electron").Notification,
             forkWorker: (...args) => require("electron").utilityProcess.fork(...args),
             workerPath: path.resolve(__dirname, "../utility/profile-worker.js")
@@ -110,12 +120,13 @@ function registerCoreIpc({
             forkWorker: (...args) => require("electron").utilityProcess.fork(...args),
             workerPath: path.resolve(__dirname, "../utility/script-worker.js")
         });
-        const coreLifecycle = registerCoreLifecycleIpc({
+        coreLifecycle = registerCoreLifecycleIpc({
             ipcMain, app, getMainWindow, clashApi, fs, path,
             filesPath: app.isPackaged ? path.join(staticRoot, "files") : path.resolve("static", "files"),
             platform: process.platform, arch: process.arch,
             runtime: createClashCoreRuntime({
                 childProcess: require("child_process"), fs, path,
+                getSensitiveValues: () => [clashClientRegistry.getConnectionInfo()?.secret],
                 serviceApi: createClashServiceApi({ client: require("axios"), getCredentials: home => {
                     const portable = path.resolve(app.getPath("exe"), "..", "data");
                     return readServiceCredentials({ fs, path, home: home || (fs.existsSync(portable) ? portable : path.resolve(app.getPath("home"), ".config", "clash")) });
@@ -129,6 +140,7 @@ function registerCoreIpc({
         ipcMain,
         app,
         getMainWindow,
+        getActiveCore: () => coreLifecycle?.getActiveCore(),
         fs: require("fs"),
         path: require("path"),
         crypto: require("crypto"),

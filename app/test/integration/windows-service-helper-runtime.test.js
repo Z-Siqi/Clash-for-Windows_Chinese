@@ -23,7 +23,7 @@ function prepareHelper(home, port) {
     fs.copyFileSync(file, path.join(service, "service-config.json"));
     fs.copyFileSync(path.join(root, "app/clash_core/win_x64/static/files/win/common/clash-core-service.ps1"), path.join(service, "clash-core-service.ps1"));
     fs.copyFileSync(path.join(root, "app/clash_core/win_x64/static/files/win/x64/service/core-hashes.json"), path.join(service, "core-hashes.json"));
-    for (const name of ["clash-win64.exe", "mihomo-windows-amd64.exe"]) fs.copyFileSync(path.join(root, "app/clash_core/win_x64/static/files/win/x64", name), path.join(cores, name));
+    for (const name of ["clash-win64.exe", "mihomo-windows-amd64.exe", "wintun.dll"]) fs.copyFileSync(path.join(root, "app/clash_core/win_x64/static/files/win/x64", name), path.join(cores, name));
     return path.join(service, "clash-core-service.ps1");
 }
 
@@ -37,6 +37,11 @@ function freePort() {
             server.close(error => error ? reject(error) : resolve(port));
         });
     });
+}
+
+function helperApi(home, port) {
+    return createClashServiceApi({ getCredentials: () => readServiceCredentials({ fs, path, home }),
+        client: Object.fromEntries(["get", "post"].map(method => [method, (url, ...args) => axios[method](url.replace(SERVICE_BASE_URL, `http://127.0.0.1:${port}`), ...args)])) });
 }
 
 function request(port, method, pathname, payload, authorize = false, serviceAuth = true) {
@@ -139,10 +144,7 @@ test("Windows Service helper starts Clash and shuts down a managed Mihomo", {
     const core = path.join(root, "app/clash_core/win_x64/static/files/win/x64/clash-win64.exe");
     const mihomo = path.join(root, "app/clash_core/win_x64/static/files/win/x64/mihomo-windows-amd64.exe");
     const helper = prepareHelper(home, servicePort);
-    const serviceApi = createClashServiceApi({
-        getCredentials: () => readServiceCredentials({ fs, path, home }),
-        client: Object.fromEntries(["get", "post"].map(method => [method, (url, ...args) => axios[method](url.replace(SERVICE_BASE_URL, `http://127.0.0.1:${servicePort}`), ...args)]))
-    });
+    const serviceApi = helperApi(home, servicePort);
     const manifest = path.join(path.dirname(helper), "core-hashes.json");
     fs.copyFileSync(
         path.join(root, "app/clash_core/win_x64/static/files/default/Country.mmdb"),
@@ -180,8 +182,14 @@ test("Windows Service helper starts Clash and shuts down a managed Mihomo", {
         assert.equal((await request(servicePort, "GET", "/ping")).status, 200);
         stage = "service start";
         assert.equal((await serviceApi.ping()).status, 200);
-        const start = await serviceApi.start({ path: core, cwd: home, silent: false });
+        const dll = path.join(path.dirname(helper), "cores", "wintun.dll");
+        const trustedDll = fs.readFileSync(dll);
+        fs.writeFileSync(dll, "modified dependency");
+        assert.equal((await request(servicePort, "POST", "/start", { core: path.basename(core), silent: true })).status, 403);
+        fs.writeFileSync(dll, trustedDll);
+        const start = await serviceApi.start({ path: core, cwd: home, silent: false, redactValues: ["synthetic-controller-value"] });
         assert.equal(start.status, 200, `${start.data}\n${output.value}`);
+        assert.deepEqual(await serviceApi.getCoreStatus(), { running: true, core: path.basename(core) });
         assert.equal(fs.realpathSync.native(path.dirname(start.data)), fs.realpathSync.native(path.join(home, "logs")));
         assert.ok(fs.statSync(start.data).isFile());
         stage = "core version";
@@ -197,6 +205,9 @@ test("Windows Service helper starts Clash and shuts down a managed Mihomo", {
             if (error.code !== "ECONNRESET") throw error;
         }
         await waitForUnavailable(controllerPort, "/version", true);
+        assert.deepEqual(await serviceApi.getCoreStatus(), { running: false, core: null });
+        assert.ok(fs.statSync(start.data).size > 0, "Service Mode must persist core output, rather than create an empty file");
+        assert.ok(!fs.readFileSync(start.data, "utf8").includes(serviceTokens.get(servicePort)), "service credentials must not enter core logs");
         stage = "Mihomo service start";
         const mihomoStart = await request(servicePort, "POST", "/start", {
             core: path.basename(mihomo),
@@ -221,6 +232,75 @@ test("Windows Service helper starts Clash and shuts down a managed Mihomo", {
     } finally {
         try { await request(servicePort, "POST", "/stop"); } catch (_) {}
         await stopChild(helperProcess);
+        fs.rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
+});
+
+test("Windows helper drains both output streams while idle and redacts values spanning reads", {
+    skip: process.platform !== "win32" || process.arch !== "x64"
+}, async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "cfw-service-output-"));
+    let servicePort = await freePort();
+    while (servicePort === 53000) servicePort = await freePort();
+    const helper = prepareHelper(home, servicePort);
+    const core = path.join(path.dirname(helper), "cores", "clash-win64.exe");
+    fs.unlinkSync(core);
+    const compile = path.join(home, "compile.ps1");
+    fs.writeFileSync(compile, `\ufeffAdd-Type -OutputAssembly $env:CFW_TEST_CORE -OutputType ConsoleApplication -TypeDefinition @'
+using System;
+using System.Threading;
+public class OutputFixture {
+    public static void Main() {
+        Console.OutputEncoding = new System.Text.UTF8Encoding(false);
+        string value = Environment.GetEnvironmentVariable("CFW_TEST_LOG_VALUE");
+        int half = value.Length / 2;
+        Console.Write(value.Substring(0, half)); Console.Out.Flush();
+        Thread.Sleep(120);
+        Console.WriteLine(value.Substring(half)); Console.Out.Flush();
+        Console.Error.WriteLine(value);
+        Console.WriteLine("核心日志中文");
+        for (int i = 0; i < 20000; i++) {
+            Console.WriteLine("fixture-stdout-output");
+            Console.Error.WriteLine("fixture-stderr-output");
+        }
+        Console.WriteLine("fixture-stdout-complete"); Console.Out.Flush();
+        Console.Error.WriteLine("fixture-stderr-complete"); Console.Error.Flush();
+        while (true) Thread.Sleep(100);
+    }
+}
+'@
+`);
+    execFileSync("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", compile],
+        { windowsHide: true, env: { ...process.env, CFW_TEST_CORE: core }, stdio: "pipe" });
+    const crypto = require("node:crypto");
+    fs.writeFileSync(path.join(path.dirname(helper), "core-hashes.json"), JSON.stringify({ cores: [
+        { name: path.basename(core), sha256: crypto.createHash("sha256").update(fs.readFileSync(core)).digest("hex") }
+    ] }));
+    const value = crypto.randomBytes(80).toString("hex");
+    const child = spawn("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", helper, "-Port", String(servicePort)],
+        { windowsHide: true, stdio: "ignore", env: { ...process.env, CFW_TEST_LOG_VALUE: value } });
+    try {
+        await waitFor(servicePort, "/ping", false, child, { value: "" });
+        const started = await helperApi(home, servicePort).start({ path: core, cwd: home, silent: false, redactValues: [value] });
+        assert.equal(started.status, 200);
+        const deadline = Date.now() + 10000;
+        let log = "";
+        do {
+            log = fs.readFileSync(started.data, "utf8");
+            if (log.includes("fixture-stdout-complete") && log.includes("fixture-stderr-complete")) break;
+            await new Promise(resolve => setTimeout(resolve, 50));
+        } while (Date.now() < deadline);
+        assert.ok(log.includes("fixture-stdout-output") && log.includes("fixture-stderr-output"), "both pipes must be drained while the HTTP listener is idle");
+        assert.ok(log.includes("fixture-stdout-complete") && log.includes("fixture-stderr-complete"), "neither output pipe may block the child");
+        assert.equal((await request(servicePort, "GET", "/ping")).status, 200);
+        assert.equal((await request(servicePort, "POST", "/stop")).status, 200);
+        const completeLog = fs.readFileSync(started.data, "utf8");
+        assert.ok(completeLog.includes("核心日志中文"), "core output must remain UTF-8");
+        assert.ok(!completeLog.includes(value) && completeLog.includes("[REDACTED]"), "split output values must be redacted before persistence");
+    } finally {
+        try { await request(servicePort, "POST", "/shutdown"); } catch (_) {}
+        await stopChild(child);
+        serviceTokens.delete(servicePort);
         fs.rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
 });

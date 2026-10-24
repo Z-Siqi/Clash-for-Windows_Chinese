@@ -6,6 +6,21 @@ const path = require("node:path");
 const { createClashServiceApi } = require("../../main/dist/electron/core/network/clash-service-api");
 const { createServiceModeManager } = require("../../main/dist/electron/features/service-mode/service-mode-manager");
 
+test("log redaction uses a backward-compatible header without blocking startup on a capability probe", async () => {
+    const calls = [];
+    const api = createClashServiceApi({ getCredentials: () => ({ dataDirectory: "/fixture", token: "a".repeat(64) }),
+        client: { get: async () => { throw Error("unnecessary probe"); }, post: async (_url, body, options) => { calls.push({ body, options }); return { status: 200 }; } } });
+    const payload = { path: "C:\\package\\clash-win64.exe", cwd: "/fixture", silent: false, redactValues: ["synthetic-value"] };
+    await api.start(payload);
+    assert.deepEqual(calls[0].body, { core: "clash-win64.exe", silent: false });
+    assert.deepEqual(JSON.parse(Buffer.from(calls[0].options.headers["X-CFW-Log-Redactions"], "base64").toString("utf8")), payload.redactValues);
+    for (const value of ["x".repeat(4097), "中".repeat(4096), "x".repeat(10000)]) {
+        await api.start({ ...payload, redactValues: [value] });
+        assert.equal(calls.at(-1).body.silent, true);
+        assert.equal(calls.at(-1).options.headers["X-CFW-Log-Redactions"], undefined);
+    }
+});
+
 test("an old helper's successful ping cannot masquerade as authenticated Service Mode", async () => {
     let headers = {};
     const api = createClashServiceApi({

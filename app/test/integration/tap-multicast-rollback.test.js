@@ -13,7 +13,7 @@ test("a failed compatibility change restarts the previously accepted TAP policy 
         readProfileSource: async () => "interface-name: Ethernet0\ndns: {enable: true, listen: ':53'}\n",
         profileNetworkEffects: { hasTap: async () => true } };
     const page = homePage({ refreshRendererProfile(vm) { applies++; return refreshProfile(vm, dependencies); } });
-    const vm = new Vue({ data: () => ({ ...page.data(), isLaunching: false, isTunEnable: false, isMixinEnable: false,
+    const vm = new Vue({ data: () => ({ ...page.data(), isLaunching: false, isInitializing: false, isTunEnable: false, isMixinEnable: false,
         settings: { legacyTapMode: "enabled", tapAllowMulticast: true, connProxyDisconnect: false },
         clashApi: { putConfig: async () => ({ status: 204 }) }, confData: {}, mode: "rule", menuItems: [],
         profiles: { index: 0, files: [{ time: "local.yaml" }] }, profilesPath: "virtual", currentProfilePayload: {} }),

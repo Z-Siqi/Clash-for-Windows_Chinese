@@ -1,6 +1,6 @@
 "use strict";
 
-function createRepositoryClients({ ipcRenderer, getHome }) {
+function createRepositoryClients({ ipcRenderer, getHome, activity }) {
     function call(operation, request) {
         // Synchronous persistence preserves Vuex's publish-after-success contract.
         const result = ipcRenderer.sendSync("cfw-repository", operation, request);
@@ -8,9 +8,12 @@ function createRepositoryClients({ ipcRenderer, getHome }) {
         return result.value;
     }
     async function profileFiles(operation, profilesPath, extra = {}) {
+        const release = activity?.begin();
+        try {
         const result = await ipcRenderer.invoke("profile-files", operation, { home: getHome(), profilesPath, ...extra });
         if (!result?.ok) throw new Error(result?.error || "Profile file operation failed");
         return result.value;
+        } finally { release?.(); }
     }
     return Object.freeze({
         settings: Object.freeze({

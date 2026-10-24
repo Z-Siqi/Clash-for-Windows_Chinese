@@ -22,6 +22,83 @@ if (-not (Test-Path -LiteralPath $script:dataDirectory -PathType Container)) { t
 $script:coreDirectory = [IO.Path]::GetFullPath($CoreDirectory)
 $pidFile = Join-Path $PSScriptRoot 'core.pid'
 $script:coreProcess = $null
+$script:coreOutputLog = $null
+
+# Stream callbacks cannot use PowerShell script blocks while AcceptTcpClient
+# blocks its runspace. Dedicated CLR threads keep both pipes drained instead.
+Add-Type -TypeDefinition @'
+using System;
+using System.IO;
+using System.Threading;
+public sealed class CFWCoreOutputLog : IDisposable {
+    private readonly object gate = new object();
+    private readonly string[] secrets;
+    private StreamWriter writer;
+    private Thread stdout, stderr;
+    private bool disposed;
+    public CFWCoreOutputLog(string path, string[] values) {
+        secrets = values;
+        Array.Sort(secrets, delegate(string a, string b) { return b.Length.CompareTo(a.Length); });
+        if (!String.IsNullOrEmpty(path)) {
+            writer = new StreamWriter(new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read), new System.Text.UTF8Encoding(false));
+            writer.AutoFlush = true;
+        }
+    }
+    private void Write(string text) {
+        lock (gate) {
+            if (disposed || writer == null) return;
+            try { writer.Write(text); }
+            catch (Exception) { try { writer.Dispose(); } catch (Exception) { } writer = null; }
+        }
+    }
+    private void Drain(StreamReader reader) {
+        byte[] buffer = new byte[2048];
+        var decoder = System.Text.Encoding.UTF8.GetDecoder();
+        char[] characters = new char[System.Text.Encoding.UTF8.GetMaxCharCount(buffer.Length)];
+        string pending = "";
+        try {
+            int read;
+            // StreamReader.Read can wait to fill its character request, hiding
+            // the last message of a still-running core. Pipe reads return the
+            // available bytes; the decoder retains split UTF-8 characters.
+            while ((read = reader.BaseStream.Read(buffer, 0, buffer.Length)) > 0) {
+                int count = decoder.GetChars(buffer, 0, read, characters, 0, false);
+                pending += new string(characters, 0, count);
+                foreach (string secret in secrets) pending = pending.Replace(secret, "[REDACTED]");
+                // Hold only a possible split value, so ordinary low-volume
+                // startup messages reach the file immediately.
+                int keep = 0;
+                foreach (string secret in secrets) {
+                    for (int length = Math.Min(secret.Length - 1, pending.Length); length > keep; length--) {
+                        if (String.CompareOrdinal(pending, pending.Length - length, secret, 0, length) == 0) {
+                            keep = length; break;
+                        }
+                    }
+                }
+                int safe = pending.Length - keep;
+                Write(pending.Substring(0, safe));
+                pending = pending.Substring(safe);
+            }
+            Write(pending);
+        } catch (IOException) { }
+          catch (ObjectDisposedException) { }
+    }
+    public void Attach(System.Diagnostics.Process process) {
+        stdout = new Thread(delegate() { Drain(process.StandardOutput); });
+        stderr = new Thread(delegate() { Drain(process.StandardError); });
+        stdout.IsBackground = true; stderr.IsBackground = true;
+        stdout.Start(); stderr.Start();
+    }
+    public void Dispose() {
+        if (stdout != null) stdout.Join(1000);
+        if (stderr != null) stderr.Join(1000);
+        lock (gate) {
+            disposed = true;
+            if (writer != null) { try { writer.Dispose(); } catch (Exception) { } writer = null; }
+        }
+    }
+}
+'@
 
 function Write-HttpResponse {
     param($Stream, [int] $StatusCode, [string] $Body)
@@ -33,7 +110,7 @@ function Write-HttpResponse {
         404 { 'Not Found' }
         default { 'Internal Server Error' }
     }
-    $headers = "HTTP/1.1 $StatusCode $reason`r`nX-CFW-Service-Protocol: 2`r`nContent-Type: text/plain; charset=utf-8`r`n" +
+    $headers = "HTTP/1.1 $StatusCode $reason`r`nX-CFW-Service-Protocol: 2`r`nX-CFW-Service-Features: core-output-log-v1,core-identity-v1`r`nContent-Type: text/plain; charset=utf-8`r`n" +
         "Content-Length: $($payload.Length)`r`nConnection: close`r`n`r`n"
     $headerBytes = [Text.Encoding]::ASCII.GetBytes($headers)
     $Stream.Write($headerBytes, 0, $headerBytes.Length)
@@ -142,6 +219,18 @@ function Resolve-TrustedCore {
         throw [UnauthorizedAccessException]::new('Core hash does not match the packaged manifest')
     }
 
+    if ($manifest.PSObject.Properties.Name -contains 'dependencies') {
+        foreach ($dependency in $manifest.dependencies) {
+            if ($dependency.core -ine $name) { continue }
+            $dependencyName = [string]$dependency.name
+            if ($dependencyName -cne 'wintun.dll') { throw 'Invalid core dependency' }
+            $dependencyPath = Join-Path $script:coreDirectory $dependencyName
+            $dependencyItem = Get-Item -LiteralPath $dependencyPath
+            if ($dependencyItem.PSIsContainer -or ($dependencyItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -or
+                (Get-FileSha256 $dependencyPath) -ine $dependency.sha256) { throw [UnauthorizedAccessException]::new('Core dependency is redirected or modified') }
+        }
+    }
+
     return $fullPath
 }
 
@@ -173,6 +262,10 @@ function Stop-CoreProcess {
     }
 
     $script:coreProcess = $null
+    if ($null -ne $script:coreOutputLog) {
+        $script:coreOutputLog.Dispose()
+        $script:coreOutputLog = $null
+    }
     Remove-Item -LiteralPath $pidFile -Force -ErrorAction SilentlyContinue
 }
 
@@ -182,9 +275,21 @@ function Read-JsonBody {
 }
 
 function Start-CoreProcess {
-    param($Payload)
+    param($Payload, [string] $EncodedRedactions = '')
 
-    if (@($Payload.PSObject.Properties.Name | Where-Object { $_ -notin @('core', 'silent') }).Count -gt 0) { throw 'Unsupported start request' }
+    if (@($Payload.PSObject.Properties.Name | Where-Object { $_ -notin @('core', 'silent', 'redactValues') }).Count -gt 0) { throw 'Unsupported start request' }
+    if ($EncodedRedactions) {
+        $values = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($EncodedRedactions)) | ConvertFrom-Json
+        $Payload | Add-Member -NotePropertyName 'redactValues' -NotePropertyValue @($values) -Force
+    }
+    $redactValues = @([string]$policy.token)
+    if ($Payload.PSObject.Properties.Name -contains 'redactValues') {
+        if ($Payload.redactValues -isnot [array] -or $Payload.redactValues.Count -gt 32) { throw 'Invalid log redaction values' }
+        foreach ($value in $Payload.redactValues) {
+            if ($value -isnot [string] -or $value.Length -lt 1 -or $value.Length -gt 4096) { throw 'Invalid log redaction value' }
+            $redactValues += $value
+        }
+    }
     $corePath = Resolve-TrustedCore ([string]$Payload.core)
     $workingDirectory = $script:dataDirectory
     if (-not (Test-Path -LiteralPath $workingDirectory -PathType Container)) {
@@ -199,6 +304,10 @@ function Start-CoreProcess {
     $startInfo.UseShellExecute = $false
     $startInfo.CreateNoWindow = $true
     $startInfo.WindowStyle = [Diagnostics.ProcessWindowStyle]::Hidden
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $startInfo.StandardOutputEncoding = [Text.UTF8Encoding]::new($false)
+    $startInfo.StandardErrorEncoding = [Text.UTF8Encoding]::new($false)
     # Both legacy Clash and Mihomo must read the requesting user's CFW data.
     # The helper itself runs as SYSTEM, so relying on a default home is incorrect.
     $startInfo.Arguments = '-d "' + $workingDirectory + '"'
@@ -209,17 +318,23 @@ function Start-CoreProcess {
         [IO.Directory]::CreateDirectory($logDirectory) | Out-Null
         if ((Get-Item -LiteralPath $logDirectory).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Core log directory is redirected' }
         $logPath = Join-Path $logDirectory ((Get-Date -Format 'yyyy-MM-dd-HHmmss') + '-' + [Guid]::NewGuid().ToString() + '.log')
-        $logFile = [IO.File]::Open($logPath, [IO.FileMode]::CreateNew)
-        $logFile.Dispose()
     }
 
     $process = [Diagnostics.Process]::new()
     $process.StartInfo = $startInfo
-    if (-not $process.Start()) {
-        throw [InvalidOperationException]::new('Core process did not start')
+    $outputLog = [CFWCoreOutputLog]::new($logPath, [string[]]$redactValues)
+    try {
+        if (-not $process.Start()) {
+            throw [InvalidOperationException]::new('Core process did not start')
+        }
+        $script:coreProcess = $process
+        $script:coreOutputLog = $outputLog
+        $outputLog.Attach($process)
+    } catch {
+        if ($script:coreProcess -eq $process) { Stop-CoreProcess }
+        else { $outputLog.Dispose() }
+        throw
     }
-
-    $script:coreProcess = $process
     [IO.File]::WriteAllText($pidFile, [string]$process.Id, [Text.Encoding]::ASCII)
     return $logPath
 }
@@ -246,6 +361,12 @@ try {
                 Write-HttpResponse $stream 200 'pong'
                 continue
             }
+            if ($request.Method -eq 'GET' -and $request.Path -eq '/status') {
+                $running = $null -ne $script:coreProcess -and -not $script:coreProcess.HasExited
+                $core = if ($running) { [IO.Path]::GetFileName($script:coreProcess.StartInfo.FileName) } else { $null }
+                Write-HttpResponse $stream 200 (@{ running = $running; core = $core } | ConvertTo-Json -Compress)
+                continue
+            }
             if ($request.Method -eq 'POST' -and $request.Path -eq '/stop') {
                 Stop-CoreProcess
                 Write-HttpResponse $stream 200 'stopped'
@@ -257,7 +378,8 @@ try {
                 break
             }
             if ($request.Method -eq 'POST' -and $request.Path -eq '/start') {
-                $logPath = Start-CoreProcess (Read-JsonBody $request.Body)
+                $redactions = if ($request.Headers.ContainsKey('X-CFW-Log-Redactions')) { [string]$request.Headers['X-CFW-Log-Redactions'] } else { '' }
+                $logPath = Start-CoreProcess (Read-JsonBody $request.Body) $redactions
                 Write-HttpResponse $stream 200 ([string]$logPath)
                 continue
             }

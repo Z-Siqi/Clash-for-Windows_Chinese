@@ -17,6 +17,17 @@ const { createAppMutations } = require("../../main/dist/electron/features/applic
 const EmptyComponent = { render: h => h("span") };
 const labels = new Proxy({}, { get: (_target, key) => () => key === "timeout" ? "Timeout" : String(key) });
 
+test("proxy Run script menu hides only for an explicitly disabled action-script setting", async () => {
+    const page = createPage();
+    for (const enabled of [undefined, true, false]) {
+        let items;
+        await page.methods.handleProxyRightClick.call({ proxyInMode: [], settings: { actionScriptsEnabled: enabled },
+            $menu: menu => { items = menu; } }, {}, "Node");
+        assert.equal(items.find(item => item.icon === "code").hide, enabled === false);
+    }
+    assert.doesNotThrow(() => page.methods.scrollToSelected.call({ $refs: {} }, 0));
+});
+
 function createPage(overrides = {}) {
     return createProxiesPage({
         defineComponent,

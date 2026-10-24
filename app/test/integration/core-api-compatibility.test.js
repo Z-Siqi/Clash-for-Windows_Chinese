@@ -22,6 +22,7 @@ const { persistSelection } = require("../../main/dist/electron/features/profiles
 const { profilePage, proxiesPage } = require("../fixtures/profile-pages");
 const yaml = require("../../main/node_modules/yaml");
 const { refreshProfile } = require("../../main/dist/electron/entry/renderer/refresh-profile");
+const { createLatencyPolicy } = require("../../main/dist/electron/features/proxies/latency-policy");
 
 const root = path.resolve(__dirname, "../../..");
 const targets = {
@@ -262,7 +263,8 @@ async function verifyCore(coreName, relativeBinary) {
         const apiCalls = [];
         const client = Object.fromEntries(["get", "put", "patch", "delete"].map(method => [method, async (url, payload) => {
             apiCalls.push([method, url]);
-            const response = await request(controllerPort, method.toUpperCase(), url, ["get", "delete"].includes(method) ? undefined : payload);
+            const query = method === "get" && payload?.params ? `?${new URLSearchParams(payload.params)}` : "";
+            const response = await request(controllerPort, method.toUpperCase(), url + query, ["get", "delete"].includes(method) ? undefined : payload);
             return { status: response.status, data: response.data ? JSON.parse(response.data) : "" };
         }]));
         const api = createClashApi({ getClient: () => client });
@@ -389,10 +391,36 @@ async function verifyCore(coreName, relativeBinary) {
         assert.equal(proxiesUi.proxyInMode.some(group => group.name === "app-test"), false);
         proxiesUi.$destroy();
         await verifyTapRollback(api);
+        await verifyMeanDelay(coreName, api);
     } finally {
         await stopChild(child);
         fs.rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
+}
+
+async function verifyMeanDelay(core, api) {
+    let requests = 0;
+    const server = http.createServer((_request, response) => {
+        const delay = ++requests === 1 ? 20 : 80;
+        setTimeout(() => { response.writeHead(204); response.end(); }, delay);
+    });
+    await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+    try {
+        const policy = createLatencyPolicy(), samples = [];
+        const url = `http://127.0.0.1:${server.address().port}/delay`;
+        const mean = await policy.measure({ name: "DIRECT", core, kind: "meanDelay", timeout: 2000,
+            sample: async timeout => {
+                const response = await api.testProxyDelay("DIRECT", { params: { timeout, url } });
+                assert.equal(response.status, 200);
+                samples.push(response.data);
+                return response.data;
+            } });
+        assert.equal(requests, 2, `${core} mean mode must measure two actual HTTP requests`);
+        assert.equal(samples.length, core === "mihomo" ? 2 : 1);
+        assert.equal(mean, core === "mihomo" ? Math.round((samples[0].delay + samples[1].delay) / 2) : samples[0].meanDelay);
+        const history = (await api.getProxies()).data.proxies.DIRECT.history;
+        assert.equal(policy.read({ name: "DIRECT", kind: "meanDelay", history }), mean);
+    } finally { await new Promise(resolve => server.close(resolve)); }
 }
 
 for (const coreName of ["clash", "mihomo"]) {

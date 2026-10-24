@@ -11,8 +11,10 @@ const { updateYamlValue } = require("../../core/storage/yaml-file");
 const { parsePort } = require("../../core/network/tcp-port");
 const { createGeoipRuntime } = require("../../features/clash-core/geoip-runtime");
 const { createTranslator } = require("../../core/i18n/language");
+const { createOperationActivity } = require("../../core/native/operation-activity");
+const { createProfileDirectoryRestart } = require("../../features/settings/profile-directory-restart");
 
-function registerRepositoryIpc({ ipcMain, app, getMainWindow, fs, path, yaml, filesPath, getPort, uuid, Koa, dialog, shell, got, zlib, tarStream, platform = process.platform, arch = process.arch, getLanguage = () => createTranslator(1) }) {
+function registerRepositoryIpc({ ipcMain, app, getMainWindow, fs, path, yaml, filesPath, getPort, uuid, Koa, dialog, shell, got, zlib, tarStream, activity = createOperationActivity(), platform = process.platform, arch = process.arch, getLanguage = () => createTranslator(1) }) {
     const settings = createSettingsRepository({ fs, path, yaml });
     const profiles = createProfilesRepository({ fs, path, yaml });
     const allowedHomes = [path.resolve(app.getPath("home"), ".config", "clash"), path.resolve(app.getPath("exe"), "..", "data")];
@@ -52,12 +54,45 @@ function registerRepositoryIpc({ ipcMain, app, getMainWindow, fs, path, yaml, fi
         requireLocalFile(folder, "list.yml");
         return folder;
     }
+    const directoryRestart = createProfileDirectoryRestart({ activity, settings, fs, path, app, uuid, platform, stopWatchers: stopWatcher,
+        validateDirectory(directory, { isDefault }) {
+            fs.mkdirSync(directory, { recursive: true });
+            const folder = fs.realpathSync(directory);
+            if (isDefault && normalize(folder) !== normalize(path.resolve(directory))) throw new Error("Default profiles directory escapes its home");
+            requireLocalFile(folder, "list.yml");
+            if (fs.existsSync(path.join(folder, "list.yml"))) profiles.load(folder);
+            const probe = path.join(folder, `.cfw-directory-check-${uuid()}`);
+            const descriptor = fs.openSync(probe, "wx");
+            fs.closeSync(descriptor); fs.unlinkSync(probe);
+        }
+    });
+    const directorySenders = new WeakSet();
+    ipcMain.handle("profile-directory", (event, operation, request = {}) => {
+        try {
+            const window = getMainWindow();
+            if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw new Error("Invalid profile directory sender");
+            const home = requireHome(request.home);
+            requireLocalFile(home, "cfw-settings.yaml");
+            if (!directorySenders.has(event.sender)) {
+                event.sender.on?.("did-start-loading", () => directoryRestart.abandon(event.sender));
+                event.sender.once?.("destroyed", () => directoryRestart.abandon(event.sender));
+                directorySenders.add(event.sender);
+            }
+            let value;
+            if (operation === "prepare") value = directoryRestart.prepare(event.sender, home, request.directory, request.reset ?? false);
+            else if (operation === "commit") value = directoryRestart.commit(event.sender, request.token);
+            else if (operation === "cancel") directoryRestart.cancel(event.sender, request.token);
+            else throw new Error("Unsupported profile directory operation");
+            return { ok: true, value };
+        } catch (error) { return { ok: false, code: error.code || "CFW_PROFILE_DIRECTORY_FAILED" }; }
+    });
     ipcMain.on("cfw-repository", (event, operation, request = {}) => {
         try {
             const window = getMainWindow();
             if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) {
                 throw new Error("Repository request did not originate from the dashboard main frame");
             }
+            activity.assertOpen();
             if (!["settings-load", "settings-save", "profiles-load", "profiles-save", "profiles-initialize"].includes(operation)) {
                 throw new Error("Unsupported repository operation");
             }
@@ -86,11 +121,13 @@ function registerRepositoryIpc({ ipcMain, app, getMainWindow, fs, path, yaml, fi
         }
     });
     ipcMain.handle("profile-files", async (event, operation, request = {}) => {
+        let release;
         try {
             const window = getMainWindow();
             if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw new Error("Invalid profile file sender");
             if (!["watch", "stop-watch", "read-profile", "write-profile", "create-local", "import-dialog", "delete-profile", "open-profile", "reveal-profile", "read-diff", "initialize-diff", "write-diff", "delete-diff", "modification-times", "cleanup-orphans"].includes(operation)) throw new Error("Unsupported profile file operation");
             if (operation === "stop-watch") { stopWatcher(event.sender); return { ok: true }; }
+            release = activity.begin();
             const home = requireHome(request.home);
             requireLocalFile(home, "cfw-settings.yaml");
             const folder = requireProfiles(home, request.profilesPath);
@@ -185,13 +222,16 @@ function registerRepositoryIpc({ ipcMain, app, getMainWindow, fs, path, yaml, fi
             }
             return { ok: true, value };
         } catch (_error) { return { ok: false, error: "Profile file operation failed" }; }
+        finally { release?.(); }
     });
     if (filesPath && getPort && uuid) ipcMain.handle("core-config", async (event, operation, request = {}) => {
+        let release;
         try {
             const window = getMainWindow();
             if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) {
                 throw new Error("Invalid core configuration sender");
             }
+            release = activity.begin();
             if (!["initialize", "load", "randomize-ports", "start-pac", "update-value", "metadata", "reset", "update-geoip"].includes(operation)) throw new Error("Unsupported core configuration operation");
             const home = requireHome(request.home, operation === "initialize");
             for (const file of ["config.yaml", "config.yml", "cfw-settings.yaml", "Country.mmdb", "wintun.dll"]) requireLocalFile(home, file);
@@ -250,6 +290,7 @@ function registerRepositoryIpc({ ipcMain, app, getMainWindow, fs, path, yaml, fi
             return { ok: false, error: "Core configuration operation failed",
                 code: operation === "start-pac" && ["EADDRINUSE", "EACCES"].includes(error.code) ? error.code : undefined };
         }
+        finally { release?.(); }
     });
 }
 

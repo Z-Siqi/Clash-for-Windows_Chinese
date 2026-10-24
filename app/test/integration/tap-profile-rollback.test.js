@@ -36,7 +36,7 @@ function fixture(t, { rollbackStatus = 204, systemProxy = false, disconnect = tr
     };
     const page = homePage({ prepareMixin: async () => {}, refreshRendererProfile(vm) { refreshes++; return refreshProfile(vm, dependencies); } });
     const vm = new Vue({ data: () => ({ ...page.data(), isTunEnable: false, isMixinEnable: false, isSystemProxyOn: systemProxy,
-        isLaunching: false, settings: { legacyTapMode: "mixin", connProxyDisconnect: disconnect, mixinType: 0,
+        isLaunching: false, isInitializing: false, settings: { legacyTapMode: "mixin", connProxyDisconnect: disconnect, mixinType: 0,
             mixinText: "mixin:\n  interface-name: Ethernet\n  dns: {enable: true, listen: ':53'}\n  rules: ['MATCH,REJECT']\n" },
         clashApi: api, confData: {}, profiles: { index: 0, files: [{ time: "plain.yaml" }] }, profilesPath: "virtual", menuItems: [], currentProfilePayload: {} }),
         computed: { proxyBusy: page.computed.proxyBusy },

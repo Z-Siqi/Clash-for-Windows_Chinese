@@ -16,6 +16,8 @@ const { loadSettingsFromDisk } = require(
 
 const defaults = mergeSettings({});
 assert.deepEqual(defaults, {
+    shortcutSystemProxy: "", shortcutTun: "", shortcutMixin: "", shortcutGlobalMode: "",
+    shortcutRuleMode: "", shortcutDirectMode: "", shortcutScriptMode: "", shortcutRunTrayScript: "", shortcutShowHideDashboard: "",
     showNewVersionIcon: true,
     hideAfterStartup: false,
     randomControllerPort: true,
@@ -28,6 +30,7 @@ assert.deepEqual(defaults, {
     tapAllowMulticast: false,
     showTrayProxyDelayIndicator: true,
     checkForUpdates: true,
+    actionScriptsEnabled: true,
     disableLoadingAdsLink: true,
     allowRemoteProfileParsers: false,
     allowHttpExternalLinks: false,
@@ -64,6 +67,8 @@ assert.equal(mergeSettings({ tapAllowMulticast: true }).tapAllowMulticast, true)
 assert.equal(mergeSettings({ tapAllowMulticast: "true" }).tapAllowMulticast, false);
 assert.equal(custom.allowRemoteProfileParsers, true);
 assert.equal(custom.allowHttpExternalLinks, true);
+assert.equal(mergeSettings({ actionScriptsEnabled: false }).actionScriptsEnabled, false);
+assert.equal(mergeSettings({ shortcutTun: "Control+F9" }).shortcutTun, "Control+F9");
 assert.equal(mergeSettings({ allowHttpExternalLinks: "true" }).allowHttpExternalLinks, false);
 
 const defaultsAgain = mergeSettings({});

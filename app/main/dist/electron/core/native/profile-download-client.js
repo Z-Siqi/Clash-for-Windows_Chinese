@@ -1,6 +1,6 @@
 "use strict";
 
-function createProfileDownloadClient({ ipcRenderer, store, getLanguage }) {
+function createProfileDownloadClient({ ipcRenderer, store, getLanguage, activity }) {
     let sequence = Date.now() * 1000;
     let active = 0;
     const waiting = [];
@@ -15,6 +15,7 @@ function createProfileDownloadClient({ ipcRenderer, store, getLanguage }) {
     }
     return {
         async downloadProfile({ url, headersString = "", cancelToken }) {
+            const releaseActivity = activity?.begin();
             const id = ++sequence;
             let finished = false;
             let started = false;
@@ -41,7 +42,7 @@ function createProfileDownloadClient({ ipcRenderer, store, getLanguage }) {
                 return result;
             } catch (_error) {
                 return { success: false, message: "Profile download failed or was cancelled" };
-            } finally { finished = true; release(); }
+            } finally { finished = true; release(); releaseActivity?.(); }
         }
     };
 }

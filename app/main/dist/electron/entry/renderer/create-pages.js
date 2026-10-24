@@ -214,6 +214,7 @@ function createRendererPages({ Vuex, modifyState, runtime, components, version }
     const setting = createSettingsPage({
         openApplicationLog: runtime.openApplicationLog,
         externalEditor: runtime.externalEditor,
+        profileDirectory: runtime.profileDirectory,
         defineComponent, cache, keys, yaml, fs, Vuex,
         SimpleInput: components.SimpleInput, SelectView: components.SelectView,
         SwitchView: components.SwitchView, draggable, Navigator: components.Navigator,

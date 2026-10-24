@@ -34,8 +34,7 @@ function createDiffEditor({
         watch: {
             isShow(isVisible) {
                 if (isVisible) return;
-                if (this.editor) this.editor.dispose();
-                this.editor = null;
+                this.disposeEditor();
             },
             renderSideBySide(isEnabled) {
                 if (this.editor) this.editor.updateOptions({ renderSideBySide: isEnabled });
@@ -49,6 +48,14 @@ function createDiffEditor({
             }
         },
         methods: {
+            disposeEditor() {
+                this.editor?.dispose();
+                this.editor = null;
+                // Diff models are explicitly owned by this dialog, not its editor.
+                this.baseModel?.dispose?.();
+                this.changeModel?.dispose?.();
+                this.baseModel = this.changeModel = null;
+            },
             show({ base, change }) {
                 const labels = getLanguage();
                 this.isShow = true;
@@ -119,7 +126,8 @@ function createDiffEditor({
                 this.renderSideBySide = !this.renderSideBySide;
             }
         },
-        mounted() {}
+        mounted() {},
+        beforeDestroy() { this.disposeEditor(); }
     };
 
     return defineComponent(options, function renderDiffEditor() {

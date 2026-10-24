@@ -8,7 +8,7 @@ const os = require("node:os");
 const { registerCoreLifecycleIpc } = require("../../main/dist/electron/features/clash-core/register-core-lifecycle-ipc");
 const { createCoreLifecycleClient } = require("../../main/dist/electron/core/native/core-lifecycle-client");
 
-function harness(t) {
+function harness(t, overrides = {}) {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), "cfw-core-ipc-"));
     t.after(() => fs.rmSync(home, { recursive: true, force: true }));
     const clashPath = path.join(home, ".config", "clash");
@@ -17,7 +17,7 @@ function harness(t) {
     const mainFrame = {};
     const webContents = { mainFrame, isDestroyed: () => false, send: (...args) => calls.push(["send", ...args]) };
     let handler;
-    registerCoreLifecycleIpc({
+    const lifecycle = registerCoreLifecycleIpc({
         ipcMain: { handle(channel, callback) { assert.equal(channel, "core-lifecycle"); handler = callback; } },
         app: { getPath: name => name === "home" ? home : path.join(home, "app.exe"), once() {} },
         getMainWindow: () => ({ webContents }), fs, path,
@@ -25,11 +25,26 @@ function harness(t) {
         runtime: {
             async start(options) { calls.push(["start", options]); return { processHandle: { pid: 123, kill() {} } }; },
             async stop(options) { calls.push(["stop", options]); },
-            async getStatus() { return { connected: false }; }, killProcess() {}
+            async getStatus() { return { connected: false }; }, killProcess() {}, ...overrides
         }
     });
-    return { home, clashPath, handler, calls, event: { sender: webContents, senderFrame: mainFrame } };
+    return { home, clashPath, handler, calls, lifecycle, event: { sender: webContents, senderFrame: mainFrame } };
 }
+
+test("a lightweight skip preserves known ownership and cannot invent a service identity from renderer flags", async t => {
+    let result = { skipped: true };
+    const { handler, event, clashPath, lifecycle } = harness(t, { start: async () => result });
+    const request = { clashPath, coreType: "mihomo", lightweightMode: true, isLocalMode: false };
+    await handler(event, "start", request);
+    assert.equal(lifecycle.getActiveCore(), null);
+    result = { serviceMode: true };
+    await handler(event, "start", request);
+    const known = lifecycle.getActiveCore();
+    assert.equal(known.serviceMode, true);
+    result = { skipped: true };
+    await handler(event, "start", { ...request, coreType: "clash" });
+    assert.equal(lifecycle.getActiveCore(), known);
+});
 
 test("core lifecycle owns packaged filenames and process handles instead of trusting renderer paths or PIDs", async t => {
     const { handler, event, clashPath, calls, home } = harness(t);

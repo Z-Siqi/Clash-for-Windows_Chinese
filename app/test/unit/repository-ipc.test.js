@@ -26,6 +26,7 @@ function harness(t, injectedFs = fs, coreConfig = false, overrides = {}) {
     let handler;
     let coreHandler;
     let fileHandler;
+    let directoryHandler;
     const assets = path.join(root, "assets");
     if (coreConfig) {
         fs.mkdirSync(path.join(assets, "default"), { recursive: true });
@@ -36,13 +37,15 @@ function harness(t, injectedFs = fs, coreConfig = false, overrides = {}) {
             on(channel, callback) { assert.equal(channel, "cfw-repository"); handler = callback; },
             handle(channel, callback) {
                 if (channel === "profile-files") fileHandler = callback;
+                else if (channel === "profile-directory") directoryHandler = callback;
                 else { assert.equal(channel, "core-config"); coreHandler = callback; }
             }
         },
         app: { isPackaged: true, getPath: name => name === "home" ? root : path.join(root, "app.exe") },
         getMainWindow: () => ({ webContents }), fs: injectedFs, path, yaml,
         filesPath: coreConfig ? assets : undefined, platform: "linux", arch: "x64",
-        getPort: async () => 23456, uuid: () => "", ...overrides
+        getPort: async () => 23456, uuid: () => "", ...overrides,
+        app: { isPackaged: true, getPath: name => name === "home" ? root : path.join(root, "app.exe"), ...overrides.app }
     });
     const event = { sender: webContents, senderFrame: mainFrame };
     const clients = createRepositoryClients({ getHome: () => home, ipcRenderer: {
@@ -55,8 +58,48 @@ function harness(t, injectedFs = fs, coreConfig = false, overrides = {}) {
             return event.returnValue;
         }
     } });
-    return { root, home, handler, coreHandler, fileHandler, event, clients };
+    return { root, home, handler, coreHandler, fileHandler, directoryHandler, event, clients };
 }
+
+test("directory restart freezes old-page persistence until a full restart, without moving profiles", async t => {
+    const calls = [];
+    const rootApp = { isPackaged: true, relaunch: () => calls.push("relaunch"), quit: () => calls.push("quit") };
+    const host = harness(t, fs, false, { app: rootApp });
+    const root = host.root;
+    host.clients.settings.save(host.home, { profilePath: "", proxyCore: "clash", custom: 42 });
+    const old = path.join(host.home, "profiles"), target = path.join(root, "new-profiles");
+    host.clients.profiles.initialize(old);
+    host.clients.profiles.save(old, { files: [{ time: "old.yml" }], index: 0 });
+    fs.writeFileSync(path.join(old, "old.yml"), "rules: []");
+    const prepared = await host.directoryHandler(host.event, "prepare", { home: host.home, directory: target });
+    assert.equal(prepared.ok, true);
+    assert.throws(() => host.clients.settings.save(host.home, { profilePath: "wrong" }), /operation failed/);
+    assert.equal((await host.fileHandler(host.event, "create-local", { home: host.home, profilesPath: old, source: "rules: []" })).ok, false);
+    const committed = await host.directoryHandler(host.event, "commit", { home: host.home, token: prepared.value.token });
+    assert.deepEqual(committed, { ok: true, value: { restarting: true } });
+    const saved = yaml.parse(fs.readFileSync(path.join(host.home, "cfw-settings.yaml"), "utf8"));
+    assert.equal(saved.profilePath, target); assert.equal(saved.proxyCore, "clash"); assert.equal(saved.custom, 42);
+    assert.equal(fs.existsSync(path.join(old, "old.yml")), true);
+    assert.equal(fs.existsSync(path.join(target, "old.yml")), false);
+    assert.equal((await host.directoryHandler(host.event, "commit", { home: host.home, token: prepared.value.token })).ok, false);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(calls, ["relaunch", "quit"]);
+});
+
+test("a pending native import blocks directory restart, and reloading abandons an uncommitted preparation", async t => {
+    let finishImport;
+    const host = harness(t, fs, false, { dialog: { showOpenDialog: () => new Promise(resolve => { finishImport = resolve; }) } });
+    host.clients.settings.save(host.home, {});
+    const folder = path.join(host.home, "profiles"); host.clients.profiles.initialize(folder);
+    const importing = host.fileHandler(host.event, "import-dialog", { home: host.home, profilesPath: folder });
+    const request = { home: host.home, directory: path.join(host.root, "new") };
+    assert.equal((await host.directoryHandler(host.event, "prepare", request)).code, "CFW_PROFILE_ACTIVITY_BUSY");
+    finishImport({ canceled: true }); await importing;
+    assert.equal((await host.directoryHandler(host.event, "prepare", request)).ok, true);
+    host.event.sender.emit("did-start-loading");
+    assert.doesNotThrow(() => host.clients.settings.save(host.home, { restored: true }));
+    assert.equal((await host.directoryHandler({ ...host.event, senderFrame: {} }, "prepare", request)).ok, false);
+});
 
 test("profile import native dialog translates its title and open button while keeping YAML filters", async t => {
     let language = 0;
@@ -164,13 +207,17 @@ test("repository client reports failed atomic writes without exposing sensitive 
     assert.deepEqual(fs.readdirSync(home), ["cfw-settings.yaml"]);
 });
 
-test("repository IPC rejects a default profile directory redirected outside the application home", t => {
-    const { home, root, clients } = harness(t);
+test("repository IPC rejects a default profile directory redirected outside the application home, including a restart target", async t => {
+    const { home, root, clients, directoryHandler, event } = harness(t);
     const outside = path.join(root, "outside");
     fs.mkdirSync(outside);
     try { fs.symlinkSync(outside, path.join(home, "profiles"), process.platform === "win32" ? "junction" : "dir"); }
     catch (error) { if (["EPERM", "EACCES"].includes(error.code)) { t.skip("Directory symlinks are unavailable"); return; } throw error; }
     assert.throws(() => clients.profiles.initialize(path.join(home, "profiles")), /repository operation failed/);
+    assert.deepEqual(fs.readdirSync(outside), []);
+    clients.settings.save(home, { profilePath: path.join(root, "custom") });
+    assert.equal((await directoryHandler(event, "prepare", { home, directory: "" })).ok, false);
+    assert.doesNotThrow(() => clients.settings.save(home, { profilePath: path.join(root, "custom"), retained: true }));
     assert.deepEqual(fs.readdirSync(outside), []);
 });
 

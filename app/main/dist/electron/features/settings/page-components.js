@@ -1,6 +1,6 @@
 "use strict";
 
-function createSettingsPageComponents({ defineComponent, Vuex, draggable, getLanguage }) {
+function createSettingsPageComponents({ defineComponent, Vuex, draggable, getLanguage, setShortcutRecording = () => {} }) {
     const Section = defineComponent({
         name: "setting-section",
         props: { title: String }
@@ -28,11 +28,10 @@ function createSettingsPageComponents({ defineComponent, Vuex, draggable, getLan
         },
         watch: {
             value(value) {
-                // Starting a recording emits an empty value back through the parent.
                 if (!this.isRecording) this.keyChain = String(value || "").split("+");
             },
             isRecording(value) {
-                if (!value) this.$emit("change", this.shortcut);
+                if (!value) { setShortcutRecording(false); this.$emit("change", this.shortcut); }
             }
         },
         computed: {
@@ -45,18 +44,19 @@ function createSettingsPageComponents({ defineComponent, Vuex, draggable, getLan
                 if (!this.isRecording) return;
                 if (event.keyCode === 13) this.isRecording = false;
                 else if (event.key && !event.repeat) {
-                    const key = ({ ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right", " ": "Space" })[event.key] || event.key;
+                    const key = ({ ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right", " ": "Space", "+": "Plus" })[event.key] || event.key;
                     if (!this.keyChain.includes(key)) this.keyChain.push(key);
                 }
             },
             handleClick() {
+                setShortcutRecording(true);
                 this.keyChain = [];
                 this.isRecording = true;
-                this.$emit("change", "");
             },
             handleBlur() { this.isRecording = false; }
         },
-        mounted() { this.keyChain = this.value.split("+"); }
+        mounted() { this.keyChain = this.value.split("+"); },
+        beforeDestroy() { if (this.isRecording) setShortcutRecording(false); }
     }, function renderKeyCapture() {
         const viewModel = this;
         const createElement = viewModel._self._c;

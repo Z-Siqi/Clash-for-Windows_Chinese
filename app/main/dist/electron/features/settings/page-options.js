@@ -21,6 +21,7 @@ function createSettingsPageOptions({
     electron,
     path,
     externalEditor,
+    profileDirectory,
     openApplicationLog,
     uuid,
     isMacOS,
@@ -37,7 +38,8 @@ function createSettingsPageOptions({
             return {
                 scrollTop: 0,
                 fontFamilyPlaceholder: isMacOS() ? "PingFang SC" : isWindows() ? "Microsoft Yahei" : "system-ui",
-                isEditingExternal: false
+                isEditingExternal: false,
+                profilePathDraft: ""
             };
         },
         computed: {
@@ -60,7 +62,7 @@ function createSettingsPageOptions({
             ...Vuex.mapGetters(["clashAxiosClient", "secret"])
         },
         watch: {
-            "sts.profilePath"() { this.refreshCore(); }
+            "sts.profilePath": { immediate: true, handler(value) { this.profilePathDraft = value || ""; } }
         },
         methods: guardSettingsMethods({
             ...Vuex.mapMutations({
@@ -246,7 +248,60 @@ function createSettingsPageOptions({
             },
             async handleChooseProfilePath() {
                 const selectedPath = await this.chooseFileOrPath(false);
-                if (selectedPath) this.settings.profilePath = selectedPath;
+                if (selectedPath && !this.$parent?.proxyBusy) this.profilePathDraft = selectedPath;
+            },
+            async handleSaveProfilePath() {
+                this.$refs.profilePathInput?.handleBlur?.();
+                return this.restartWithProfileDirectory(this.profilePathDraft);
+            },
+            async restartWithProfileDirectory(directory, reset = false, confirmed = false) {
+                const labels = getLanguage();
+                if (this.$parent?.proxyBusy) return false;
+                if (profileDirectory.isBusy()) {
+                    await showMessageBox({ type: "info", message: labels.profileDirectoryBusy() });
+                    return false;
+                }
+                if (!confirmed) {
+                    const result = await showMessageBox({ type: "warning",
+                        message: labels.profileDirectoryConfirm({ path: directory.trim() || path.join(this.clashPath, "profiles") }),
+                        buttons: [labels.no(), labels.saveAndRestart()], defaultId: 0, cancelId: 0 });
+                    if (result.response !== 1 || this.$parent.proxyBusy) return false;
+                }
+                return this.$parent.runProxyOperation("core", async () => {
+                    let token, stopped = false, systemProxyStopped = false;
+                    try {
+                        const prepared = await profileDirectory.prepare(directory, reset);
+                        if (prepared.unchanged) return true;
+                        token = prepared.token;
+                        this.$parent.serviceOperation = "restarting";
+                        stopped = true;
+                        await this.$parent.killClashCore();
+                        await this.$parent.killSpawned(this.$parent.tun2socks);
+                        this.$parent.tun2socks = null;
+                        await this.$parent.resetDNS();
+                        if (this.$parent.isSystemProxyOn) {
+                            if (!await this.$parent.$setSystemProxy(false, this.confData)) throw new Error("Proxy cleanup failed");
+                            systemProxyStopped = true;
+                        }
+                        await profileDirectory.commit(token);
+                        return true;
+                    } catch (error) {
+                        if (error.code === "CFW_PROFILE_DIRECTORY_ROLLBACK_FAILED") {
+                            await showMessageBox({ type: "error", message: labels.profileDirectoryRecoveryFailed() });
+                            return false;
+                        }
+                        if (token) await profileDirectory.cancel(token).catch(() => {});
+                        this.$parent.serviceOperation = "";
+                        if (stopped) await this.$parent.handlerRestartClash();
+                        if (systemProxyStopped) {
+                            const restored = await this.$parent.$setSystemProxy(true, this.confData).catch(() => false);
+                            this.$parent.setIsSystemProxyOn({ isOn: !!restored });
+                        }
+                        await showMessageBox({ type: "error", message: error.code === "CFW_PROFILE_ACTIVITY_BUSY"
+                            ? labels.profileDirectoryBusy() : labels.profileDirectoryFailed() });
+                        return false;
+                    }
+                });
             },
             async handleSelectTrayScriptPath() {
                 const selectedPath = await this.chooseFileOrPath();
@@ -268,12 +323,11 @@ function createSettingsPageOptions({
                 try {
                     await this.$alert({
                         title: labels.warning(),
-                        content: labels.askResetAllSettings(),
+                        content: `${labels.askResetAllSettings()}\n${labels.settingsResetRestart()}`,
                         isShowErrorBtn: true
                     });
                     if (this.$parent?.proxyBusy) return false;
-                    this.saveSettingsObject({ obj: {} });
-                    this.loadSettings();
+                    return this.restartWithProfileDirectory("", true, true);
                 } catch (_error) {}
             },
             handleOpenGUILog() {

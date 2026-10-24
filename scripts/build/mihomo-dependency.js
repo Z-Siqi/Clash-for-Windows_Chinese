@@ -115,6 +115,10 @@ function serviceManifest(root, spec, digest) {
     const entries = [{ name: path.posix.basename(spec.legacy), sha256: sha256(path.join(root, "app", spec.legacy)).toUpperCase() },
         { name: path.posix.basename(spec.output), sha256: digest.toUpperCase() }];
     const result = { cores: entries };
+    if (spec.platform === "win32") {
+        result.dependencies = [{ core: path.posix.basename(spec.legacy), name: "wintun.dll",
+            sha256: sha256(path.join(root, "app", path.posix.dirname(spec.output), "wintun.dll")).toUpperCase() }];
+    }
     if (spec.platform === "darwin") {
         result.helpers = [{ name: "sysproxy", sha256: sha256(path.join(root, "app", path.posix.dirname(spec.output), "sysproxy")).toUpperCase() }];
     }

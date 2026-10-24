@@ -64,8 +64,8 @@ action opens the release page. It does not currently install an update.
 
 `features/application/update-runtime.js` and the `start-download` IPC remain
 in the tree, but there is no production call to `createUpdateRuntime`.
-The Settings `silentUpdate` switch and `isSilentUpgraded` state are remnants;
-they do not establish an automatic updater. URL restrictions on the dormant
+Saved `silentUpdate` and `isSilentUpgraded` values are retained for compatibility;
+the inactive automatic-update control is hidden. URL restrictions on the dormant
 download IPC remain in force.
 
 ## Diagnosed failure points and recovery strategy

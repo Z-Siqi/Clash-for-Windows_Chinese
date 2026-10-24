@@ -5,6 +5,7 @@ const { resolveCoreBinaryPath } = require("../../core/clash-core/core-selection"
 function registerCoreLifecycleIpc({ ipcMain, app, getMainWindow, runtime, clashApi, fs, path, filesPath, platform, arch }) {
     let processHandle = null;
     let logFile = "";
+    let activeCore = null;
     let queue = Promise.resolve();
     const allowedHomes = [
         path.resolve(app.getPath("home"), ".config", "clash"),
@@ -36,6 +37,7 @@ function registerCoreLifecycleIpc({ ipcMain, app, getMainWindow, runtime, clashA
             if (operation === "stop") {
                 await runtime.stop({ processHandle, lightweightMode: request.lightweightMode === true, platform });
                 processHandle = null;
+                activeCore = null;
                 return null;
             }
             if (!["clash", "mihomo", undefined].includes(request.coreType)) throw new Error("Unsupported core selection");
@@ -68,13 +70,15 @@ function registerCoreLifecycleIpc({ ipcMain, app, getMainWindow, runtime, clashA
                 onServiceFallback: async () => {}
             });
             processHandle = result.processHandle || null;
+            if (!result.skipped) activeCore = { binaryPath: resolveCoreBinaryPath({ path, filesPath, platform, arch, coreType: request.coreType }),
+                serviceMode: result.serviceMode === true };
             return { ...result, processHandle: processHandle ? { pid: processHandle.pid } : null };
         });
         queue = task.catch(() => {});
         return task;
     });
     app.once("will-quit", () => runtime.killProcess(processHandle, platform));
-    return { getLogFile: () => logFile };
+    return { getLogFile: () => logFile, getActiveCore: () => activeCore };
 }
 
 module.exports = { registerCoreLifecycleIpc };

@@ -11,6 +11,31 @@ const { registerUserScriptIpc } = require("../../main/dist/electron/features/scr
 const { createScriptWorkerRuntime } = require("../../main/dist/electron/features/scripts/script-worker-runtime");
 const { createTranslator } = require("../../main/dist/electron/core/i18n/language");
 
+test("context scripts report unconfigured/disabled without starting a worker and notify the renderer", async t => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "cfw-action-feedback-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const home = path.join(root, ".config", "clash");
+    fs.mkdirSync(home, { recursive: true });
+    let handler, forks = 0;
+    const webContents = { mainFrame: {} };
+    registerUserScriptIpc({ ipcMain: { handle(_name, callback) { handler = callback; } },
+        app: { getPath: name => name === "home" || name === "temp" ? root : path.join(root, "app.exe"), once() {} },
+        getMainWindow: () => ({ webContents }), fs, path, yaml, workerPath: "fixed",
+        forkWorker() { forks++; throw Error("must not start"); }, dialog: {}, Notification: class {}, clashApi: {} });
+    const { createUserScriptClient, PROFILE_SCRIPT, PROXY_SCRIPT } = require("../../main/dist/electron/core/native/user-script-client");
+    const notices = [], errors = [];
+    const client = createUserScriptClient({ getHome: () => home, onUnavailable: status => notices.push(status),
+        onError: () => errors.push(true), ipcRenderer: { invoke: (_channel, request) => handler({ sender: webContents, senderFrame: webContents.mainFrame }, request) } });
+    await client.run({}, PROFILE_SCRIPT);
+    fs.writeFileSync(path.join(home, "cfw-settings.yaml"), yaml.stringify({ scriptsText: "scripts: { profile: { code: saved } }" }));
+    await client.run({}, PROXY_SCRIPT);
+    fs.writeFileSync(path.join(home, "cfw-settings.yaml"), yaml.stringify({ actionScriptsEnabled: false, scriptsText: "scripts: { proxy: { code: saved } }" }));
+    await client.run({}, PROXY_SCRIPT);
+    assert.deepEqual(notices, ["unconfigured", "unconfigured", "disabled"]);
+    assert.deepEqual(errors, []);
+    assert.equal(forks, 0);
+});
+
 test("user script IPC reads saved script sources and forks a fixed utility entry instead of running renderer code", async t => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "cfw-script-ipc-"));
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));

@@ -21,6 +21,18 @@ const { createTranslator } = require("../../main/dist/electron/core/i18n/languag
 const EmptyComponent = { render: h => h("span") };
 const labels = new Proxy({}, { get: (_target, key) => () => String(key) });
 
+test("macOS keeps saved automatic-upgrade data without presenting an inactive updater switch", () => {
+    Vue.use(Vuex);
+    const vm = new (Vue.extend(createPage()))({ store: new Vuex.Store({ state: { app: { settings: {}, confData: {} } }, getters: { secret: () => "" } }) });
+    vm.settings = { silentUpdate: true };
+    vm.isMacOS = true; vm.isWindows = false; vm.isLinux = false;
+    const nodes = node => !node ? [] : [node, ...(node.children || node.componentOptions?.children || []).flatMap(nodes)];
+    assert.equal(nodes(vm._render()).some(node => node.data?.model?.expression === "settings.silentUpdate"), false);
+    assert.ok(nodes(vm._render()).some(node => node.data?.model?.expression === "settings.checkForUpdates"));
+    assert.equal(vm.settings.silentUpdate, true);
+    vm.$destroy();
+});
+
 function createPage(overrides = {}) {
     return createSettingsPage({
         defineComponent,

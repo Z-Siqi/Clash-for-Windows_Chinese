@@ -2,6 +2,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const { EventEmitter } = require("node:events");
 const { registerClashApiIpc } = require("../../main/dist/electron/entry/main/register-clash-api-ipc");
 const { createClashApiClient } = require("../../main/dist/electron/core/native/clash-api-client");
 
@@ -35,6 +36,32 @@ test("semantic controller IPC cannot override transport, endpoints or serialize 
     await assert.rejects(handler({ ...event, senderFrame: {} }, "getConfig", { id: 2, args: [] }), /main frame/);
     await assert.rejects(handler(event, "get", { id: 2, args: ["https://remote.test"] }), /Unsupported/);
     await assert.rejects(handler(event, "getProvider", { id: 2, args: ["../configs", "name"] }), /provider type/);
+});
+
+test("UI reload retires old replies and serializes an accepted PUT before the new page's configuration", async () => {
+    let handler, resolveOld;
+    const calls = [], applied = [], sender = Object.assign(new EventEmitter(), { mainFrame: {} });
+    const event = { sender, senderFrame: sender.mainFrame };
+    registerClashApiIpc({ ipcMain: { on() {}, handle(_channel, action) { handler = action; } },
+        getMainWindow: () => ({ webContents: sender }), onConfigApplied: config => applied.push(config.payload),
+        clashApi: { async putConfig(config, options) {
+            assert.ok(options.timeout > 0, "an obsolete PUT cannot block the next page indefinitely");
+            calls.push(config.payload);
+            if (config.payload === "old") await new Promise(resolve => { resolveOld = resolve; });
+            return { status: 204 };
+        } } });
+    const old = handler(event, "putConfig", { id: 1, args: [{ payload: "old" }], options: { timeout: 0 } });
+    await Promise.resolve();
+    await Promise.resolve();
+    const queued = handler(event, "putConfig", { id: 2, args: [{ payload: "old-queued" }] });
+    sender.emit("did-start-loading");
+    const fresh = handler(event, "putConfig", { id: 1, args: [{ payload: "new" }] });
+    resolveOld();
+    assert.equal((await old).error.code, "ERR_CANCELED");
+    assert.equal((await queued).error.code, "ERR_CANCELED");
+    assert.equal((await fresh).ok, true);
+    assert.deepEqual(calls, ["old", "new"]);
+    assert.deepEqual(applied, ["new"]);
 });
 
 test("semantic controller client carries cancellation across IPC and balances request state", async () => {

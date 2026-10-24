@@ -11,11 +11,13 @@ const { readServiceCredentials, createServiceCredentials } = require("../../core
 const { parsePort } = require("../../core/network/tcp-port");
 const { createTunRuntime } = require("../../features/tun/tun-runtime");
 const { createProfileNetworkEffects } = require("../../features/network/profile-network-effects");
+const { windowsServiceDirectory } = require("../../core/native/windows-service-paths");
 
 function registerNativeAdminIpc({
     ipcMain,
     app,
     getMainWindow,
+    getActiveCore = () => null,
     fs,
     path,
     crypto,
@@ -194,7 +196,27 @@ function registerNativeAdminIpc({
 
         if (scope === "firewall") {
             if (!isWindows()) return false;
-            const binaryPath = requirePackagedCore(payload.binaryPath, filesPath);
+            const packagedCore = requirePackagedCore(payload.binaryPath, filesPath);
+            let active = getActiveCore();
+            if (!active) {
+                try {
+                    // A lightweight reopen has no local launch history. Only the
+                    // authenticated helper can establish the running core identity.
+                    const serviceApi = createClashServiceApi({ client: axios, getCredentials: () => readServiceCredentials({ fs, path, home: clashPath }) });
+                    const identity = await serviceApi.getCoreStatus();
+                    if (identity?.running === true && identity.core === path.basename(packagedCore)) active = { binaryPath: packagedCore, serviceMode: true };
+                } catch (_unavailable) {}
+            }
+            let binaryPath = packagedCore;
+            if (active?.serviceMode && normalizePath(fs.realpathSync(active.binaryPath)) === normalizePath(packagedCore)) {
+                const directory = path.join(windowsServiceDirectory(path), "cores");
+                const installed = path.join(directory, path.basename(packagedCore));
+                binaryPath = fs.realpathSync(installed);
+                // The renderer still names only packaged identities. Service paths
+                // come from the protected installation, never from IPC payloads.
+                if (normalizePath(binaryPath) !== normalizePath(installed)
+                    || normalizePath(fs.realpathSync(directory)) !== normalizePath(directory)) throw new Error("Service core is redirected");
+            }
             const firewall = createFirewallRuntime({
                 isWindows,
                 exec: childProcess.exec,

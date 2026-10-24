@@ -24,10 +24,22 @@ function createClashServiceApi({ client, getCredentials }) {
         },
         async start(payload) {
             const core = String(payload.path).split(/[\\/]/).pop();
-            return client.post(`${SERVICE_BASE_URL}/start`, { core, silent: payload.silent === true }, options({
-                validateStatus: () => true,
-                timeout: 4000
-            }, payload.cwd));
+            const body = { core, silent: payload.silent === true };
+            const requestOptions = options({ validateStatus: () => true, timeout: 4000 }, payload.cwd);
+            if (payload.redactValues?.length) {
+                // Older helpers ignore extension headers but reject unknown JSON
+                // fields. No extra probe may block their ordinary startup.
+                const values = Buffer.from(JSON.stringify(payload.redactValues), "utf8").toString("base64");
+                if (values.length <= 8192 && payload.redactValues.length <= 32
+                    && payload.redactValues.every(value => typeof value === "string" && value.length > 0 && value.length <= 4096)) requestOptions.headers["X-CFW-Log-Redactions"] = values;
+                else body.silent = true; // Never exceed helper header limits or persist unfiltered output.
+            }
+            return client.post(`${SERVICE_BASE_URL}/start`, body, requestOptions);
+        },
+        async getCoreStatus() {
+            const response = await client.get(`${SERVICE_BASE_URL}/status`, options({ timeout: 1000 }));
+            if (response.headers?.["x-cfw-service-protocol"] !== "2") throw new Error("Unverified service identity");
+            return response.data;
         },
         async stop() {
             return client.post(`${SERVICE_BASE_URL}/stop`, null, options({ timeout: 2500 }));

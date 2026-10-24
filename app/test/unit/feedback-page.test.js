@@ -95,3 +95,26 @@ test("feedback page leaves vertical space above every title", () => {
     const styles = fs.readFileSync(path.resolve(__dirname, "../../main/dist/electron/styles.css"), "utf8");
     assert.match(styles, /\.title\[data-v-4a737543\]\s*\{[^}]*margin-top:\s*0\.618em;/);
 });
+
+test("disabled advertisements show a muted explanation and risk notice without mounting cached images", () => {
+    const Vue = require("../../main/node_modules/vue");
+    const { createTranslator } = require("../../main/dist/electron/core/i18n/language");
+    const nodes = node => !node ? [] : [node, ...(node.children || node.componentOptions?.children || []).flatMap(nodes)];
+    for (const locale of [0, 1]) {
+        const labels = createTranslator(locale);
+        const { page } = createPage({ getLanguage: () => labels });
+        const vm = new Vue({ ...page, computed: { settings: () => ({ disableLoadingAdsLink: true }) } });
+        vm.isShowAds = true;
+        vm.adImages = [{ img: "https://fixture.test/image.png" }];
+        const rendered = nodes(vm._render());
+        assert.ok(rendered.some(node => node.text === labels.advertisementsDisabled()));
+        assert.ok(rendered.some(node => node.text === labels.advertisementRisk()));
+        assert.equal(rendered.some(node => node.componentOptions?.tag === "lazy-image-view"), false);
+        assert.ok(rendered.some(node => node.tag === "p" && node.data.staticClass.includes("opacity-60")));
+        const card = rendered.find(node => node.tag === "pre");
+        assert.equal(card.data.style.height, "auto");
+        assert.equal(card.data.style.maxHeight, "80%");
+        assert.equal(card.data.style.width, "min(480px, calc(100% - 32px))");
+        vm.$destroy();
+    }
+});

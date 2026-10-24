@@ -8,6 +8,9 @@ function mergeSettings(settings = {}) {
     const { legacyTapEnabled: _legacyTapEnabled, ...saved } = settings;
     return {
         ...saved,
+        ...Object.fromEntries(["shortcutSystemProxy", "shortcutTun", "shortcutMixin", "shortcutGlobalMode",
+            "shortcutRuleMode", "shortcutDirectMode", "shortcutScriptMode", "shortcutRunTrayScript",
+            "shortcutShowHideDashboard"].map(key => [key, settings[key] ?? ""])),
         showNewVersionIcon: settings.showNewVersionIcon !== false,
         hideAfterStartup: settings.hideAfterStartup === true,
         randomControllerPort: settings.randomControllerPort !== false,
@@ -21,6 +24,7 @@ function mergeSettings(settings = {}) {
         showTrayProxyDelayIndicator:
             settings.showTrayProxyDelayIndicator !== false,
         checkForUpdates: settings.checkForUpdates !== false,
+        actionScriptsEnabled: settings.actionScriptsEnabled !== false,
         disableLoadingAdsLink: settings.disableLoadingAdsLink !== false,
         allowRemoteProfileParsers: settings.allowRemoteProfileParsers === true,
         allowHttpExternalLinks: settings.allowHttpExternalLinks === true,

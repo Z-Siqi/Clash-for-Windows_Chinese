@@ -209,15 +209,16 @@ function createGeneralPage({
                 staticClass: "icon text-white"
             }, [viewModel._v("remove")])])]);
         }), viewModel._v(" "), viewModel.disabled ? viewModel._e() : createElement("div", {
-            staticClass: "flex items-center gap-2",
-            on: { click: viewModel.handleAddItem }
+            staticClass: "flex items-center gap-2"
         }, [createElement("input", {
             directives: [{ name: "model", rawName: "v-model", value: viewModel.addKey, expression: "addKey" }],
             attrs: { type: "text", placeholder: viewModel.keyPlaceHolder },
             domProps: { value: viewModel.addKey },
             on: { input: event => { if (!event.target.composing) viewModel.addKey = event.target.value; } }
-        }), viewModel._v(" "), createElement("span", {
-            staticClass: "btn btn-add clickable icon text-[#41b883]"
+        }), viewModel._v(" "), createElement("button", {
+            staticClass: "btn btn-add clickable icon text-[#41b883]",
+            attrs: { type: "button" },
+            on: { click: viewModel.handleAddItem }
         }, [viewModel._v("add")])])], 2);
     }, "352b843a");
 
@@ -316,7 +317,9 @@ function createGeneralPage({
                 this.nameserverPolicy = nameserverPolicy || {};
                 this.isAutoDetectInterface = isAutoDetectInterface === undefined || isAutoDetectInterface;
                 this.interfaceName = interfaceName || "";
-                this.dnsHijacks = dnsHijacks || ["any:53"];
+                // Match the runtime default; opening and saving must not enable
+                // DNS interception for users who never selected it.
+                this.dnsHijacks = dnsHijacks || [];
                 this.isAutoRedir = isAutoRedir !== undefined && isAutoRedir;
                 this.isAutoRedirAutoRoute = isAutoRedirAutoRoute !== undefined && isAutoRedirAutoRoute;
                 this.mihomoAutoRedirect = typeof mihomoAutoRedirect === "boolean" ? mihomoAutoRedirect : null;

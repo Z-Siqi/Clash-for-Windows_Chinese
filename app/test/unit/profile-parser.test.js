@@ -23,6 +23,23 @@ const mergeDependencies = {
     shuffle: values => values.slice().reverse()
 };
 
+test("Parser deletion ignores missing names, resolves numeric-prefix names, and retains numeric index syntax", () => {
+    const source = { proxies: [{ name: "first" }, { name: "01-US" }, { name: "last" }] };
+    const run = key => yaml.parse(mergeProfileYaml(yaml.stringify(source), { commands: [`proxies.(${key})-`] }, mergeDependencies)).proxies.map(item => item.name);
+    assert.deepEqual(run("absent"), ["first", "01-US", "last"]);
+    assert.deepEqual(run("01-US"), ["first", "last"]);
+    for (const key of ["1", "01", "0x1", "1e0", "1.5"]) assert.deepEqual(run(key), ["first", "last"], key);
+    assert.deepEqual(run("999"), ["first", "01-US", "last"]);
+});
+
+test("Profile header values preserve colons and blank lines without relaxing malformed-header handling", () => {
+    assert.deepEqual(parseHeaderString("\r\nReferer: https://example.test/path\r\nX-Time: 12:34:56\n\n"), {
+        Referer: "https://example.test/path", "X-Time": "12:34:56"
+    });
+    assert.deepEqual(parseHeaderString("X-Empty:\n"), { "X-Empty": "" });
+    assert.deepEqual(parseHeaderString("malformed"), {});
+});
+
 test("profile parser commands retain nested names, generated proxy lists and scalar types", () => {
     assert.deepEqual(parseCommand("proxy-groups.(Group.One).proxies=[]proxyNames|^A$"), {
         path: ["proxy-groups", "Group.One", "proxies"],

@@ -174,7 +174,11 @@ function createConnectionsPage({
             },
             labelSelected() { this.resetViewport(); },
             detailConnectionId() { this.updateView(); },
-            filterTypeIndex() { this.labelScrollTop = 0; this.updateView(); },
+            filterTypeIndex() {
+                this.labelScrollTop = 0;
+                if (this.$refs.labelsViewport) this.$refs.labelsViewport.scrollTop = 0;
+                this.updateView();
+            },
             isShowTypeFilter() {
                 this.labelScrollTop = 0;
                 this.updateView();
@@ -219,6 +223,9 @@ function createConnectionsPage({
                 let pipeline = pipelines.get(this);
                 if (!this.isActive && !pipeline) return;
                 if (!pipeline) {
+                    // Keep the cached viewport until a real snapshot arrives. An
+                    // empty new worker would collapse its spacer and clamp scrolling.
+                    if (payload === undefined) return;
                     pipeline = createConnectionPipeline({ worker: createWorker(), onView: view => { this.data = view; },
                         onError: () => notify(getLanguage().failed(), getLanguage().connectionsProcessingFailed(), false) });
                     pipelines.set(this, pipeline);
@@ -230,11 +237,28 @@ function createConnectionsPage({
                 if (this.$refs.connectionsViewport) this.$refs.connectionsViewport.scrollTop = 0;
                 this.updateView();
             },
-            observeViewport() {
+            restoreViewport() {
+                if (!this.isActive) return;
+                let changed = false;
+                for (const [ref, key] of [["connectionsViewport", "scrollTop"], ["labelsViewport", "labelScrollTop"]]) {
+                    const element = this.$refs[ref];
+                    if (!element) continue;
+                    element.scrollTop = this[key];
+                    if (element.scrollTop !== this[key]) {
+                        this[key] = element.scrollTop;
+                        changed = true;
+                    }
+                }
+                if (changed) this.updateView();
+            },
+            observeViewport(restore = false) {
                 observers.get(this)?.disconnect();
                 const measure = () => {
                     this.viewportHeight = this.$refs.connectionsViewport?.clientHeight || 600;
                     this.labelViewportHeight = this.$refs.labelsViewport?.clientHeight || 400;
+                    // Restore only when the cached route returns. Normal worker
+                    // replies must not overwrite a scroll awaiting its DOM event.
+                    if (restore) { this.restoreViewport(); restore = false; }
                     this.updateView();
                 };
                 if (typeof ResizeObserver !== "undefined") {
@@ -359,7 +383,7 @@ function createConnectionsPage({
                 this.labelSelected = cache.get(keys.CONNECTION_ORDER_INDEX) ?? 4;
                 this.reverseTags = cache.get(keys.CONNECTION_ORDER_REVERSE_TAGS) ?? [];
                 if (!this.isPause) this.openStream();
-                this.$nextTick(() => this.observeViewport());
+                this.$nextTick(() => this.observeViewport(true));
             }
         },
         beforeRouteEnter(route, _previousRoute, next) {
@@ -368,11 +392,13 @@ function createConnectionsPage({
                 viewModel.setupComponent();
                 const searchText = route.query.searchText || "";
                 viewModel.searchText = searchText
-                    ? searchText.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&")
+                    ? searchText.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&").replace(/=/g, "\\x3d")
                     : cache.get(keys.CONNECTION_MODULE_SEARCH_TEXT) ?? "";
             });
         },
         beforeRouteLeave(_route, _previousRoute, next) {
+            if (this.$refs.connectionsViewport) this.scrollTop = this.$refs.connectionsViewport.scrollTop;
+            if (this.$refs.labelsViewport) this.labelScrollTop = this.$refs.labelsViewport.scrollTop;
             this.isActive = false;
             // A paused, cached page retains its snapshot for search on return.
             if (this.isPause) { this.closeStream(); observers.get(this)?.disconnect(); }
@@ -454,7 +480,7 @@ function createConnectionsPage({
                 createElement("div", {
                     ref: "labelsViewport", staticClass: "bg-[color:var(--bgc)] flex-1 overflow-y-auto scrolly",
                     style: { minWidth: 0, overflowAnchor: "none" },
-                    on: { scroll(event) { viewModel.labelScrollTop = event.target.scrollTop; viewModel.updateView(); } }
+                    on: { scroll(event) { if (viewModel.isActive) { viewModel.labelScrollTop = event.target.scrollTop; viewModel.updateView(); } } }
                 }, [createElement("div", { style: { height: `${viewModel.data.labelRange.height}px`, position: "relative" } }, [
                     createElement("div", { style: { position: "absolute", width: "100%", top: `${viewModel.data.labelRange.offset}px` } },
                         viewModel.connTypeLabels.map(value => createElement("div", {
@@ -533,7 +559,7 @@ function createConnectionsPage({
             createElement("div", {
                 ref: "connectionsViewport", staticClass: "scroll-view",
                 style: { overflowAnchor: "none", flex: 1, minHeight: 0 },
-                on: { scroll(event) { viewModel.scrollTop = event.target.scrollTop; viewModel.updateView(); } }
+                on: { scroll(event) { if (viewModel.isActive) { viewModel.scrollTop = event.target.scrollTop; viewModel.updateView(); } } }
             }, [createElement("div", { style: { height: `${viewModel.data.range.height}px`, position: "relative" } }, [
                 createElement("div", { style: { position: "absolute", width: "100%", top: `${viewModel.data.range.offset}px` } },
                     viewModel._l(viewModel.orderedConnections, renderConnection), 0)

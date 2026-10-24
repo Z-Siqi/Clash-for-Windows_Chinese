@@ -69,8 +69,9 @@ function createGeneralPageWorkflow({
             this.invalidateCoreVersion();
             if (value === connectedStatus) this.setupComponent();
         },
-        "settings.proxyCore"() { this.invalidateCoreVersion(); },
-        "$parent.isCoreRestarting"(value) { if (value) this.invalidateCoreVersion(); },
+        "settings.proxyCore"() { this.invalidateCoreVersion(); this.refreshFirewallStatus(); },
+        isLocalMode() { this.refreshFirewallStatus(); },
+        "$parent.isCoreRestarting"(value) { if (value) this.invalidateCoreVersion(); else this.refreshFirewallStatus(); },
         async clashPath() { this.serviceNeedUpdate = await service.needUpdate(); }
     };
 
@@ -132,12 +133,19 @@ function createGeneralPageWorkflow({
                 if (selection === 0) await this.$code({ code: yaml.stringify(this.currentProfilePayload), readOnly: true });
             } catch (_cancelled) {}
         },
+        async refreshFirewallStatus() {
+            if (!platform.isWindows()) return;
+            const request = this.firewallStatusRequest = (this.firewallStatusRequest || 0) + 1;
+            const core = this.settings?.proxyCore;
+            const exists = await firewall.status();
+            if (request === this.firewallStatusRequest && core === this.settings?.proxyCore) this.setIsFirewallRuleExist({ isExist: exists });
+        },
         async handleAddFirewallRules() {
-            if (this.isFetchingFirewallRule) return;
+            if (this.isFetchingFirewallRule || this.proxyBusy) return;
             this.isFetchingFirewallRule = true;
             try {
                 try {
-                    if (this.isFirewallRuleExist) await firewall.remove();
+                    if (await firewall.status()) await firewall.remove();
                     else await firewall.add();
                 } catch (_error) {}
                 this.setIsFirewallRuleExist({ isExist: await firewall.status() });
@@ -389,6 +397,7 @@ function createGeneralPageWorkflow({
             try {
                 result = await this.$input({
                     title: labels.changeMixedPort(),
+                    submitOnEnter: true,
                     data: [{
                         name: labels.newPort(), key: "port", placeholder: this.port, value: "",
                         validate: value => parsePort(value) !== null ? "" : labels.invalidPort()

@@ -22,7 +22,7 @@ function registerMainWindowLifecycle({
                 mainWindow.unmaximize();
             }
             globalShortcut.unregisterAll();
-            app.exit();
+            // Let app.quit reach will-quit cleanup before the process exits.
         } else {
             event.preventDefault();
             if (platform === "darwin" && mainWindow.isFullScreen()) {

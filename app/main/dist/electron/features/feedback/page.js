@@ -81,7 +81,7 @@ function createFeedbackPage({
     const component = {
         components: { LazyImageView, EscCapture: escCaptureComponent },
         data() {
-            return { adImages: [], isShowDisclaimerStatement: false, isShowAds: false };
+            return { adImages: [], isShowDisclaimerStatement: false, isShowAds: false, adLoadFailed: false };
         },
         watch: {
             "settings.disableLoadingAdsLink"(value) {
@@ -99,11 +99,14 @@ function createFeedbackPage({
             next(async vm => {
                 if (vm.settings.disableLoadingAdsLink !== false) { vm.adImages = []; return; }
                 vm.adImages = cache.get(keys.AD_IMAGES) || [];
-                const response = await publicContent.getAds();
-                if (vm.settings.disableLoadingAdsLink === false && response.status === 200 && response.data.feedback) {
-                    cache.put(keys.AD_IMAGES, response.data.feedback);
-                    vm.adImages = response.data.feedback;
-                }
+                vm.adLoadFailed = false;
+                try {
+                    const response = await publicContent.getAds();
+                    if (vm.settings.disableLoadingAdsLink === false && response.status === 200 && Array.isArray(response.data.feedback)) {
+                        cache.put(keys.AD_IMAGES, response.data.feedback);
+                        vm.adImages = response.data.feedback;
+                    } else if (vm.settings.disableLoadingAdsLink === false) vm.adLoadFailed = true;
+                } catch (_error) { vm.adLoadFailed = true; }
             });
         }
     };
@@ -113,14 +116,16 @@ function createFeedbackPage({
             staticClass: linkClass,
             on: { click: () => this.select(index) }
         }, [text]);
-        const overlay = (close, content) => createElement("EscCapture", {
+        const overlay = (close, content, compact = false) => createElement("EscCapture", {
             staticClass: "w-full h-full absolute bg-[color:var(--mask-c)] top-0 left-0",
             on: {
                 mousedown: event => { if (event.target === event.currentTarget) close(); },
                 esc: close
             }
         }, [createElement("pre", {
-            staticClass: "left-1/2 top-1/2 w-3/5 break-words whitespace-pre-wrap text-sm absolute bg-[color:var(--bgc)] px-4 py-3 h-4/5 scrolly -translate-x-1/2 -translate-y-1/2 rounded-md shadow-2xl font-sans select-text"
+            staticClass: "left-1/2 top-1/2 break-words whitespace-pre-wrap text-sm absolute bg-[color:var(--bgc)] px-4 py-3 scrolly -translate-x-1/2 -translate-y-1/2 rounded-md shadow-2xl font-sans select-text",
+            class: compact ? "advertisement-message" : "w-3/5 h-4/5",
+            style: compact ? { width: "min(480px, calc(100% - 32px))", height: "auto", maxHeight: "80%", boxSizing: "border-box", whiteSpace: "normal" } : undefined
         }, content)]);
         const slogan = () => createElement("div", { staticClass: "absolute mt-[1000px]" }, [
             decodeURIComponent("%E7%8B%AC%E7%AB%8B%E6%80%9D%E8%80%83%EF%BC%8C%E6%98%8E%E8%BE%A8%E6%98%AF%E9%9D%9E%E3%80%82")
@@ -162,16 +167,21 @@ function createFeedbackPage({
             this.isShowAds ? overlay(() => { this.isShowAds = false; }, [
                 createElement("div", { staticClass: "section ad-section" }, [
                     createElement("div", { staticClass: "title" }, [labels.advertisementOriginal()]),
-                    createElement("div", { staticClass: "ad-img-list" }, this.adImages.map((image, index) =>
+                    this.settings.disableLoadingAdsLink !== false
+                        ? createElement("p", { staticClass: "text-sm opacity-60", style: { lineHeight: "1.6", margin: "12px 0" } }, [labels.advertisementsDisabled()])
+                        : !this.adImages.length
+                            ? createElement("p", { staticClass: "text-sm opacity-60", style: { lineHeight: "1.6", margin: "12px 0" } }, [this.adLoadFailed ? labels.advertisementsFailed() : labels.noAdvertisements()])
+                            : createElement("div", { staticClass: "ad-img-list" }, this.adImages.map((image, index) =>
                         createElement("div", { key: index, staticClass: "ad-img" }, [
                             createElement("lazy-image-view", {
                                 attrs: { clickalbe: image.click, src: image.img },
                                 on: { click: () => this.adClick(index) }
                             })
                         ])
-                    ))
+                    )),
+                    createElement("p", { staticClass: "text-sm opacity-60", style: { lineHeight: "1.6", margin: "12px 0 0" } }, [labels.advertisementRisk()])
                 ])
-            ]) : null,
+            ], this.settings.disableLoadingAdsLink !== false || !this.adImages.length) : null,
             slogan(),
             this.isShowDisclaimerStatement
                 ? overlay(() => { this.isShowDisclaimerStatement = false; }, [labels.disclaimerStatementDescribe()])

@@ -256,19 +256,7 @@ function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, 
                             },
                             expression: "settings.showNewVersionIcon"
                         }
-                    })], 1), viewModel._v(" "), viewModel.isMacOS ? createElement("div", {
-                        staticClass: "item"
-                    }, [createElement("div", {
-                        staticClass: "flex items-center"
-                    }, [createElement("div", [viewModel._v(labels.automaticUpgrade())]), viewModel._v(" "), createElement("Info", [viewModel._v(labels.automaticUpgradeDescribe())])], 1), viewModel._v(" "), createElement("SwitchView", {
-                        model: {
-                            value: viewModel.settings.silentUpdate,
-                            callback: function(value) {
-                                viewModel.$set(viewModel.settings, "silentUpdate", value)
-                            },
-                            expression: "settings.silentUpdate"
-                        }
-                    })], 1) : viewModel._e(), viewModel._v(" "), createElement("div", {
+                    })], 1), viewModel._v(" "), createElement("div", {
                         staticClass: "item"
                     }, [createElement("div", [viewModel._v(labels.languageString())]), viewModel._v(" "), createElement("SelectView", {
                         attrs: {
@@ -1020,16 +1008,17 @@ function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, 
                     }, [createElement("div", [viewModel._v(labels.folderPath())]), viewModel._v(" "), createElement("Info", [viewModel._v(labels.folderPathDescribe())])], 1), viewModel._v(" "), createElement("div", {
                         staticClass: "item"
                     }, [createElement("SimpleInput", {
+                        ref: "profilePathInput",
                         staticClass: "short-input",
                         attrs: {
                             placeholder: labels.profilesFolderPath()
                         },
                         model: {
-                            value: viewModel.settings.profilePath,
+                            value: viewModel.profilePathDraft,
                             callback: function(value) {
-                                viewModel.$set(viewModel.settings, "profilePath", value)
+                                viewModel.profilePathDraft = value
                             },
-                            expression: "settings.profilePath"
+                            expression: "profilePathDraft"
                         }
                     }), viewModel._v(" "), createElement("MoreHint", {
                         staticClass: "hint",
@@ -1039,6 +1028,10 @@ function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, 
                         on: {
                             click: viewModel.handleChooseProfilePath
                         }
+                    }), viewModel._v(" "), createElement("MoreHint", {
+                        staticClass: "hint",
+                        attrs: { text: labels.saveAndRestart() },
+                        on: { click: viewModel.handleSaveProfilePath }
                     })], 1)]), viewModel._v(" "), createElement("div", {
                         staticClass: "item"
                     }, [createElement("div", {
@@ -1138,7 +1131,14 @@ function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, 
                         attrs: {
                             title: labels.actions()
                         }
-                    }, [createElement("div", {
+                    }, [createElement("div", { staticClass: "item" }, [
+                        createElement("div", { attrs: { title: labels.actionScriptsEnabledDescribe() } }, [viewModel._v(labels.actionScriptsEnabled())]),
+                        createElement("SwitchView", { model: {
+                            value: viewModel.settings.actionScriptsEnabled !== false,
+                            callback: value => viewModel.$set(viewModel.settings, "actionScriptsEnabled", value),
+                            expression: "settings.actionScriptsEnabled"
+                        } })
+                    ]), createElement("div", {
                         staticClass: "item"
                     }, [createElement("div", {
                         staticClass: "flex items-center"

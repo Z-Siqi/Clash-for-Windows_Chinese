@@ -158,6 +158,7 @@ async function main() {
             "nativeTheme",
             "network-info",
             "powerSaveBlocker",
+            "profile-directory",
             "profile-files",
             "start-download",
             "webContent",
@@ -232,6 +233,11 @@ async function main() {
     assert.deepEqual(sent.at(-1), ["window-event", "close"]);
     windowListeners.get("session-end")(closeEvent);
     assert.deepEqual(sent.at(-1), ["app-exit"]);
+    app.isQuiting = true;
+    const quitting = calls.length;
+    windowListeners.get("close")(closeEvent);
+    assert.equal(calls.slice(quitting).some(([name]) => name === "exit" || name === "preventDefault"), false,
+        "app.quit must reach will-quit cleanup rather than app.exit or close-to-tray");
 
     verifyEnforcedDelegation();
     console.log("core IPC smoke: PASS");

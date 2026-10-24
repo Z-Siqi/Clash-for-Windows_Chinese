@@ -62,7 +62,7 @@ after power loss, inspect the lockfile and rerun preparation before building.
 
 Review and commit the manifest, six `MIHOMO_NOTICE.txt` files and six
 `service/core-hashes.json` files. The latter preserve legacy Clash and macOS system
-proxy helper hashes while pinning the new Mihomo digest. Run `npm test`, then the
+proxy helper hashes and the Windows `wintun.dll` dependency hashes while pinning the new Mihomo digest. Run `npm test`, then the
 appropriate platform packaging and runtime checks. Binaries and caches must stay
 out of Git; an architecture test rejects indexed Mihomo executable paths.
 

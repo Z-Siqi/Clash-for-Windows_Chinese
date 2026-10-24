@@ -5,6 +5,7 @@ function createClashCoreRuntime({
     fs,
     path,
     serviceApi,
+    getSensitiveValues = () => [],
     logger = console,
     sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
 }) {
@@ -72,7 +73,8 @@ function createClashCoreRuntime({
                 response = await serviceApi.start({
                     path: devMode ? path.join(process.cwd(), binaryPath) : binaryPath,
                     cwd: clashPath,
-                    silent: logLevel === "silent"
+                    silent: logLevel === "silent",
+                    redactValues: getSensitiveValues().filter(value => typeof value === "string" && value.length > 0)
                 });
             } catch (_error) {
                 // Process creation can outlive the HTTP request (for example

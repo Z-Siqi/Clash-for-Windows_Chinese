@@ -31,6 +31,17 @@ function createWorkflow(overrides = {}) {
     return { workflow: createServerPageWorkflow(dependencies), dialogs };
 }
 
+test("profile Run script menu follows the explicit context-script switch and preserves the default", () => {
+    const { workflow } = createWorkflow();
+    for (const enabled of [undefined, true, false]) {
+        let items;
+        const vm = { settings: { actionScriptsEnabled: enabled }, profiles: [{ url: "https://fixture.test/profile.yaml" }],
+            $menu: menu => { items = menu; } };
+        workflow.methods.handleProfileRightClick.call(vm, { which: 3 }, vm.profiles[0], 0);
+        assert.equal(items.find(item => item.icon === "code").hide, enabled === false);
+    }
+});
+
 test("server page profile selection owns loading and failure recovery", async () => {
     const { workflow, dialogs } = createWorkflow();
     const selected = [];

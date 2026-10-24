@@ -105,6 +105,18 @@ test("a periodic proxy refresh cannot detach an active group's speed results fro
     assert.equal(vm.proxies[0].data.all[0].latency, "15 ms"); assert.deepEqual(vm.testingProxyNames, []);
 });
 
+test("group delay sorting follows the currently displayed array after a periodic refresh", async () => {
+    const page = createProxiesPage({ defineComponent: options => options, Vuex, lodash: { debounce: fn => fn } });
+    const slow = pending(), fast = pending();
+    const rows = () => [{ name: "slow", delay: 0 }, { name: "fast", delay: 0 }];
+    const vm = { ...page.data(), ...page.methods, settings: { proxyOrder: 1 }, currentProfilePayload: {},
+        proxies: [{ name: "G", data: { all: rows() } }], speedtest: name => name === "slow" ? slow.promise : fast.promise };
+    const testing = vm.startLatencyTest("G", 0);
+    vm.proxies = [{ name: "G", data: { all: rows() } }];
+    slow.resolve(1000); fast.resolve(10); await testing;
+    assert.deepEqual(vm.proxies[0].data.all.map(row => [row.name, row.delay]), [["fast", 10], ["slow", 1000]]);
+});
+
 test("SSID picker cancellation is quiet and a native query failure is reported without copying undefined", async () => {
     const errors = [], copied = [];
     let fail = false;

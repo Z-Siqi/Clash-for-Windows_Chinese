@@ -9,7 +9,7 @@ const NETWORK_SETTINGS = new Set([
 const NETWORK_ACTIONS = new Set([
     "handleProxyCoreChange", "refreshCore", "handleSelectInterface", "handleEditChildProcess", "handleChooseProfilePath",
     "handleEditPACContent", "handleEditBypass", "handleEditMixinYAML", "handleEditMixinJS", "handleEditSSIDStrategy",
-    "handleReset", "handlerClearFakeIPCache", "handleGenerateUUIDSecret", "handleTrayScriptManualRun"
+    "handleReset", "handleSaveProfilePath", "handlerClearFakeIPCache", "handleGenerateUUIDSecret", "handleTrayScriptManualRun"
 ]);
 
 function isProxySetting(key) { return NETWORK_SETTINGS.has(key); }
@@ -32,7 +32,7 @@ function settingsElement(vm, createElement) {
         const key = data?.model?.expression?.match(/^settings\.(\w+)$/)?.[1];
         const action = Object.entries(data?.on || {}).some(([, handler]) =>
             [...NETWORK_ACTIONS].some(name => handler === vm[name]));
-        if (isProxySetting(key) || action) {
+        if (isProxySetting(key) || data?.model?.expression === "profilePathDraft" || action) {
             data = { ...data };
             if (data.model) {
                 const callback = data.model.callback;

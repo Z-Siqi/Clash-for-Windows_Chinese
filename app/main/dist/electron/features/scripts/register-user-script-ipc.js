@@ -73,17 +73,18 @@ function registerUserScriptIpc({ ipcMain, app, getMainWindow, fs, path, yaml, fo
         // Source is read from the user's saved configuration, never supplied in IPC.
         const mixin = request.scriptType === "mixin";
         const tray = request.scriptType === "tray";
+        if (!mixin && !tray && settings.actionScriptsEnabled === false) return { actionScriptStatus: "disabled" };
         let trayCode;
         if (tray) {
             if (typeof settings.trayScriptPath !== "string" || !settings.trayScriptPath) return "";
             trayCode = fs.readFileSync(settings.trayScriptPath, "utf8");
         }
         if (mixin && (Number(settings.mixinType) !== 1 || !settings.mixinCode)) return request.payload?.content;
-        if (!mixin && !tray && !settings.scriptsText) return;
+        if (!mixin && !tray && !settings.scriptsText) return { actionScriptStatus: "unconfigured" };
         let scripts;
         try { scripts = mixin || tray ? {} : yaml.parse(settings.scriptsText)?.scripts || {}; }
         catch (_error) { return; }
-        if (!mixin && !tray && !scripts[request.scriptType]?.code && !scripts[request.scriptType]?.file) return;
+        if (!mixin && !tray && !scripts[request.scriptType]?.code && !scripts[request.scriptType]?.file) return { actionScriptStatus: "unconfigured" };
         const current = getWorker();
         const job = ++sequence;
         contexts.set(job, { window, showNotifications: settings.showNotifications === true });

@@ -112,3 +112,59 @@ test("Connections page: production entry delegates to the named factory", () => 
         'name: "ConnectionInfoView"', "openStream()", "orderedConnections()"
     ]);
 });
+
+test("Connections returns to the saved viewport without an empty worker view, including paused pages", async t => {
+    let workers = 0;
+    const page = createPage({ createWorker: () => {
+        workers++;
+        const model = createConnectionModel();
+        const worker = { terminate() {}, postMessage(message) { queueMicrotask(() => {
+            if (message.payload !== undefined) model.ingest(message.payload);
+            worker.onmessage({ data: { id: message.id, view: model.view(message.query) } });
+        }); } };
+        return worker;
+    } });
+    const vm = new Vue({ ...page, store: new Vuex.Store({ state: { app: { clashStatus: "connected" } },
+        getters: { clashWSClient: () => () => ({ on() {}, terminate() {} }) } }) });
+    t.after(() => vm.$destroy());
+    vm.$refs.connectionsViewport = { scrollTop: 0, clientHeight: 600 };
+    vm.isActive = true;
+    vm.updateView({ connections: largeConnections(1000) });
+    await new Promise(resolve => setImmediate(resolve));
+    vm.scrollTop = vm.$refs.connectionsViewport.scrollTop = 63000;
+    vm.updateView();
+    await new Promise(resolve => setImmediate(resolve));
+    for (const paused of [false, true]) {
+        vm.isPause = paused;
+        page.beforeRouteLeave.call(vm, {}, {}, () => {});
+        vm.$refs.connectionsViewport.scrollTop = 0; // keep-alive DOM reinsertion
+        const count = vm.data.count, previousWorkers = workers;
+        page.beforeRouteEnter({ query: {} }, {}, callback => callback(vm));
+        await Vue.nextTick();
+        assert.equal(vm.$refs.connectionsViewport.scrollTop, 63000);
+        assert.equal(vm.data.count, count);
+        assert.equal(workers, previousWorkers, "measurement must not create an empty worker");
+        if (!paused) vm.updateView({ connections: largeConnections(1000) });
+        else vm.updateView();
+        await new Promise(resolve => setImmediate(resolve));
+        assert.ok(vm.data.range.offset > 60000);
+        assert.ok(vm.data.rows.length > 0);
+        assert.equal(vm.$refs.connectionsViewport.scrollTop, 63000);
+    }
+    vm.$refs.connectionsViewport.scrollTop = 30000; // a native scroll awaiting event delivery
+    vm.updateView({ connections: largeConnections(1000) });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(vm.$refs.connectionsViewport.scrollTop, 30000, "worker replies must not overwrite a pending user scroll");
+});
+
+test("Connection route searches treat equals in node names literally and retain manual metadata filters", () => {
+    const model = createConnectionModel();
+    model.ingest({ connections: [
+        { id: "node", start: "", metadata: { network: "tcp" }, chains: ["network=udp"] },
+        { id: "metadata", start: "", metadata: { network: "udp" }, chains: ["other"] }
+    ] });
+    const vm = { setupComponent() {} };
+    createPage().beforeRouteEnter({ query: { searchText: "network=udp" } }, {}, callback => callback(vm));
+    assert.deepEqual(model.view({ search: vm.searchText }).rows.map(row => row.id), ["node"]);
+    assert.deepEqual(model.view({ search: "network=udp" }).rows.map(row => row.id), ["metadata"]);
+});

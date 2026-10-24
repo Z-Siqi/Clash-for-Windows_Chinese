@@ -17,6 +17,9 @@ async function run() {
     const invokes = [];
     const memoryFiles = new Map();
     let protocol = "2";
+    let activeCore = null;
+    let serviceIdentity = null;
+    const redirected = new Map();
     const client = createNativeAdminClient({
         ipcRenderer: {
             invoke(...args) {
@@ -55,8 +58,9 @@ async function run() {
             }
         },
         getMainWindow: () => mainWindow,
+        getActiveCore: () => activeCore,
         fs: {
-            realpathSync: value => path.win32.resolve(value),
+            realpathSync: value => redirected.get(value) || path.win32.resolve(value),
             existsSync: file => memoryFiles.has(file),
             readFileSync: file => memoryFiles.has(file) ? Buffer.from(memoryFiles.get(file)) : Buffer.from(file.endsWith("core-hashes.json") ? JSON.stringify({ cores: [{ name: "clash-win64.exe", sha256: "fixture" }] }) : "fixture"),
             writeFileSync: (file, content) => memoryFiles.set(file, content),
@@ -80,7 +84,7 @@ async function run() {
             }
         },
         axios: {
-            get: async () => ({ status: 200, headers: { "x-cfw-service-protocol": protocol } }),
+            get: async () => ({ status: 200, headers: { "x-cfw-service-protocol": protocol }, data: serviceIdentity }),
             post: async () => ({ status: 200 })
         },
         platform: "win32",
@@ -111,6 +115,23 @@ async function run() {
     ).toString("utf16le");
     assert.match(firewallScript, /New-NetFirewallRule/);
 
+    activeCore = { serviceMode: true, binaryPath: invokes[0][3].binaryPath };
+    await handler(event, "firewall", "add", { ...base, binaryPath: activeCore.binaryPath });
+    const serviceFirewallScript = Buffer.from(elevated.pop()[0].split("-EncodedCommand ")[1], "base64").toString("utf16le");
+    assert.ok(serviceFirewallScript.includes("C:\\Program Files\\Clash for Windows Service\\cores\\mihomo-windows-amd64.exe"));
+    assert.ok(!serviceFirewallScript.includes("C:\\package\\resources"));
+    const shortPackagedPath = "C:\\PACKAG~1\\resources\\static\\files\\win\\x64\\mihomo-windows-amd64.exe";
+    redirected.set(shortPackagedPath, activeCore.binaryPath);
+    activeCore = { ...activeCore, binaryPath: shortPackagedPath };
+    await handler(event, "firewall", "add", { ...base, binaryPath: invokes[0][3].binaryPath });
+    const aliasScript = Buffer.from(elevated.pop()[0].split("-EncodedCommand ")[1], "base64").toString("utf16le");
+    assert.ok(aliasScript.includes("C:\\Program Files\\Clash for Windows Service\\cores\\mihomo-windows-amd64.exe"));
+    const installedCore = "C:\\Program Files\\Clash for Windows Service\\cores\\mihomo-windows-amd64.exe";
+    redirected.set(installedCore, "C:\\untrusted\\mihomo-windows-amd64.exe");
+    await assert.rejects(handler(event, "firewall", "add", { ...base, binaryPath: invokes[0][3].binaryPath }), /Service core is redirected/);
+    redirected.clear();
+    activeCore = null;
+
     assert.equal(await handler(event, "service", "install", { ...base, method: 0 }), true);
     assert.equal(elevated.length, 2);
     assert.match(elevated[1][0], /schtasks \/create/);
@@ -119,6 +140,12 @@ async function run() {
     assert.match(elevated[2][0], /schtasks \/create/);
     const installed = "C:\\Program Files\\Clash for Windows Service";
     for (const name of ["clash-core-service.ps1", "clash-core-service.cmd", "core-hashes.json", "service-config.json"]) memoryFiles.set(path.win32.join(installed, name), "fixture");
+    // Installation above created authenticated credentials in the fake filesystem.
+    serviceIdentity = { running: true, core: "mihomo-windows-amd64.exe" };
+    await handler(event, "firewall", "add", { ...base, binaryPath: invokes[0][3].binaryPath });
+    const reopenedScript = Buffer.from(elevated.pop()[0].split("-EncodedCommand ")[1], "base64").toString("utf16le");
+    assert.ok(reopenedScript.includes("C:\\Program Files\\Clash for Windows Service\\cores\\mihomo-windows-amd64.exe"), "a lightweight reopen resolves the authenticated helper identity");
+    serviceIdentity = null;
     protocol = undefined;
     assert.equal(await handler(event, "service", "need-update", base), true);
     protocol = "2";

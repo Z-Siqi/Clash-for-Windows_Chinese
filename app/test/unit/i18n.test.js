@@ -45,7 +45,10 @@ test("i18n preserves migrated catalogs apart from reviewed additions and copy up
     };
     const clarifiedEnglishMessages = { mixinAllowsDescribe: "Mixin allows you to overwrite the original configuration file" };
     const additionalMessages = new Set([
+        "actionScriptsEnabled", "actionScriptsEnabledDescribe", "actionScriptNotConfigured", "actionScriptsDisabled",
+        "advertisementsDisabled", "advertisementRisk", "noAdvertisements", "advertisementsFailed", "shortcutUnavailable",
         "updateCheckFailed",
+        "saveAndRestart", "profileDirectoryConfirm", "profileDirectoryBusy", "profileDirectoryFailed", "profileDirectoryRecoveryFailed", "settingsResetRestart",
         "mixedPortChangeFailed", "mixedPortSaveFailed", "mixedPortRollbackFailed",
         "autoRedirectConfirm", "autoRedirectConfirmationPending", "autoRedirectRequiresRoute",
         "dhcpIdentityReselect",

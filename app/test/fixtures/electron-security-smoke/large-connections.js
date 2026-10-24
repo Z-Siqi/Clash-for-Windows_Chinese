@@ -31,6 +31,24 @@ async function verifyLargeConnections() {
         await until(() => page.data.range.end === 100000, "last viewport");
         await root.$nextTick();
         if (!page.$el.textContent.includes("host-99999.test")) throw Error("Last connection is unreachable");
+        async function returnToBottom(label) {
+            const savedTop = page.$refs.connectionsViewport.scrollTop;
+            await root.$router.push("/home/general");
+            await wait(50);
+            await root.$router.push("/home/connection");
+            await until(() => page.$refs.connectionsViewport?.scrollTop === savedTop
+                && page.data.range.end === 100000 && page.$el.textContent.includes("host-99999.test"), label);
+            const list = page.$refs.connectionsViewport;
+            const visible = [...list.querySelectorAll(".conn-item")].some(item => {
+                const row = item.getBoundingClientRect(), area = list.getBoundingClientRect();
+                return row.bottom > area.top && row.top < area.bottom;
+            });
+            if (!visible) throw Error(`Connections rendered outside its viewport: ${label}`);
+        }
+        await returnToBottom("live bottom restored without scrolling");
+        page.handleSwitchPauseStatus();
+        await returnToBottom("paused bottom restored without scrolling");
+        page.handleSwitchPauseStatus();
         page.detailConnectionId = "connection-99999";
         await until(() => page.detailConnection?.id === "connection-99999", "detail lookup");
         page.detailConnectionId = "";
@@ -64,7 +82,7 @@ async function verifyLargeConnections() {
         const p95Delay = delays[Math.floor(delays.length * 0.95)] || 0;
         if (maxDelay > 250 || p95Delay > 50) throw Error(`100k renderer stalled: max=${maxDelay.toFixed(1)}ms, p95=${p95Delay.toFixed(1)}ms`);
         return { connections: 100000, renderedRows: rows, maxDelayMs: +maxDelay.toFixed(1), p95DelayMs: +p95Delay.toFixed(1),
-            samples: delays.length, liveUpdates: true, search: true, sort: true, filterLabels: true, pauseResume: true };
+            samples: delays.length, liveUpdates: true, search: true, sort: true, filterLabels: true, pauseResume: true, navigationRestoresBottom: true };
     } finally {
         clearInterval(timer);
         page.searchText = "";

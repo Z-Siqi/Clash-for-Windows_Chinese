@@ -71,6 +71,8 @@ for (const variant of variants) {
             `${variant.arch}/${core} hash allow-list is stale`
         );
     }
+    assert.deepEqual(manifest.dependencies.map(entry => [entry.core, entry.name]), [[variant.cores[0], "wintun.dll"]]);
+    assert.equal(manifest.dependencies[0].sha256, sha256(path.join(variantRoot, variant.arch, "wintun.dll")));
 }
 
 console.log("windows service helper smoke: PASS");

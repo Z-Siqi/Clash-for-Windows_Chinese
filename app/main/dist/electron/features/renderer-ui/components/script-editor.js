@@ -197,7 +197,10 @@ function createScriptEditor({
                 domProps: { value: viewModel.metadata[key] },
                 on: {
                     input: event => {
-                        if (!event.target.composing) viewModel.$set(viewModel.metadata, key, event.target.value);
+                        if (!event.target.composing) {
+                            const value = event.target.value;
+                            viewModel.$set(viewModel.metadata, key, type === "number" && value !== "" ? Number(value) : value);
+                        }
                     }
                 }
             })

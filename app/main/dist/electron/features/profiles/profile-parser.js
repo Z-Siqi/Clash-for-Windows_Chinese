@@ -80,8 +80,9 @@ function applyCommand(config, command, { reduce, shuffle }) {
         if (Array.isArray(parent)) parent.splice(key, 0, ...(names || [parsedValue]));
         else parent[key] = names || parsedValue;
     } else if (Array.isArray(parent)) {
-        const index = parseInt(key) > -1 ? key : parent.findIndex(item => item.name === key);
-        parent.splice(index, 1);
+        const index = parseInt(key) > -1 && Number.isFinite(Number(key))
+            ? Math.trunc(Number(key)) : parent.findIndex(item => item?.name === key);
+        if (index >= 0) parent.splice(index, 1);
     } else delete parent[key];
 }
 
@@ -97,8 +98,10 @@ function parseSubscriptionInfo(value) {
 function parseHeaderString(value) {
     try {
         return value.split("\n").reduce((headers, line) => {
-            const [name, headerValue] = line.split(":");
-            headers[name.trim()] = headerValue.trim();
+            if (!line.trim()) return headers;
+            const separator = line.indexOf(":");
+            if (separator < 1) throw new Error("Invalid header");
+            headers[line.slice(0, separator).trim()] = line.slice(separator + 1).trim();
             return headers;
         }, {});
     } catch (_error) { return {}; }

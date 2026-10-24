@@ -174,7 +174,7 @@ test("general page system proxy switch delegates to the shared operation owner",
     assert.deepEqual(requests, [true]);
 });
 
-test("general page firewall toggle refreshes canonical firewall state", async () => {
+test("general page firewall toggle rechecks canonical state before choosing add or remove", async () => {
     const calls = [], commits = [];
     const { workflow } = createWorkflow({
         firewall: {
@@ -192,7 +192,7 @@ test("general page firewall toggle refreshes canonical firewall state", async ()
 
     await page.handleAddFirewallRules();
 
-    assert.deepEqual(calls, ["add", "status"]);
+    assert.deepEqual(calls, ["status", "remove", "status"]);
     assert.deepEqual(commits, [{ isExist: true }]);
     assert.equal(page.isFetchingFirewallRule, false);
 });
@@ -226,6 +226,20 @@ test("general page opens the trusted release page without downloading or executi
     await page.openGithubRelease();
     assert.deepEqual(opened, [releasePage]);
     assert.deepEqual(copied, []);
+});
+
+test("core and service-mode changes refresh firewall state and ignore superseded responses", async () => {
+    const pending = [], committed = [];
+    const { workflow } = createWorkflow({ platform: { isWindows: () => true },
+        firewall: { status: () => new Promise(resolve => pending.push(resolve)) } });
+    const page = { ...workflow.methods, settings: { proxyCore: "clash" }, setIsFirewallRuleExist: value => committed.push(value), invalidateCoreVersion() {} };
+    workflow.watch["settings.proxyCore"].call(page);
+    page.settings.proxyCore = "mihomo";
+    workflow.watch["settings.proxyCore"].call(page);
+    workflow.watch.isLocalMode.call(page);
+    pending[2](true); pending[1](false); pending[0](false);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(committed, [{ isExist: true }]);
 });
 
 test("general page route entry loads version, service status and initializes the page", async () => {

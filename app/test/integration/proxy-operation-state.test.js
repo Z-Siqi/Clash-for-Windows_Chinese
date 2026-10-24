@@ -32,7 +32,7 @@ function model(overrides = {}) {
     const vm = new Vue({
         data: () => ({
             ...page.data(), isTunEnable: false, isMixinEnable: false, isSystemProxyOn: false,
-            isLaunching: false, settings: { legacyTapMode: "enabled", tapAllowMulticast: false }, clashApi: {}, confData: {}
+            isLaunching: false, isInitializing: false, settings: { legacyTapMode: "enabled", tapAllowMulticast: false }, clashApi: {}, confData: {}
         }),
         computed: { proxyBusy: page.computed.proxyBusy },
         watch: { isTunEnable: page.watch.isTunEnable, isMixinEnable: page.watch.isMixinEnable, "settings.legacyTapMode": page.watch["settings.legacyTapMode"], "settings.tapAllowMulticast": page.watch["settings.tapAllowMulticast"] },

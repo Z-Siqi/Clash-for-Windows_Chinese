@@ -91,6 +91,7 @@ function fixture(t, { version = "1.0.0", materialized = false } = {}) {
         fs.unlinkSync(temporary);
         binaries.set(name, binary);
         write(path.join(root, "app", spec.legacy), `legacy:${name}`);
+        if (spec.platform === "win32") write(path.join(root, "app", path.posix.dirname(spec.output), "wintun.dll"), `wintun:${name}`);
         if (spec.platform === "darwin") write(path.join(root, "app", path.posix.dirname(spec.output), "sysproxy"), `sysproxy:${name}`);
         write(path.join(root, "app", spec.serviceManifest), JSON.stringify(serviceManifest(root, spec, digest)));
         write(path.join(root, "app", spec.notice), `original notice:${version}`);

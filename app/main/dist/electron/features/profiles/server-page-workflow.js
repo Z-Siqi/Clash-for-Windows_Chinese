@@ -124,7 +124,8 @@ function createServerPageWorkflow({
             }, {
                 icon: "account_tree", text: labels.parsers(), hide: isLocal, click: () => this.handleParserInfoShow(profile)
             }, {
-                icon: "code", text: labels.runScript(), click: () => this.handleRunScirpt(profile)
+                icon: "code", text: labels.runScript(), hide: this.settings?.actionScriptsEnabled === false,
+                click: () => this.handleRunScirpt(profile)
             }, {
                 icon: "settings", text: labels.settings(), click: () => this.handleEditItem(index)
             }, {
@@ -478,15 +479,19 @@ function createServerPageWorkflow({
             this.profileModificationTimes = {};
             const isCurrent = () => monitoringSessions.get(this) === session && session.initialization === initialization && this.profileFilesDirectory === folder;
             try {
-                // Watch before the initial read so a concurrent file update is
-                // still observed, even if the metadata request temporarily fails.
-                this.setupWatcher();
-                await this.refreshModificationTimes();
-                if (!isCurrent()) return;
-                if (this.pfs.files.length === 0) {
+                const prepare = async () => {
+                    // Register preparation separately from the apply it awaits,
+                    // so startup can include the first selection without deadlock.
+                    this.setupWatcher();
+                    await this.refreshModificationTimes();
+                    if (!isCurrent() || this.pfs.files.length !== 0) return false;
                     await this.localCopy("config.yaml");
-                    if (isCurrent()) await this.switchProfile(0);
-                }
+                    if (!isCurrent()) return false;
+                    this.changeProfilesIndex({ index: 0 });
+                    return true;
+                };
+                const selected = await (this.$parent?.prepareStartupProfiles ? this.$parent.prepareStartupProfiles(prepare) : prepare());
+                if (selected && isCurrent()) await this.switchProfile(0);
             } catch (_unavailable) { /* A later route entry can retry initialization. */ }
         },
         setupWatcher() {

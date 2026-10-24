@@ -13,9 +13,9 @@ test("Script mode shortcut is unregistered for Mihomo and restored for Clash", a
     const calls = [];
     const electron = {
         ipcRenderer: {
-            async invoke(channel, action, key) {
-                calls.push([channel, action, key]);
-                return true;
+            async invoke(channel, action, id, key) {
+                calls.push([channel, action, id, key]);
+                return { success: true, shortcut: key };
             },
             send() {}, on() {}
         },
@@ -24,21 +24,18 @@ test("Script mode shortcut is unregistered for Mihomo and restored for Clash", a
     const page = homePage({ electron });
     const context = {
         settings: { proxyCore: "mihomo" },
-        shortcuts: { "Control+Shift+S": () => {} },
+        shortcuts: { shortcutScriptMode: () => {} },
         switchMode() { throw new Error("Mihomo must not bind Script mode"); },
         rebindShortcut: page.methods.rebindShortcut
     };
     await page.methods.rebindScriptModeShortcut.call(context, "Control+Shift+S", "Control+Shift+S");
-    assert.deepEqual(calls, [["globalShortcut", "unregister", "Control+Shift+S"]]);
-    assert.equal(context.shortcuts["Control+Shift+S"], undefined);
+    assert.deepEqual(calls, [["globalShortcut", "bind", "shortcutScriptMode", ""]]);
+    assert.equal(context.shortcuts.shortcutScriptMode, undefined);
 
     context.settings.proxyCore = "clash";
     await page.methods.rebindScriptModeShortcut.call(context, "Control+Shift+S", "");
-    assert.deepEqual(calls.slice(-2), [
-        ["globalShortcut", "register", "Control+Shift+S"],
-        ["globalShortcut", "isRegistered", "Control+Shift+S"]
-    ]);
-    assert.equal(typeof context.shortcuts["Control+Shift+S"], "function");
+    assert.deepEqual(calls.at(-1), ["globalShortcut", "bind", "shortcutScriptMode", "Control+Shift+S"]);
+    assert.equal(typeof context.shortcuts.shortcutScriptMode, "function");
 });
 
 for (const platform of ["win32", "linux", "darwin"]) {

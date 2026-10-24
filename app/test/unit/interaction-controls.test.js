@@ -135,7 +135,7 @@ test("new shortcut recordings normalize arrows and space without migrating exist
     vm.$on("change", value => { parent.saved = value; });
     parent.$watch("saved", value => { vm.value = value; });
     assert.equal(vm.shortcut, "Control+ArrowUp", "existing strings must not be silently registered in a new form");
-    for (const [key, expected] of [["ArrowUp", "Up"], ["ArrowDown", "Down"], ["ArrowLeft", "Left"], ["ArrowRight", "Right"], [" ", "Space"], ["é", "é"], ["+", "+"]]) {
+    for (const [key, expected] of [["ArrowUp", "Up"], ["ArrowDown", "Down"], ["ArrowLeft", "Left"], ["ArrowRight", "Right"], [" ", "Space"], ["é", "é"], ["+", "Plus"]]) {
         vm.handleClick();
         vm.handleKeyDown({ key: "Control" }); vm.handleKeyDown({ key });
         await Vue.nextTick();

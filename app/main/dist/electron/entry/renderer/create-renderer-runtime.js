@@ -37,6 +37,8 @@ const { getDefaultBypass, defaultPac } = require("../../features/network/proxy-d
 const { createProfileDownloadClient } = require("../../core/native/profile-download-client");
 const { PROFILE_SCRIPT, PROXY_SCRIPT, createUserScriptClient } = require("../../core/native/user-script-client");
 const { createServiceModeClient } = require("../../core/native/service-mode-client");
+const { createOperationActivity } = require("../../core/native/operation-activity");
+const { createProfileDirectoryClient } = require("../../core/native/profile-directory-client");
 
 function createRendererRuntime({
     Vue,
@@ -59,7 +61,8 @@ function createRendererRuntime({
     const language = createRendererLanguage({ modifyState, cache, ipcRenderer: electron.ipcRenderer });
     const logger = createApplicationLogClient({ ipcRenderer: electron.ipcRenderer });
     let store;
-    const repositories = createRepositoryClients({ ipcRenderer: electron.ipcRenderer, getHome: () => store.state.app.clashPath });
+    const profileActivity = createOperationActivity();
+    const repositories = createRepositoryClients({ ipcRenderer: electron.ipcRenderer, getHome: () => store.state.app.clashPath, activity: profileActivity });
     const controllerApi = createClashApiClient({
         ipcRenderer: electron.ipcRenderer,
         isReady: () => Boolean(store && store.getters.controllerPort > 0),
@@ -121,11 +124,14 @@ function createRendererRuntime({
         return nativeAdmin.dns.set(String(args[1]).split(","));
     };
     const profileParser = createProfileDownloadClient({
-        store, ipcRenderer: electron.ipcRenderer, getLanguage: () => modifyState.language
+        store, ipcRenderer: electron.ipcRenderer, getLanguage: () => modifyState.language, activity: profileActivity
     });
     const userScriptRunner = createUserScriptClient({
         ipcRenderer: electron.ipcRenderer, getHome: () => store.state.app.clashPath,
-        onError: () => utilities.notify("Script", "User script failed")
+        onError: () => utilities.notify("Script", "User script failed"),
+        onUnavailable: status => utilities.showMessageBox({
+            message: language.getLanguage()[status === "disabled" ? "actionScriptsDisabled" : "actionScriptNotConfigured"]()
+        })
     });
     const networkInfo = createNetworkInfoClient({ ipcRenderer: electron.ipcRenderer });
     const coreLifecycle = createCoreLifecycleClient({ ipcRenderer: electron.ipcRenderer });
@@ -157,6 +163,7 @@ function createRendererRuntime({
         platform,
         processObject,
         profileParser,
+        profileDirectory: createProfileDirectoryClient({ ipcRenderer: electron.ipcRenderer, getHome: () => store.state.app.clashPath, activity: profileActivity }),
         settingsRepository: repositories.settings,
         profilesRepository: repositories.profiles,
         runMacSystemProxyCommand,
@@ -174,7 +181,7 @@ function createRendererRuntime({
         }),
         startUserProcesses: () => electron.ipcRenderer.invoke("user-processes-start", store.state.app.clashPath),
         validateMixinCode: source => electron.ipcRenderer.invoke("mixin-code-validate", source),
-        externalEditor: createExternalEditorClient({ ipcRenderer: electron.ipcRenderer, getHome: () => store.state.app.clashPath }),
+        externalEditor: createExternalEditorClient({ ipcRenderer: electron.ipcRenderer, getHome: () => store.state.app.clashPath, activity: profileActivity }),
         dhcpService: createDhcpClient({ ipcRenderer: electron.ipcRenderer }),
         providerFiles: createProviderFileClient({ ipcRenderer: electron.ipcRenderer, getHome: () => store.state.app.clashPath }),
         publicContent: createPublicContentClient({ ipcRenderer: electron.ipcRenderer }),
