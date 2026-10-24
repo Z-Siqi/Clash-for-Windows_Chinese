@@ -180,6 +180,21 @@ test("repository IPC persists settings and profile lists without exposing filesy
     assert.deepEqual(clients.profiles.load(folder), profiles);
 });
 
+test("startup profile initialization copies and selects the default through the native repository before any Profiles route", async t => {
+    const { clients, home } = harness(t);
+    const folder = path.join(home, "profiles");
+    const source = "# initial settings\nmixed-port: 7890\nallow-lan: false\n";
+    fs.writeFileSync(path.join(home, "config.yaml"), source);
+    clients.profiles.initialize(folder, { createDefault: true });
+    const initial = clients.profiles.load(folder);
+    assert.equal(initial.index, 0);
+    assert.equal(initial.files.length, 1);
+    assert.equal(initial.files[0].name, "config.yaml");
+    assert.equal(await clients.profiles.readProfile(folder, initial.files[0].time), source);
+    clients.profiles.initialize(folder, { createDefault: true });
+    assert.deepEqual(clients.profiles.load(folder), initial);
+});
+
 test("repository IPC rejects untrusted frames, arbitrary operations and unconfigured paths", t => {
     const { handler, event, home, root } = harness(t);
     for (const [requestEvent, operation, request] of [

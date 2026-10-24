@@ -25,7 +25,7 @@ function createRepositoryClients({ ipcRenderer, getHome, activity }) {
             save: (home, settings) => call("settings-save", { home, settings })
         }),
         profiles: Object.freeze({
-            initialize: profilesPath => call("profiles-initialize", { home: getHome(), profilesPath }),
+            initialize: (profilesPath, { createDefault = false } = {}) => call("profiles-initialize", { home: getHome(), profilesPath, createDefault }),
             load: profilesPath => call("profiles-load", { home: getHome(), profilesPath }),
             save: (profilesPath, profiles) => call("profiles-save", { home: getHome(), profilesPath, profiles }),
             readProfile: (profilesPath, time) => profileFiles("read-profile", profilesPath, { time }),

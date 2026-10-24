@@ -477,21 +477,9 @@ function createServerPageWorkflow({
             const initialization = {};
             session.initialization = initialization;
             this.profileModificationTimes = {};
-            const isCurrent = () => monitoringSessions.get(this) === session && session.initialization === initialization && this.profileFilesDirectory === folder;
             try {
-                const prepare = async () => {
-                    // Register preparation separately from the apply it awaits,
-                    // so startup can include the first selection without deadlock.
-                    this.setupWatcher();
-                    await this.refreshModificationTimes();
-                    if (!isCurrent() || this.pfs.files.length !== 0) return false;
-                    await this.localCopy("config.yaml");
-                    if (!isCurrent()) return false;
-                    this.changeProfilesIndex({ index: 0 });
-                    return true;
-                };
-                const selected = await (this.$parent?.prepareStartupProfiles ? this.$parent.prepareStartupProfiles(prepare) : prepare());
-                if (selected && isCurrent()) await this.switchProfile(0);
+                this.setupWatcher();
+                await this.refreshModificationTimes();
             } catch (_unavailable) { /* A later route entry can retry initialization. */ }
         },
         setupWatcher() {

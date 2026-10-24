@@ -22,6 +22,8 @@ const { persistSelection } = require("../../main/dist/electron/features/profiles
 const { profilePage, proxiesPage } = require("../fixtures/profile-pages");
 const yaml = require("../../main/node_modules/yaml");
 const { refreshProfile } = require("../../main/dist/electron/entry/renderer/refresh-profile");
+const { createRendererConfiguration } = require("../../main/dist/electron/entry/renderer/configuration");
+const { createProfilesRepository } = require("../../main/dist/electron/features/profiles/profiles-repository");
 const { createLatencyPolicy } = require("../../main/dist/electron/features/proxies/latency-policy");
 
 const root = path.resolve(__dirname, "../../..");
@@ -226,6 +228,25 @@ async function verifyManualPortEdit(api, initialPort, home) {
     }
 }
 
+async function verifyFreshDefault(api, home, coreName) {
+    const vm = { clashPath: home, profilesPath: path.join(home, "profiles"), clashApi: api,
+        confData: yaml.parse(fs.readFileSync(path.join(home, "config.yaml"), "utf8")),
+        settings: { proxyCore: coreName, legacyTapMode: "disabled", mixinText: "mixin:\n  rules: ['MATCH,REJECT']\n" },
+        isMixinEnable: false, isTunEnable: false, menuItems: [],
+        setCurrentProfilePayload() {}, setMenuItems({ items }) { this.menuItems = items; }, resetDNS() {}, killSpawned() {} };
+    createRendererConfiguration(vm, { fs, path, yaml }).initializeProfiles();
+    vm.profiles = createProfilesRepository({ fs, path, yaml }).load(vm.profilesPath);
+    assert.equal(vm.profiles.index, 0, "startup must select its default without mounting Profiles");
+    const deps = { fs, path, yaml, platform: process.platform, messages: {}, profileNetworkEffects: { hasTap: async () => false } };
+    assert.equal((await refreshProfile(vm, deps)).success, true);
+    vm.isMixinEnable = true;
+    assert.equal((await refreshProfile(vm, deps)).success, true);
+    assert.equal((await api.getRules()).data.rules.at(-1).proxy, "REJECT");
+    vm.isMixinEnable = false;
+    assert.equal((await refreshProfile(vm, deps)).success, true);
+    assert.equal((await api.getRules()).data.rules.length, 0);
+}
+
 async function verifyCore(coreName, relativeBinary) {
     const binary = path.join(root, relativeBinary);
     if (process.platform !== "win32") fs.chmodSync(binary, 0o755);
@@ -271,6 +292,7 @@ async function verifyCore(coreName, relativeBinary) {
         // /version responds before the initial YAML finishes applying. A mode
         // PATCH sent in that window can be overwritten by startup's Direct mode.
         await waitForInitialConfig({ request: () => request(controllerPort, "GET", "/configs"), child, mixedPort: initialMixedPort });
+        await verifyFreshDefault(api, home, coreName);
         await verifyManualPortEdit(api, initialMixedPort, home);
         // Confirm forwarding is running before changing any configuration.
         try { await verifyDisconnect(api, initialMixedPort); }

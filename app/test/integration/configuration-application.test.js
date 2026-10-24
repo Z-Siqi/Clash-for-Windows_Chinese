@@ -31,7 +31,11 @@ test("Application: production startup adapters initialize, load, and preserve a 
         appendError: payload => store.commit("APPEND_ERROR", payload)
     };
     await model.initConfigFolder(); await model.loadConfData(); model.initProfilesFolder(); store.commit("LOAD_PROFILES");
-    assert.equal(store.state.app.profiles.index, -1);
+    assert.equal(store.state.app.profiles.index, 0);
+    assert.equal(store.state.app.profiles.files.length, 1);
+    assert.equal(store.state.app.profiles.files[0].name, "config.yaml");
+    assert.equal(fs.readFileSync(path.join(model.profilesPath, store.state.app.profiles.files[0].time), "utf8"),
+        fs.readFileSync(path.join(home, "config.yaml"), "utf8"));
     assert.equal(store.state.app.confData["external-controller"], "127.0.0.1:9090");
     fs.writeFileSync(path.join(home, "config.yaml"), "mixed-port: 7894\nexternal-controller: 127.0.0.1:9090");
     await model.loadConfData();

@@ -15,7 +15,11 @@ function createRendererConfiguration(vm, dependencies) {
             }
         },
         initialize() { return config.initialize(vm.clashPath, vm.filesPath); },
-        initializeProfiles() { return (dependencies.profilesRepository || createProfilesRepository(dependencies)).initialize(vm.profilesPath); },
+        initializeProfiles() {
+            if (dependencies.profilesRepository) return dependencies.profilesRepository.initialize(vm.profilesPath, { createDefault: true });
+            return createProfilesRepository(dependencies).initialize(vm.profilesPath,
+                () => dependencies.fs.readFileSync(dependencies.path.join(vm.clashPath, "config.yaml"), "utf8"));
+        },
         randomizePorts(lightweightMode) {
             return config.randomizePorts({
                 clashPath: vm.clashPath, confData: vm.confData, settings: vm.settings,

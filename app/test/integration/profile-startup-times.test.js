@@ -106,7 +106,7 @@ test("leaving before directory initialization never activates a cached profiles 
     assert.equal(f.timers.size, 0);
 });
 
-test("a fresh empty profile list creates its default only once after startup readiness", async t => {
+test("entering Profiles only monitors an empty list and leaves default creation to application startup", async t => {
     const f = fixture(t, async () => ({}));
     const created = [], selected = [];
     f.page.localCopy = async name => { created.push(name); f.store.state.app.profiles.files.push({ time: "new.yml", url: "" }); };
@@ -116,8 +116,9 @@ test("a fresh empty profile list creates its default only once after startup rea
     f.store.state.app.profiles = { index: -1, files: [] };
     await settle();
     f.enter(); await f.page.startProfileFileMonitoring(); await settle();
-    assert.deepEqual(created, ["config.yaml"]);
-    assert.deepEqual(selected, [0]);
+    assert.deepEqual(created, []);
+    assert.deepEqual(selected, []);
+    assert.equal(f.store.state.app.profiles.index, -1);
     assert.equal(f.watches.filter(watch => !watch.closed).length, 1);
     assert.equal(f.timers.size, 1);
 });

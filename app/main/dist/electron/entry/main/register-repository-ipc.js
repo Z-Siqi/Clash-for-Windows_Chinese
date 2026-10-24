@@ -108,7 +108,10 @@ function registerRepositoryIpc({ ipcMain, app, getMainWindow, fs, path, yaml, fi
             } else {
                 const folder = requireProfiles(home, request.profilesPath);
                 if (operation === "profiles-load") value = profiles.load(folder);
-                else if (operation === "profiles-initialize") profiles.initialize(folder);
+                else if (operation === "profiles-initialize") profiles.initialize(folder, request.createDefault === true ? () => {
+                    requireLocalFile(home, "config.yaml");
+                    return fs.readFileSync(path.join(home, "config.yaml"), "utf8");
+                } : undefined);
                 else {
                     if (!request.profiles || !Array.isArray(request.profiles.files) || !Number.isInteger(request.profiles.index)) throw new Error("Invalid profiles list");
                     profiles.save(folder, request.profiles);

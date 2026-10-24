@@ -5,6 +5,7 @@
 - Mihomo is the default for new settings. Legacy Clash remains available, and saved explicit core choices are preserved.
 - Both cores share the CFW data directory, profiles, controller secret, and UI state.
 - Startup keeps proxy controls locked until the final controller, core, initial profile selection, and profile apply are ready. Old page responses cannot publish state into a replacement page; accepted configuration writes settle before the replacement page's write. Failed startup releases the launch lock so another core can be selected.
+- An empty profile list receives a selected local copy of `config.yaml` during application startup, before the initial apply. This does not depend on opening Profiles; route entry only starts file monitoring. Existing nonempty lists and their selected index remain unchanged.
 - Every core start must pass `-d <CFW data directory>`. Service Mode runs under a system account and must not rely on that account's default home directory.
 - Core paths are resolved only by `core-selection.js`. Firewall and service startup code must consume that same result.
 - Legacy Clash supports the Script routing mode; packaged Mihomo does not. Capability checks come from `core-capabilities.js`: Mihomo UI and tray surfaces hide Script, its shortcut is unregistered, and stale profile/IPC requests normalize to Rule before reaching the controller.
