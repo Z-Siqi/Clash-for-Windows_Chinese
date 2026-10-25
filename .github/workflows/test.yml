@@ -18,7 +18,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci
+      - uses: actions/cache@v4
+        with:
+          path: app/build/dependencies/mihomo
+          key: mihomo-${{ runner.os }}-${{ hashFiles('app/clash_core/mihomo-core-manifest.json') }}
       - run: npm test

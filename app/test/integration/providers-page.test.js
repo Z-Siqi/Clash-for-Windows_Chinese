@@ -70,6 +70,21 @@ test("Providers page: update failure and cancellation preserve provider state co
     assert.equal(aborted, 1);
 });
 
+test("Providers page edits by semantic identity without supplying a filesystem path", async () => {
+    const calls = [];
+    const page = createPage({ providerFiles: {
+        read: async (...args) => { calls.push(["read", ...args]); return "original"; },
+        write: async (...args) => calls.push(["write", ...args]),
+        open: async (...args) => calls.push(["open", ...args])
+    } });
+    const context = { settings: { editProfileWithCFWEditor: true, editorFontSize: 12 }, $code: async input => { assert.equal(input.code, "original"); return { code: "changed" }; } };
+    await page.methods.handleEditProviderFile.call(context, "proxy", { name: "one" });
+    assert.deepEqual(calls, [["read", "proxy", "one"], ["write", "proxy", "one", "changed"]]);
+    context.settings.editProfileWithCFWEditor = false;
+    await page.methods.handleEditProviderFile.call(context, "rule", { name: "two" });
+    assert.deepEqual(calls.at(-1), ["open", "rule", "two"]);
+});
+
 test("Providers page: production entry delegates to the named factory", () => {
     assertRendererComposition("createProvidersPage", [
         "handleAllProvidersUpdate: function", "handleRuleProviderUpdate: function"

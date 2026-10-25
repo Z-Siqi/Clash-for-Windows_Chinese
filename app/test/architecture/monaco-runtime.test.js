@@ -27,7 +27,7 @@ test("Monaco is a pinned build-time dependency loaded before the renderer", () =
     const lockfile = require(path.join(root, "package-lock.json"));
     const html = fs.readFileSync(path.join(electronRoot, "index.html"), "utf8");
     const preload = fs.readFileSync(path.join(electronRoot, "preload.js"), "utf8");
-    const loader = fs.readFileSync(path.join(electronRoot, "entry/renderer/preload-loader.js"), "utf8");
+    const loader = fs.readFileSync(path.join(electronRoot, "entry/main/load-sandboxed-renderer.js"), "utf8");
     const renderer = fs.readFileSync(path.join(electronRoot, "renderer.js"), "utf8");
     const sharedComponents = fs.readFileSync(path.join(electronRoot, "entry/renderer/create-shared-components.js"), "utf8");
 
@@ -37,8 +37,8 @@ test("Monaco is a pinned build-time dependency loaded before the renderer", () =
     assert.ok(lockfile.packages["node_modules/monaco-editor"].integrity);
     assert.match(html, /generated\/monaco\/monaco\.css/);
     assert.doesNotMatch(html, /generated\/monaco\/monaco\.js|renderer\.js/);
-    assert.match(preload, /createPreloadLoader/);
-    assert.ok(loader.indexOf('"monaco.js"') < loader.indexOf('"renderer.js"'));
+    assert.match(preload, /rendererSandboxed: process\.sandboxed === true/);
+    assert.match(loader, /bootstrap \+ "\\n" \+ monaco \+ "\\n" \+ renderer/);
     assert.match(loader, /__CFW_RENDERER_ASSET_BASE__/);
     assert.match(sharedComponents, /getMonacoRuntime\(windowObject\)/);
     assert.doesNotMatch(renderer, /\bi\(\d+\)|vendor\/monaco-runtime/);
@@ -55,7 +55,7 @@ test("generated Monaco assets have a complete auditable manifest and browser-onl
         version: "0.57.0",
         integrity: lockfile.packages["node_modules/monaco-editor"].integrity
     });
-    assert.deepEqual(manifest.bundledDependencies, { dompurify: "3.4.15", marked: "14.0.0" });
+    assert.deepEqual(manifest.bundledDependencies, { dompurify: "3.4.17", marked: "14.0.0" });
     assert.equal(manifest.builder, "esbuild@0.28.2");
     for (const [relative, expected] of Object.entries(manifest.files)) {
         const file = path.join(generatedRoot, relative);
@@ -73,15 +73,28 @@ test("generated Monaco assets have a complete auditable manifest and browser-onl
     assert.doesNotMatch(runtime, /\brequire\s*\(|from\s+["']electron["']|\bprocess\.(?:env|platform|versions)\b/);
 });
 
+test("Monaco bundles the patched sanitizer instead of its embedded vulnerable copy", () => {
+    const manifest = JSON.parse(fs.readFileSync(path.join(generatedRoot, "manifest.json"), "utf8"));
+    assert.ok(Array.isArray(manifest.inputs), "the manifest must record actual bundle inputs");
+    assert.ok(manifest.inputs.some(file => file.endsWith("node_modules/dompurify/dist/purify.es.mjs")));
+    assert.equal(manifest.inputs.some(file => file.endsWith("monaco-editor/esm/vs/base/browser/dompurify/dompurify.js")), false);
+    assert.ok("LICENSE.dompurify.txt" in manifest.files);
+    const runtime = fs.readFileSync(path.join(generatedRoot, "monaco.js"), "utf8");
+    assert.equal(runtime.includes("DOMPurify 3.4.17"), true);
+    assert.equal(runtime.includes("DOMPurify 3.4.15"), false);
+});
+
 test("every packaging target delegates to the lock-safe build pipeline", () => {
     const scripts = fs.readdirSync(path.join(root, "app")).filter(name => /^build_.+\.ps1$/.test(name));
-    assert.deepEqual(scripts.sort(), ["build_linux_arm64.ps1", "build_linux_x64.ps1", "build_win32-ia32.ps1", "build_win32_arm64.ps1", "build_win_x64.ps1"]);
+    assert.deepEqual(scripts.sort(), ["build_linux_arm64.ps1", "build_linux_x64.ps1", "build_win32_arm64.ps1", "build_win_x64.ps1"]);
     for (const name of scripts) {
         const source = fs.readFileSync(path.join(root, "app", name), "utf8");
         assert.match(source, /npm --prefix \$repoRoot run package:/, name);
     }
     const packager = fs.readFileSync(path.join(root, "scripts/build/package-application.js"), "utf8");
     const packageJson = require(path.join(root, "package.json"));
+    assert.equal(packageJson.scripts["package:win-ia32"], undefined);
+    assert.doesNotMatch(packager, /"win-ia32"|arch: "ia32"/);
     assert.match(packageJson.scripts["package:mac-x64"], /package-application\.js mac-x64/);
     assert.match(packageJson.scripts["package:mac-arm64"], /package-application\.js mac-arm64/);
     assert.match(packageJson.scripts["package:dmg:mac-x64"], /package-dmg\.js mac-x64/);
@@ -96,7 +109,10 @@ test("every packaging target delegates to the lock-safe build pipeline", () => {
     assert.match(packager, /"mac-x64"/);
     assert.match(packager, /"mac-arm64"/);
     assert.match(packager, /platform: "darwin"/);
-    assert.match(packager, /appBundleId: "com\.lbyczf\.clashwin"/);
+    assert.match(packager, /appBundleId: releaseConfig\.applicationId/);
+    assert.equal(require("../../main/dist/electron/core/release/release-info").config.applicationId, "com.lbyczf.clashwin");
+    assert.match(packager, /electronVersion: releaseConfig\.electronVersion/);
+    assert.match(packager, /appVersion: releaseConfig\.version/);
     assert.match(packager, /appCategoryType: "public\.app-category\.utilities"/);
     assert.match(packager, /path\.join\(applicationRoot, "icon\.icns"\)/);
     assert.match(packager, /target\.requiredFiles \|\| \[\]/);
@@ -126,7 +142,7 @@ test("native default build wrappers detect supported architectures and pause bef
     assert.match(windows, /PROCESSOR_ARCHITEW6432/);
     assert.match(windows, /PROCESSOR_ARCHITECTURE/);
     assert.match(windows, /build_win_x64\.ps1/);
-    assert.match(windows, /build_win32-ia32\.ps1/);
+    assert.doesNotMatch(windows, /ia32|build_win32-ia32\.ps1/);
     assert.match(windows, /build_win32_arm64\.ps1/);
     assert.match(windows, /pause/);
     assert.match(windows, /exit \/b %BUILD_EXIT_CODE%/);

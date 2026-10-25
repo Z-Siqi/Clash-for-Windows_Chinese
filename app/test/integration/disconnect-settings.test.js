@@ -13,10 +13,13 @@ function fixture() {
     const control = { status: 204, source: "proxies: []" };
     const vm = {
         profiles: { index: 0, files: [{ time: "test.yaml" }] }, profilesPath: "/temporary",
-        settings: {}, confData: {}, menuItems: [], tunSettings: {},
+        settings: { legacyTapMode: "enabled" }, confData: {}, menuItems: [], tunSettings: {},
         clashApi: {
             isReady: () => true,
-            async getConnections() { events.push("snapshot"); return { status: 200, data: { connections: [{ id: "old" }] } }; },
+            async getConnections() { events.push("snapshot"); return { status: 200, data: { connections: [
+                { id: "tun", metadata: { type: "Tun" } }, { id: "http", metadata: { type: "HTTP" } },
+                { id: "socks", metadata: { type: "Socks5" } }, { id: "unknown" }
+            ] } }; },
             async closeConnection(id) { events.push(`close:${id}`); return { status: 204 }; },
             async putConfig() { events.push("apply"); return { status: control.status }; }
         },
@@ -25,7 +28,7 @@ function fixture() {
         spawnTun2socks() { this.tun2socks = {}; }
     };
     const deps = { platform: "win32", fs: { readFileSync: () => control.source }, path, yaml,
-        childProcess: { execSync: () => "cfw-tap" }, setDns() {}, getPort() {}, messages: {} };
+        profileNetworkEffects: { hasTap: async () => true, renewDhcp() {} }, setDns() {}, getPort() {}, messages: {} };
     return { vm, events, control, refresh: () => refreshProfile(vm, deps) };
 }
 
@@ -40,8 +43,10 @@ test("Disconnect settings: TUN refresh closes only after successful disable, ret
     assert.equal((await f.refresh()).success, false);
     assert.deepEqual(f.events, ["snapshot", "apply"]);
     f.events.length = 0; f.control.status = 204;
-    await Promise.all([f.refresh(), f.refresh()]);
-    assert.deepEqual(f.events, ["snapshot", "apply", "close:old", "apply"]);
+    const results = await Promise.all([f.refresh(), f.refresh()]);
+    assert.equal(results[0].superseded, true);
+    assert.equal(results[1].success, true);
+    assert.deepEqual(f.events, ["snapshot", "apply", "close:tun"]);
 });
 
 test("Disconnect settings: Mixin needs an effective TUN/TAP shutdown; opt-out and retained tunnels are respected", async () => {
@@ -56,7 +61,9 @@ test("Disconnect settings: Mixin needs an effective TUN/TAP shutdown; opt-out an
         f.events.length = 0;
         f.vm.isMixinEnable = false;
         assert.equal((await f.refresh()).success, true, kind);
-        assert.equal(f.events.includes("close:old"), ["tun", "tap"].includes(kind), kind);
+        assert.equal(f.events.includes("close:tun"), ["tun", "tap"].includes(kind), kind);
+        assert.equal(f.events.includes("close:socks"), kind === "tap", kind);
+        assert.equal(f.events.includes("close:http"), false, kind);
         if (["rules", "optout"].includes(kind)) assert.deepEqual(f.events, ["apply"]);
     }
 });
@@ -74,13 +81,48 @@ test("Disconnect settings: System Proxy entry snapshots before OS operation and 
             getters: { filesPath: "/packaged", mixedPort: 7890, clashApi: f.vm.clashApi }, commit() {}
         } });
         assert.equal(await LocalVue.prototype.$setSystemProxy(enabled), scenario !== "failure");
-        assert.deepEqual(f.events, scenario === "disable" ? ["snapshot", "os", "close:old"] :
+        assert.deepEqual(f.events, scenario === "disable" ? ["snapshot", "os", "close:http"] :
             scenario === "failure" ? ["snapshot", "os"] : ["os"]);
     }
 });
 
+test("Disconnect settings: disabling TUN preserves System Proxy, and TAP ambiguity preserves SOCKS", async () => {
+    for (const mode of ["tun", "tap"]) {
+        const f = fixture();
+        f.vm.isSystemProxyOn = true;
+        if (mode === "tun") f.vm.isTunEnable = true;
+        else f.control.source = "dns:\n  enable: true\n  listen: :53";
+        assert.equal((await f.refresh()).success, true);
+        f.events.length = 0;
+        if (mode === "tun") f.vm.isTunEnable = false;
+        else f.vm.settings.legacyTapMode = "disabled";
+        assert.equal((await f.refresh()).success, true);
+        assert.equal(f.events.includes("close:http"), false);
+        assert.equal(f.events.includes("close:socks"), false);
+        assert.equal(f.events.includes("close:unknown"), false);
+        assert.equal(f.events.includes("close:tun"), true);
+    }
+});
+
+test("restricting enabled TAP to local Mixin stops subscription-owned TAP and cleans only existing tunnel connections", async () => {
+    for (const success of [true, false]) {
+        const f = fixture();
+        f.control.source = "dns:\n  enable: true\n  listen: :53";
+        assert.equal((await f.refresh()).success, true);
+        assert.ok(f.vm.tun2socks);
+        f.events.length = 0;
+        f.control.status = success ? 204 : 400;
+        f.vm.settings.legacyTapMode = "mixin";
+        assert.equal((await f.refresh()).success, success);
+        assert.equal(f.events.includes("close:tun"), success);
+        assert.equal(f.events.includes("close:socks"), success);
+        assert.equal(f.events.includes("close:http"), false);
+        assert.equal(!!f.vm.tun2socks, !success);
+    }
+});
+
 test("Disconnect settings: real Vue renders independent switches and persists model callbacks", () => {
-    const labels = Object.fromEntries(["breakWhenModeChange", "breakWhenModeChangeDescribe", "breakWhenProxyDisabled", "breakWhenProxyDisabledDescribe"].map(key => [key, () => key]));
+    const labels = Object.fromEntries(["breakWhenModeChange", "breakWhenModeChangeDescribe", "breakWhenProxyDisabled", "breakWhenProxyDisabledScopedDescribe"].map(key => [key, () => key]));
     const vm = new Vue({ data: () => ({ settings: { connMode: false, connProxyDisconnect: true } }),
         components: { SwitchView: { props: ["on"], model: { prop: "on", event: "change" }, render: h => h("div") }, Info: { render: h => h("div") } },
         render(h) { return h("div", renderConnectionDisconnectSettings(this, h, labels)); }

@@ -44,7 +44,7 @@ function createCoreConfigRepository({ fs, path, yaml, uuid, platform, arch, shou
             if (platform === "win32") {
                 const wintun = path.join(clashPath, "wintun.dll");
                 if (await shouldReplaceWintun() && fs.existsSync(wintun)) fs.unlinkSync(wintun);
-                if (!fs.existsSync(wintun)) fs.copyFileSync(path.join(filesPath, `win/${arch === "arm" ? "ia32" : arch}/wintun.dll`), wintun);
+                if (!fs.existsSync(wintun)) fs.copyFileSync(path.join(filesPath, `win/${arch}/wintun.dll`), wintun);
             }
             fs.mkdirSync(path.join(clashPath, "logs"), { recursive: true });
         },

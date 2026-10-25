@@ -9,6 +9,8 @@ const Vuex = require("../../main/node_modules/vuex");
 const { defineComponent } = require("../../main/dist/electron/features/renderer-ui/component");
 const { createGeneralPage } = require("../../main/dist/electron/features/clash-core/general-page");
 const { assertRendererComposition } = require("../fixtures/assert-renderer-composition");
+const { createTranslator } = require("../../main/dist/electron/core/i18n/language");
+const { buildTunConfig } = require("../../main/dist/electron/features/tun/build-tun-config");
 
 Vue.use(Vuex);
 
@@ -40,7 +42,7 @@ function createPage(overrides = {}) {
         platform: { isWindows: () => false, isMacOS: () => false },
         utilities: { buildTunConfig: value => JSON.parse(JSON.stringify(value)), showMessageBox: async () => ({ response: 0 }) },
         scheduler: { add: () => 1, stop() {} },
-        os: { networkInterfaces: () => ({}) },
+        getNetworkAddresses: async () => ({}),
         ...overrides
     });
 }
@@ -50,6 +52,71 @@ function text(vnode) {
     const children = vnode.children || vnode.componentOptions?.children || [];
     return (vnode.text || "") + children.map(text).join("");
 }
+
+test("opening and saving TUN settings preserves runtime DNS interception defaults and explicit choices", async () => {
+    const component = createPage({ platform: { isWindows: () => true, isMacOS: () => false } }).components.TunSettingsView;
+    for (const core of ["clash", "mihomo"]) {
+        for (const saved of [{}, { dnsHijacks: [] }, { dnsHijacks: ["any:53"] }, { dnsHijacks: ["tcp://any:53"] }]) {
+            let persisted;
+            const vm = new (Vue.extend(component))({ store: new Vuex.Store({ state: { app: { tunSettings: saved, settings: { proxyCore: core } } },
+                mutations: { SET_TUN_SETTINGS: (_state, value) => { persisted = value.settings; } } }) });
+            vm.setupComponent(saved);
+            assert.deepEqual(Array.from(vm.dnsHijacks), saved.dnsHijacks || []);
+            assert.equal(await vm.handleSave(), true);
+            assert.deepEqual(buildTunConfig(persisted, "win32", core), buildTunConfig(saved, "win32", core));
+            vm.$destroy();
+        }
+    }
+});
+
+test("TUN policy input clicks cannot add an empty value; only the add button commits", () => {
+    const component = createPage().components.TunSettingsView.components.EditObject;
+    const vm = new (Vue.extend(component))({ propsData: { object: {} } });
+    const nodes = node => !node ? [] : [node, ...(node.children || node.componentOptions?.children || []).flatMap(nodes)];
+    const rendered = nodes(vm._render());
+    const input = rendered.find(node => node.data?.directives?.some(item => item.expression === "addKey"));
+    const button = rendered.find(node => node.tag === "button" && node.data?.on?.click);
+    input.data.on.input({ target: { value: "example.test" } });
+    assert.equal(vm.addKey, "example.test");
+    assert.equal(rendered.filter(node => node.data?.on?.click === vm.handleAddItem).length, 1);
+    assert.equal(button.data.attrs.type, "button");
+    const changes = [];
+    vm.$on("changed", value => changes.push(value));
+    button.data.on.click();
+    assert.deepEqual(changes, [{ "example.test": "" }]);
+    vm.$destroy();
+});
+
+test("macOS TUN DNS tooltip and reset dialog follow both languages and preserve DNS edits", async () => {
+    const selection = Vue.observable({ language: 0 });
+    const labels = createTranslator(() => selection.language);
+    const page = createPage({ getLanguage: () => labels });
+    const store = new Vuex.Store({ state: { app: { userDNS: ["1.1.1.1"], confData: {}, currentProfilePayload: {} } },
+        getters: { controllerPort: () => 9090 } });
+    const settings = { isUsingResetDNSServers: true, resetDNSServers: ["8.8.8.8"] };
+    const dns = new (Vue.extend({ mixins: [page.components.ResetDNSSettingsView], computed: { settings: () => settings } }))({ store });
+    dns.setupComponent();
+    const general = new (Vue.extend({ mixins: [page], computed: {
+        settings: () => settings, isWindows: () => false, isMacOS: () => true, isLinux: () => false
+    } }))({ store });
+    const hints = node => !node ? [] : [node.data?.attrs?.hint, ...(node.children || node.componentOptions?.children || []).flatMap(hints)].filter(Boolean);
+    for (const language of [0, 1, 0]) {
+        selection.language = language;
+        await Vue.nextTick();
+        const rendered = text(dns._render());
+        for (const key of ["resetDNSSettings", "resetDNSSettingsDescribe", "customServers", "detectedServers", "enable", "save"]) {
+            assert.ok(rendered.includes(labels[key]()), `${language}/${key}`);
+        }
+        assert.ok(hints(general._render()).includes(labels.resetDNSSettingsHint()));
+        assert.deepEqual(Array.from(dns.servers), ["8.8.8.8"]);
+    }
+    dns.servers = ["9.9.9.9"];
+    dns.handleSave();
+    assert.deepEqual(Array.from(settings.resetDNSServers), ["9.9.9.9"]);
+    assert.equal(settings.isUsingResetDNSServers, true);
+    assert.deepEqual(Array.from(store.state.app.userDNS), ["1.1.1.1"]);
+    dns.$destroy(); general.$destroy();
+});
 
 test("General page: extracted production component constructs and renders with real Vue", () => {
     const appState = {

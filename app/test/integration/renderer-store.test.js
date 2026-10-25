@@ -25,7 +25,7 @@ test("Application: real Vuex and production module wiring persist settings and p
         get sts() { return store.state.app.settings; },
         saveSettingsObject: payload => store.commit("SAVE_SETTINGS_OBJECT", payload)
     };
-    const mixin = createGlobalMixin({ Vuex, cloneDeep, fs, path, yaml, modifyState: {} });
+    const mixin = createGlobalMixin({ Vuex, cloneDeep, fs, path, yaml, modifyState: {}, setLanguageIndex() {} });
     const getter = mixin.computed;
     store.commit("SET_SETTINGS_OBJECT", { obj: { proxyCore: "clash", randomMixedPort: true, language: 0 } });
     const first = getter.settings.call(model), second = getter.settings.call(model);
@@ -60,6 +60,16 @@ test("Application: failed settings and profiles writes leave Vuex and saved file
     assert.equal(store.state.app.profiles.files.length, 0);
     assert.equal(yaml.parse(fs.readFileSync(path.join(home, "list.yml"), "utf8")).files.length, 0);
     assert.deepEqual(fs.readdirSync(home), ["list.yml"]);
+});
+
+test("Application: DHCP raw identities and long identity tokens persist independently across restart", t => {
+    const home = temporary(t), first = buildStore({ home });
+    const token = "a".repeat(64);
+    first.store.commit("SET_ROUTER_HIJACK_MAC_ADDRESSES", { addresses: [token, "legacy-client"] });
+    first.store.commit("SET_ROUTER_HIJACK_IDENTITY_TOKENS", { tokens: [token] });
+    const restarted = buildStore({ home, storage: first.storage }).store;
+    assert.deepEqual(Array.from(restarted.state.app.routerHijackMacAddresses), [token, "legacy-client"]);
+    assert.deepEqual(Array.from(restarted.state.app.routerHijackIdentityTokens), [token]);
 });
 
 test("Application: SSID overrides remain temporary; ordinary TUN/mixin preferences restore", t => {

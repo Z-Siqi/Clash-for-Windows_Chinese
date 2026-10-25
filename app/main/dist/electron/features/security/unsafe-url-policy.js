@@ -1,15 +1,26 @@
 "use strict";
 
-function createUnsafeUrlPolicy({ ipcMain }) {
-    let allowedUrls = [];
+const { normalizeCertificateExceptions, matchesCertificateException } = require("../../core/network/certificate-exceptions");
 
-    ipcMain.on("set-allow-unsafe-urls", function(_event, urls) {
-        allowedUrls = Array.isArray(urls) ? urls : [];
+function createUnsafeUrlPolicy({ ipcMain, getMainWindow }) {
+    let allowedUrls = new Set();
+    let allowedOrigins = new Set();
+    let externalHttpAllowed = false;
+
+    ipcMain.on("set-allow-unsafe-urls", function(event, urls, origins, allowExternalHttp) {
+        const owner = getMainWindow()?.webContents;
+        if (!owner || event?.sender !== owner || event.senderFrame !== owner.mainFrame) return;
+        allowedUrls = new Set(normalizeCertificateExceptions(urls));
+        allowedOrigins = new Set(normalizeCertificateExceptions(origins, true));
+        externalHttpAllowed = allowExternalHttp === true;
     });
 
     return {
-        includes(url) {
-            return allowedUrls.includes(url);
+        allowsExternalHttp() { return externalHttpAllowed; },
+        allowsCertificate(url, webContents) {
+            const owner = getMainWindow()?.webContents;
+            if (!owner || owner !== webContents) return false;
+            return matchesCertificateException(url, allowedUrls, allowedOrigins);
         }
     };
 }

@@ -6,10 +6,13 @@ const fs = require("node:fs");
 const path = require("node:path");
 const Vue = require("../../main/node_modules/vue");
 const Vuex = require("../../main/node_modules/vuex");
+const moment = require("../../main/dist/electron/core/i18n/moment");
+const { createTranslator } = require("../../main/dist/electron/core/i18n/language");
 const { defineComponent } = require("../../main/dist/electron/features/renderer-ui/component");
 const { createProfileEditor } = require("../../main/dist/electron/features/profiles/profile-editor-page");
 const { createRuleEditor } = require("../../main/dist/electron/features/profiles/rule-editor-page");
 const { createServerPage } = require("../../main/dist/electron/features/profiles/server-page");
+const { createServerPageWorkflow } = require("../../main/dist/electron/features/profiles/server-page-workflow");
 const { assertRendererComposition } = require("../fixtures/assert-renderer-composition");
 
 Vue.use(Vuex);
@@ -98,7 +101,7 @@ test("Server page: rule editor emits MATCH rules and applies serialized rules", 
     };
     RuleEditor.methods.applyRules.call(context);
     assert.deepEqual(JSON.parse(writes[0][1]).rules, ["DOMAIN,example.test,DIRECT", "MATCH,REJECT"]);
-    assert.equal(context.saveBtnText, "save");
+    assert.equal(context.saveBtnText, null);
     assert.equal(RuleEditor._scopeId, "data-v-459dde1e");
     alter.$destroy();
 });
@@ -148,4 +151,43 @@ test("Server page: production entry delegates to named factories", () => {
     assertRendererComposition("createServerPage", [
         'name: "QRCodeView"', "confirmInput: function", "handleRuleClick: function"
     ]);
+});
+
+test("Server page: updated profile age reacts immediately to language switches and new modification times", async () => {
+    const language = Vue.observable({ index: 0 });
+    const labels = createTranslator(() => language.index);
+    const profiles = [{ name: "remote", time: "remote.yaml", url: "https://fixture.test/profile" },
+        { name: "local", time: "local.yaml", url: "" }];
+    const store = new Vuex.Store({
+        state: { app: { profiles: { index: -1, files: profiles }, confData: {}, profilesPath: "virtual-profiles" } },
+        getters: { clashAxiosClient: () => ({}) }
+    });
+    const workflow = createServerPageWorkflow({ labels, getLanguage: () => labels, moment, formatBytes: String });
+    const Page = createServerPage({
+        defineComponent, Vuex, getLanguage: () => labels, workflow,
+        draggable: EmptyComponent, ProfileEditor: EmptyComponent, RuleEditor: EmptyComponent,
+        Hint: EmptyComponent, qrcode: {}, shortenText: value => value
+    });
+    const page = new (Vue.extend(Page))({ store });
+    page.now = moment("2026-10-22T12:00:00Z");
+    page.profileModificationTimes = Object.fromEntries(profiles.map(profile => [profile.time, page.now.clone().subtract(5, "minutes").valueOf()]));
+    function renderedTimes(vnode, result = []) {
+        if (vnode.data?.class?.["item-time"]) result.push(vnode.children[0].text.trim());
+        for (const child of vnode.children || vnode.componentOptions?.children || []) renderedTimes(child, result);
+        return result;
+    }
+    let visible = renderedTimes(page._render());
+    const stop = page.$watch(() => renderedTimes(page._render()).join("|"), value => { visible = value.split("|"); });
+    for (const [index, expected] of [[1, "(5 minutes ago)"], [0, "(5 分钟前)"], [1, "(5 minutes ago)"]]) {
+        language.index = index;
+        await Vue.nextTick();
+        assert.deepEqual(visible, [expected, expected]);
+    }
+    page.$set(page.profileModificationTimes, profiles[0].time, page.now.clone().subtract(30, "seconds").valueOf());
+    await Vue.nextTick();
+    assert.deepEqual(visible, ["(a few seconds ago)", "(5 minutes ago)"]);
+    language.index = 0;
+    await Vue.nextTick();
+    assert.deepEqual(visible, ["(几秒前)", "(5 分钟前)"]);
+    stop(); page.$destroy();
 });

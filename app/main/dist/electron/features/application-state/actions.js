@@ -10,10 +10,11 @@ function createAppActions({ path, ipcRenderer }) {
             if (response && response.status === 200) commit("CHANGE_MODE", { mode: response.data.mode });
         },
         async setMode({ commit, getters, state }, { mode }) {
-            if (!getters.clashApi) return;
+            if (!getters.clashApi) return false;
             const supportedMode = normalizeRoutingMode(state.settings.proxyCore, mode);
             const response = await getters.clashApi.patchConfig({ mode: supportedMode }).catch(() => {});
             if (response && response.status === 204) commit("CHANGE_MODE", { mode: supportedMode });
+            return response?.status === 204;
         },
         async getParserLogPath() { return path.join(await ipcRenderer.invoke("app", "getPath", "temp"), "cfw-parser.log"); },
         async getScriptLogPath() { return path.join(await ipcRenderer.invoke("app", "getPath", "temp"), "cfw-script.log"); }

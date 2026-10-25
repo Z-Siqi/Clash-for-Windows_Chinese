@@ -1,0 +1,8 @@
+{
+  "version": "v1.16.11-cfw.1",
+  "repository": "https://github.com/eycorsican/go-tun2socks",
+  "commit": "0ced89adec90debc056b38fe9a0bf51f4ae5cc38",
+  "archive": "https://codeload.github.com/eycorsican/go-tun2socks/tar.gz/0ced89adec90debc056b38fe9a0bf51f4ae5cc38",
+  "sha256": "dc46e06fe2912b95fb59b47eb12d03ee4fc2c0ef627de9788ce84dc620555f55",
+  "goVersion": "go1.27.1"
+}

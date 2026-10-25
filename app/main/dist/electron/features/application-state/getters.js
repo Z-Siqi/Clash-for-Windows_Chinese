@@ -3,16 +3,18 @@
 const { parseControllerPort, createAxiosClient, createGotClient, createWebSocketFactory } = require("../../core/network/clash-clients");
 const { createClashApi } = require("../../core/network/clash-api");
 const { resolveCoreBinaryPath } = require("../../core/clash-core/core-selection");
+const { createTranslator } = require("../../core/i18n/language");
+const { localizeMenuItems } = require("./menu-items");
 
-function createAppGetters({ path, platform, arch, axios, got, WebSocket, cache, keys, trim }) {
+function createAppGetters({ path, platform, arch, axios, got, WebSocket, cache, keys, trim, controllerApi, controllerStreams, labels = createTranslator() }) {
     return {
         mixedPort: state => state.confData["mixed-port"] || 0,
         controllerPort: state => parseControllerPort(state.confData["external-controller"]),
         secret: state => state.confData.secret === undefined ? "" : state.confData.secret,
         clashAxiosClient: (state, getters) => createAxiosClient({ axios, controllerPort: getters.controllerPort, secret: getters.secret }),
-        clashGotClient: (state, getters) => createGotClient({ got, controllerPort: getters.controllerPort, secret: getters.secret }),
-        clashWSClient: (state, getters) => createWebSocketFactory({ WebSocket, controllerPort: getters.controllerPort, secret: getters.secret }),
-        clashApi: (state, getters) => createClashApi({ getClient: () => getters.clashAxiosClient }),
+        clashGotClient: (state, getters) => controllerApi || createGotClient({ got, controllerPort: getters.controllerPort, secret: getters.secret }),
+        clashWSClient: (state, getters) => controllerStreams || createWebSocketFactory({ WebSocket, controllerPort: getters.controllerPort, secret: getters.secret }),
+        clashApi: (state, getters) => controllerApi || createClashApi({ getClient: () => getters.clashAxiosClient }),
         resourcesPath: state => state.isDevMode || state.exePath === "" ? "" : path.join(path.dirname(state.exePath), platform === "darwin" ? "../Resources" : "./resources"),
         filesPath: (state, getters) => getters.resourcesPath !== "" ? path.join(getters.resourcesPath, "static/files") : "static/files",
         clashBinaryPath: (state, getters) => resolveCoreBinaryPath({ path, filesPath: getters.filesPath, platform, arch, coreType: state.settings.proxyCore }),
@@ -22,10 +24,7 @@ function createAppGetters({ path, platform, arch, axios, got, WebSocket, cache, 
         },
         menuItemsWithOrder(state) {
             const order = cache.get(keys.MENU_ITEM_ORDER) || [];
-            return [...state.menuItems].sort((left, right) => {
-                const index = order.indexOf(left.title);
-                return index === -1 ? 1 : index - order.indexOf(right.title);
-            });
+            return localizeMenuItems(state.menuItems, labels, order);
         },
         fontFamily(state) {
             const names = (state.settings.fontFamily || "").split(",").map(name => `"${trim(name, ' "')}"`);

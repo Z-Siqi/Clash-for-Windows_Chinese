@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
+const { assetName } = require("../../app/main/dist/electron/core/release/release-info");
 
 const repositoryRoot = path.resolve(__dirname, "../..");
 const applicationRoot = path.join(repositoryRoot, "app");
@@ -32,7 +33,7 @@ function main() {
     if (process.platform !== "darwin") throw new Error(`${target} DMGs must be created on a darwin host`);
 
     run(process.execPath, [path.join(__dirname, "package-application.js"), target], "Application packaging");
-    const targetRoot = path.join(applicationRoot, "build", "packages", target);
+    const targetRoot = path.join(path.resolve(process.env.CFW_BUILD_ROOT || path.join(applicationRoot, "build")), "packages", target);
     const latest = JSON.parse(fs.readFileSync(path.join(targetRoot, "latest.json"), "utf8"));
     const packagePath = path.resolve(applicationRoot, latest.outputPath);
     const appNames = fs.readdirSync(packagePath).filter(name => name.endsWith(".app"));
@@ -55,9 +56,7 @@ function main() {
         fs.symlinkSync("/Applications", path.join(stagingRoot, "Applications"));
         fs.copyFileSync(path.join(applicationRoot, "icon.icns"), volumeIcon);
         run("SetFile", ["-a", "V", volumeIcon], "DMG volume icon hiding");
-        const version = require(path.join(applicationRoot, "main", "package.json")).version;
-        const suffix = target === "mac-arm64" ? "-arm64" : "";
-        const artifactName = `Clash.for.Windows-${version}${suffix}.dmg`;
+        const artifactName = assetName(target);
         const artifactPath = path.join(path.dirname(packagePath), artifactName);
         run("hdiutil", [
             "create", "-volname", "Clash for Windows", "-fs", "HFS+",

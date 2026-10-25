@@ -6,6 +6,11 @@ const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 
 const repositoryRoot = path.resolve(__dirname, "../..");
+const preparation = spawnSync(process.execPath, [path.join(__dirname, "mihomo.js"),
+    "prepare", "--target", "linux-x64", "--target", "linux-arm64"], {
+    cwd: repositoryRoot, stdio: "inherit", windowsHide: true
+});
+if (preparation.status !== 0) throw new Error("Failed to prepare locked Mihomo dependencies");
 const sourceRoot = path.join(repositoryRoot, "scripts/native/linux-service-helper");
 const goCache = path.join(repositoryRoot, "app/build/toolchains/go-cache");
 const targets = [

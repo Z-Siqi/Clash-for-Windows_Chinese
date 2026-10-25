@@ -23,6 +23,9 @@ function createSettingsPage({
     electron,
     path,
     childProcess,
+    externalEditor,
+    profileDirectory,
+    openApplicationLog,
     uuid,
     isMacOS,
     isWindows,
@@ -36,7 +39,8 @@ function createSettingsPage({
     languageKey,
     renderConnectionDisconnectSettings
 }) {
-    const localComponents = createSettingsPageComponents({ defineComponent, Vuex, draggable, getLanguage });
+    const localComponents = createSettingsPageComponents({ defineComponent, Vuex, draggable, getLanguage,
+        setShortcutRecording: async active => { try { await electron.ipcRenderer.invoke("globalShortcut", "capture", active); } catch (_error) {} } });
     const options = createSettingsPageOptions({
         Vuex,
         components: {
@@ -56,6 +60,9 @@ function createSettingsPage({
         electron,
         path,
         childProcess,
+        externalEditor,
+        profileDirectory,
+        openApplicationLog,
         uuid,
         isMacOS,
         isWindows,

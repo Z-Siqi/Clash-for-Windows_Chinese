@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const Vuex = require("../../main/node_modules/vuex");
 const axios = require("../../main/node_modules/axios");
-const { Language } = require("../../main/dist/electron/core/i18n/language");
+const { createTranslator } = require("../../main/dist/electron/core/i18n/language");
 const { createFeedbackPage } = require("../../main/dist/electron/features/feedback/page");
 const { createSharedComponents } = require("../../main/dist/electron/entry/renderer/create-shared-components");
 
@@ -22,6 +22,8 @@ function rendererComponents({ locale = 0, monaco, overrides = {}, bindings = {} 
     runtimeMonaco.languages.registerCodeLensProvider ||= () => {};
     runtimeMonaco.editor.registerCommand ||= () => {};
     const modifyState = { language: locale };
+    const labels = createTranslator(() => modifyState.language);
+    const getLanguage = () => labels;
     const windowObject = { __CFW_MONACO__: runtimeMonaco, ...bindings.window };
     const documentObject = bindings.document || {};
     const cache = overrides.cache || { get: () => null, put() {} };
@@ -41,14 +43,14 @@ function rendererComponents({ locale = 0, monaco, overrides = {}, bindings = {} 
     const editorLanguagesOverride = overrides.editorLanguages;
     const store = { state: { app: { clashPath: "" } } };
     const shared = createSharedComponents({
-        Language, modifyState, windowObject, documentObject, electron,
+        getLanguage, modifyState, windowObject, documentObject, electron,
         platform: { isMacOS: () => false }, utilities: readableUtilities,
         preferenceKeys, cache, store,
         axios: overrides.axios || axios, fs, path, editorLanguagesOverride
     });
     const feedbackPage = createFeedbackPage({
         defineComponent: require("../../main/dist/electron/features/renderer-ui/component").defineComponent,
-        escCaptureComponent: shared.EscCapture, Language, modifyState, cache,
+        escCaptureComponent: shared.EscCapture, getLanguage, modifyState, cache,
         keys: preferenceKeys, httpClient: overrides.axios || axios, shell: electron.shell
     });
     return {

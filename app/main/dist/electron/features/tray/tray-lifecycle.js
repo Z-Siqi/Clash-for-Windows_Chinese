@@ -13,6 +13,9 @@ function createTrayLifecycle({
     onTrayChanged = function() {}
 }) {
     let tray = null;
+    let openMenu = null;
+    let menuRequest = 0;
+    let openProxyItems = new Map();
 
     function create() {
         if (tray) return tray;
@@ -30,9 +33,25 @@ function createTrayLifecycle({
         tray = new Tray(icons[platform]);
         tray.setToolTip("Clash for Windows");
         tray.on("right-click", function() {
+            const request = ++menuRequest;
             buildContextMenu().then(function(template) {
-                if (tray) tray.popUpContextMenu(Menu.buildFromTemplate(template));
-            });
+                if (tray && request === menuRequest) {
+                    const menu = Menu.buildFromTemplate(template);
+                    openMenu = menu;
+                    openProxyItems = new Map();
+                    function indexProxyItems(items = []) {
+                        for (const item of items) {
+                            if (item.id?.startsWith("tray-proxy-")) openProxyItems.set(item.id, item);
+                            if (item.submenu?.items) indexProxyItems(item.submenu.items);
+                        }
+                    }
+                    indexProxyItems(menu.items);
+                    menu.once?.("menu-will-close", () => {
+                        if (openMenu === menu) { openMenu = null; openProxyItems.clear(); }
+                    });
+                    tray.popUpContextMenu(menu);
+                }
+            }).catch(() => {});
         });
         tray.on("click", function() {
             if (platform !== "darwin") showMainWindow();
@@ -43,6 +62,9 @@ function createTrayLifecycle({
     }
 
     function destroy() {
+        menuRequest++;
+        openMenu = null;
+        openProxyItems.clear();
         if (tray) {
             tray.destroy();
             tray = null;
@@ -55,7 +77,13 @@ function createTrayLifecycle({
         if (operation === "destroy") destroy();
     });
 
-    return { create, destroy, getTray: () => tray };
+    function updateProxyIcons(items) {
+        for (const { id, icon } of items) {
+            const item = openProxyItems.get(id);
+            if (item) item.icon = icon;
+        }
+    }
+    return { create, destroy, getTray: () => tray, getOpenMenu: () => openMenu, updateProxyIcons };
 }
 
 module.exports = { createTrayLifecycle };

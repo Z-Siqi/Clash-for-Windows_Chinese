@@ -2,8 +2,9 @@
 
 const { createSettingsProxy } = require("../../features/settings/settings-proxy");
 const { loadSettingsFromDisk } = require("../../features/settings/load-settings");
+const { isProxySetting } = require("../../features/settings/proxy-operation-guards");
 
-function createGlobalMixin({ Vuex, platform, ipcRenderer, fs, path, yaml, cloneDeep, modifyState, schedule = setTimeout }) {
+function createGlobalMixin({ Vuex, platform, ipcRenderer, fs, path, yaml, cloneDeep, setLanguageIndex, settingsRepository, schedule = setTimeout }) {
     return {
         data() { return { mixinScrollTop: 0 }; },
         computed: {
@@ -15,7 +16,16 @@ function createGlobalMixin({ Vuex, platform, ipcRenderer, fs, path, yaml, cloneD
             settings() {
                 return createSettingsProxy({
                     getSettings: () => this.sts,
-                    saveSettings: obj => this.saveSettingsObject({ obj }), cloneDeep
+                    saveSettings: obj => this.saveSettingsObject({ obj }), cloneDeep,
+                    canWrite: key => {
+                        const operation = this.$store?.state.app.proxyOperationState;
+                        // Only the operation owner may write the preference being applied.
+                        return !operation?.busy || !isProxySetting(key)
+                            || (this.$options.name === "landing-page" && operation.operation === "mixin"
+                                && ["mixinType", "mixinText", "mixinCode"].includes(key))
+                            || (this.$options.name === "landing-page" && operation.operation === "tap" && key === "legacyTapMode")
+                            || (this.$options.name === "landing-page" && operation.operation === "tapMulticast" && key === "tapAllowMulticast");
+                    }
                 });
             }
         },
@@ -26,9 +36,10 @@ function createGlobalMixin({ Vuex, platform, ipcRenderer, fs, path, yaml, cloneD
                 await ipcRenderer.invoke("app", "exit", 0);
             },
             loadSettings() {
-                const mergedSettings = loadSettingsFromDisk({
+                const onProfileLanguage = language => { setLanguageIndex(language); };
+                const mergedSettings = settingsRepository ? settingsRepository.load(this.clashPath, onProfileLanguage) : loadSettingsFromDisk({
                     fs, path, yaml, clashPath: this.clashPath,
-                    onProfileLanguage(language) { modifyState.languageInProfile = language; }
+                    onProfileLanguage
                 });
                 this.setSettingsObject({ obj: mergedSettings });
             }

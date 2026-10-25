@@ -19,7 +19,7 @@ function createPage(overrides = {}) {
         moment: () => ({ format: () => "12:34:56" }),
         flattenValues: value => JSON.stringify(value), notify() {}, uniqueId: (() => { let id = 0; return () => String(++id); })(),
         connectedStatus: "connected", clipboard: { writeText() {} },
-        readLastLines: { read: async () => "" }, cache: { get: () => null, put() {} },
+        readCoreLog: async () => "", cache: { get: () => null, put() {} },
         keys: { LOG_MOUDLE_LEVEL: "level", LOG_MODULE_STYLE: "style", LOG_MODULE_SEARCH_TEXT: "search" },
         SelectView, normalizeStructuredLog: value => value, parseCoreLogLine: () => null,
         ...overrides
@@ -58,6 +58,16 @@ test("Logs page: stream lifecycle normalizes messages and terminates the active 
     assert.equal(parsed[0].message, "ok");
     assert.equal(terminated, 1);
     assert.equal(context.client, null);
+});
+
+test("Logs details retain a different routing mode and nodes named like a mode", () => {
+    const page = createPage();
+    const context = { listData: [], mode: "rule" };
+    const fields = [{ key: "mode", value: "direct" }, { key: "proxy", value: "rule" }, { key: "rAddr", value: "example.test:443" }];
+    page.methods.parseLog.call(context, { level: "info", message: "accepted", fields });
+    assert.deepEqual(context.listData[0].fields, fields);
+    page.methods.parseLog.call(context, { level: "info", message: "accepted", fields: [{ key: "mode", value: "rule" }, ...fields.slice(1)] });
+    assert.deepEqual(context.listData[1].fields, fields.slice(1), "only the redundant mode field is hidden");
 });
 
 test("Logs page: production entry delegates to the named factory", () => {

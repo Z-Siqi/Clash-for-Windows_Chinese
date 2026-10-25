@@ -7,7 +7,8 @@ Mihomo core, system-proxy helper, and Service Mode helper in one package must
 all match the selected architecture.
 
 The extracted legacy core can run on older systems, but the complete current
-application uses Electron 44.4.4 and therefore requires macOS 13 or later. Do
+application uses the Electron version in `core/release/release-config.json`
+and requires macOS 13 or later. Recheck that minimum when upgrading Electron. Do
 not advertise the old package's former macOS 10.13 minimum for this build.
 
 ```sh
@@ -30,6 +31,8 @@ npm run package:dmg:mac-arm64
 
 The DMG command packages the app first, creates a uniquely named build
 directory, and writes `latest-dmg.json`. It does not overwrite an older build.
+The DMG filename uses the configured `displayVersion`, for example
+`Clash.for.Windows-Opt-4.test-arm64.dmg`; its internal app version remains numeric.
 HFS+ is used for compatibility with older supported macOS releases; UDZO is the
 read-only compressed format suitable for downloads. A DMG is a distribution
 container, not an installer package: users drag the app to Applications. The
@@ -83,9 +86,9 @@ xcrun notarytool store-credentials CFW_NOTARY \
 Submit the final DMG, wait for acceptance, and staple the ticket:
 
 ```sh
-xcrun notarytool submit '/absolute/path/to/Clash.for.Windows-VERSION-arm64.dmg' \
+xcrun notarytool submit '/absolute/path/to/Clash.for.Windows-DISPLAY_VERSION-arm64.dmg' \
   --keychain-profile CFW_NOTARY --wait
-xcrun stapler staple '/absolute/path/to/Clash.for.Windows-VERSION-arm64.dmg'
+xcrun stapler staple '/absolute/path/to/Clash.for.Windows-DISPLAY_VERSION-arm64.dmg'
 ```
 
 ## Release verification
@@ -95,8 +98,8 @@ Run these checks against each architecture before publishing:
 ```sh
 codesign --verify --deep --strict --verbose=2 '/path/to/Clash for Windows.app'
 spctl --assess --type execute --verbose=4 '/path/to/Clash for Windows.app'
-xcrun stapler validate '/path/to/Clash.for.Windows-VERSION.dmg'
-hdiutil verify '/path/to/Clash.for.Windows-VERSION.dmg'
+xcrun stapler validate '/path/to/Clash.for.Windows-DISPLAY_VERSION.dmg'
+hdiutil verify '/path/to/Clash.for.Windows-DISPLAY_VERSION.dmg'
 ```
 
 Mount each DMG on a clean machine, drag the app into Applications, and verify

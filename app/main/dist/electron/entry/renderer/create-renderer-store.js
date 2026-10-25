@@ -6,17 +6,18 @@ const { createAppMutations } = require("../../features/application-state/mutatio
 const { createAppActions } = require("../../features/application-state/actions");
 const { createSettingsRepository } = require("../../features/settings/settings-repository");
 const { createProfilesRepository } = require("../../features/profiles/profiles-repository");
+const { initialLanguageIndex } = require("../../core/i18n/language");
 
 function createRendererAppModule(deps) {
-    const { cache, keys, modifyState, ipcRenderer, labels } = deps;
+    const { cache, keys, modifyState, ipcRenderer } = deps;
     if (modifyState.language === -1) {
-        modifyState.language = cache.get("language") == null ? 0 : cache.get("language");
+        modifyState.language = initialLanguageIndex(cache.get("language"), deps.systemLanguage);
         ipcRenderer.invoke("cfw-language", modifyState.language);
         modifyState.isTun = cache.get(keys.IS_TUN);
         modifyState.isMixin = cache.get(keys.IS_MIXIN);
     }
-    const settings = createSettingsRepository(deps);
-    const profiles = createProfilesRepository(deps);
+    const settings = deps.settingsRepository || createSettingsRepository(deps);
+    const profiles = deps.profilesRepository || createProfilesRepository(deps);
     const base = createAppMutations(deps);
     const mutations = { ...base };
     mutations.LOAD_PROFILES = state => base.LOAD_PROFILES(state, { profiles: profiles.load(state.profilesPath) });
@@ -39,6 +40,7 @@ function createRendererAppModule(deps) {
         SET_DETECTED_INTERFACE_NAME: ["detectedInterfaceName", "DETECTED_INTERFACE_NAME"],
         SET_CURRENT_ROUTE_PATH: ["currentRoutePath", "CURRENT_ROUTE_PATH"],
         SET_ROUTER_HIJACK_MAC_ADDRESSES: ["routerHijackMacAddresses", "ROUTER_HIJACK_MAC_ADDRESSES"],
+        SET_ROUTER_HIJACK_IDENTITY_TOKENS: ["routerHijackIdentityTokens", "ROUTER_HIJACK_IDENTITY_TOKENS"],
         SET_TUN_SETTINGS: ["tunSettings", "TUN_SETTINGS"],
         SET_IS_SYSTEM_PROXY_ON: ["isSystemProxyOn", "SYSTEM_PROXY", true],
         CHANGE_IS_TUN_ENABLE: ["isTunEnable", "IS_TUN", true, "isTun"],
@@ -54,7 +56,7 @@ function createRendererAppModule(deps) {
         };
     }
     return {
-        state: createAppState({ ...deps, labels }),
+        state: createAppState(deps),
         getters: createAppGetters(deps), mutations, actions: createAppActions(deps)
     };
 }

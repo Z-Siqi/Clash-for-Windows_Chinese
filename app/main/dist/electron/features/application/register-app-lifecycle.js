@@ -1,5 +1,7 @@
 "use strict";
 
+const { createTranslator } = require("../../core/i18n/language");
+
 function registerAppLifecycle({
     app,
     dialog,
@@ -8,7 +10,8 @@ function registerAppLifecycle({
     showMainWindow,
     initializeLogging,
     registerShutdown,
-    unsafeUrlPolicy
+    unsafeUrlPolicy,
+    getLanguage = () => createTranslator(1)
 }) {
     app.setAppUserModelId("com.lbyczf.clashwin");
     app.setAsDefaultProtocolClient("clash");
@@ -44,28 +47,29 @@ function registerAppLifecycle({
 
     app.on("certificate-error", async function(
         event,
-        _webContents,
+        webContents,
         url,
         _error,
         certificate,
         callback
     ) {
-        if (unsafeUrlPolicy.includes(url)) {
+        if (unsafeUrlPolicy.allowsCertificate(url, webContents)) {
             event.preventDefault();
             callback(true);
             return;
         }
 
+        const labels = getLanguage();
         const result = await dialog.showMessageBox({
             type: "warning",
-            buttons: ["Trust", "Cancel"],
-            title: "Certificate Error",
-            message: `Failed verify the certificate for ${url}. This may be because the certificate is self-signed or the certificate authority is not recognized. Do you want to trust this certificate?`
+            buttons: [labels.trustCertificate(), labels.cancel()],
+            title: labels.certificateErrorTitle(),
+            message: labels.certificateErrorMessage({ url })
         });
         if (result.response === 0) {
             dialog.showCertificateTrustDialog(getMainWindow(), {
                 certificate,
-                message: "If you keep seeing this error, you need to go to Keychain APP to trust the certificate."
+                message: labels.certificateTrustMessage()
             }).catch(function(error) {
                 console.error(error);
             });

@@ -7,7 +7,8 @@ const path = require("node:path");
 const esbuild = require("esbuild");
 
 const root = path.resolve(__dirname, "../..");
-const outputDirectory = path.join(root, "app/build/generated/monaco");
+const buildRoot = path.resolve(process.env.CFW_BUILD_ROOT || path.join(root, "app/build"));
+const outputDirectory = path.join(buildRoot, "generated/monaco");
 const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "cfw-monaco-"));
 const monacoPackagePath = path.join(root, "node_modules/monaco-editor/package.json");
 const monacoRoot = path.dirname(monacoPackagePath);
@@ -17,12 +18,17 @@ const lockedPackage = lockfile.packages?.["node_modules/monaco-editor"];
 const lockedDomPurify = lockfile.packages?.["node_modules/dompurify"];
 const lockedMarked = lockfile.packages?.["node_modules/marked"];
 const lockedEsbuild = lockfile.packages?.["node_modules/esbuild"];
+const domPurifyPackage = JSON.parse(fs.readFileSync(path.join(root, "node_modules/dompurify/package.json"), "utf8"));
+const embeddedSanitizer = path.join(monacoRoot, "esm/vs/base/browser/dompurify/dompurify.js");
+const patchedSanitizer = path.join(root, "node_modules/dompurify/dist/purify.es.mjs");
 
 if (monacoPackage.version !== "0.57.0" || lockedPackage?.version !== monacoPackage.version) {
     throw new Error(`Expected locked monaco-editor 0.57.0, found ${lockedPackage?.version || "missing"}`);
 }
 if (!lockedPackage.integrity) throw new Error("The Monaco lockfile entry has no integrity hash");
-if (monacoPackage.dependencies?.dompurify !== "3.4.15" || lockedDomPurify?.version !== "3.4.15" || !lockedDomPurify.integrity) {
+// Monaco pins an older sanitizer; the repository override supplies its security fixes.
+if (monacoPackage.dependencies?.dompurify !== "3.4.15" || lockedDomPurify?.version !== "3.4.17"
+    || domPurifyPackage.version !== lockedDomPurify.version || !lockedDomPurify.integrity) {
     throw new Error(`Unexpected locked DOMPurify version: ${lockedDomPurify?.version || "missing"}`);
 }
 if (monacoPackage.dependencies?.marked !== "14.0.0" || lockedMarked?.version !== "14.0.0" || !lockedMarked.integrity) {
@@ -33,6 +39,7 @@ if (lockedEsbuild?.version !== "0.28.2" || !lockedEsbuild.integrity || require("
 }
 
 const common = {
+    absWorkingDir: root,
     bundle: true,
     platform: "browser",
     target: ["chrome120"],
@@ -50,7 +57,18 @@ const common = {
         ".svg": "file",
         ".png": "file"
     },
-    assetNames: "assets/[name]-[hash]"
+    assetNames: "assets/[name]-[hash]",
+    plugins: [{
+        name: "patched-monaco-sanitizer",
+        setup(build) {
+            // Monaco embeds a separate copy; an npm override alone cannot replace it.
+            build.onResolve({ filter: /^\.\/dompurify\/dompurify\.js$/ }, args => {
+                if (path.resolve(args.resolveDir, args.path) === embeddedSanitizer) {
+                    return { path: patchedSanitizer };
+                }
+            });
+        }
+    }]
 };
 
 function filesIn(directory) {
@@ -66,11 +84,17 @@ function sha256(file) {
 
 async function main() {
     try {
-        await esbuild.build({
+        const runtimeBuild = await esbuild.build({
             ...common,
+            metafile: true,
             entryPoints: [path.join(root, "scripts/build/monaco-entry.js")],
             outfile: path.join(temporaryDirectory, "monaco.js")
         });
+        const inputs = Object.keys(runtimeBuild.metafile.inputs).sort();
+        const resolvedInputs = new Set(inputs.map(input => path.resolve(root, input)));
+        if (!resolvedInputs.has(patchedSanitizer) || resolvedInputs.has(embeddedSanitizer)) {
+            throw new Error("Monaco must bundle the patched DOMPurify package, not its embedded copy");
+        }
         await esbuild.build({
             ...common,
             entryPoints: [path.join(monacoRoot, "esm/vs/editor/editor.worker.js")],
@@ -79,6 +103,7 @@ async function main() {
 
         fs.copyFileSync(path.join(monacoRoot, "LICENSE"), path.join(temporaryDirectory, "LICENSE.monaco.txt"));
         fs.copyFileSync(path.join(monacoRoot, "ThirdPartyNotices.txt"), path.join(temporaryDirectory, "ThirdPartyNotices.monaco.txt"));
+        fs.copyFileSync(path.join(root, "node_modules/dompurify/LICENSE"), path.join(temporaryDirectory, "LICENSE.dompurify.txt"));
 
         const files = Object.fromEntries(filesIn(temporaryDirectory)
             .map(file => [path.relative(temporaryDirectory, file).replace(/\\/g, "/"), `sha256:${sha256(file)}`])
@@ -88,16 +113,17 @@ async function main() {
             version: monacoPackage.version,
             integrity: lockedPackage.integrity,
             bundledDependencies: {
-                dompurify: monacoPackage.dependencies.dompurify,
+                dompurify: lockedDomPurify.version,
                 marked: monacoPackage.dependencies.marked
             },
             builder: "esbuild@0.28.2",
+            inputs,
             files
         };
         fs.writeFileSync(path.join(temporaryDirectory, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 
         const resolvedOutput = path.resolve(outputDirectory);
-        const expectedParent = path.resolve(root, "app/build/generated");
+        const expectedParent = path.join(buildRoot, "generated");
         if (!resolvedOutput.startsWith(`${expectedParent}${path.sep}`)) {
             throw new Error(`Refusing to replace unexpected output directory: ${resolvedOutput}`);
         }

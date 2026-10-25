@@ -31,14 +31,15 @@ const childProcess = {
         calls.push(["spawn", command, args, options]);
         return processHandle;
     },
-    execSync(command, options) {
-        calls.push(["execSync", command, options]);
+    execFileSync(command, args, options) {
+        calls.push(["execFileSync", command, args, options]);
     }
 };
 const fakeFs = {
     readdir(directory, callback) {
         calls.push(["readdir", directory]);
-        callback(null, ["2000-01-01-000000.log", "keep.txt"]);
+        callback(null, ["2000-01-01-000000.log", "2000-01-01-000000-1234567890.log",
+            "2000-01-01-000000-12345678-1234-1234-1234-123456789abc.log", "keep.txt", "2000-01-01-000000-custom.txt"]);
     },
     unlink(file, callback) {
         calls.push(["unlink", file]);
@@ -107,6 +108,10 @@ async function run() {
         "C:\\files\\clash.exe", ["-d", "C:\\clash"]
     ]);
     assert.equal(logFiles.length, 1);
+    assert.deepEqual(calls.filter(call => call[0] === "unlink").map(call => path.win32.basename(call[1])), [
+        "2000-01-01-000000.log", "2000-01-01-000000-1234567890.log",
+        "2000-01-01-000000-12345678-1234-1234-1234-123456789abc.log"
+    ]);
     await stdoutListeners.get("data")(Buffer.from("INF [API] listening addr=127.0.0.1"));
     assert.equal(calls.some(call => call[0] === "ready"), true);
     await stdoutListeners.get("data")(Buffer.from('time="now" level=info msg="[API] listening addr=127.0.0.1:9090"'));
@@ -144,10 +149,11 @@ async function run() {
     assert.equal(calls.some(call => call[0] === "mihomo-ready"), true);
 
     await runtime.stop({ processHandle, lightweightMode: false, platform: "win32" });
-    assert.equal(calls.some(call => call[1] === "taskkill /F /PID 123"), true);
+    assert.equal(calls.some(call => call[1] === "taskkill" && call[2].join(" ") === "/F /PID 123"), true);
     assert.equal(calls.some(call => call[0] === "service-stop"), true);
 
     const serviceLogs = [];
+    let serviceReady = 0;
     const service = await runtime.start({
         clashPath: "C:\\clash",
         binaryPath: "clash.exe",
@@ -160,10 +166,11 @@ async function run() {
         clashApi: { getConfig: () => Promise.resolve({ status: 200, data: { "mixed-port": 7890 } }) },
         startupErrorMessage: "failed",
         onLogFile: file => serviceLogs.push(file),
-        onCoreReady() {},
+        onCoreReady() { serviceReady++; },
         onServiceFallback() {}
     });
     assert.equal(service.serviceMode, true);
+    assert.equal(serviceReady, 1);
     assert.deepEqual(serviceLogs, ["service.log"]);
 
     let timeoutProbeCount = 0;
@@ -235,7 +242,8 @@ async function run() {
     const homePageOptionsSource = fs.readFileSync(path.join(
         root, "app/main/dist/electron/features/home/page-options.js"
     ), "utf8");
-    assert.match(rendererSource, /features\/clash-core\/clash-core-runtime/);
+    assert.doesNotMatch(rendererSource, /features\/clash-core\/clash-core-runtime/);
+    assert.match(rendererSource, /createClashCoreRuntime: \(\) => runtime\.coreLifecycle/);
     assert.match(homePageOptionsSource, /this\.createClashCoreRuntime\(\)\.start\(\{/);
     assert.match(homePageOptionsSource, /coreType: this\.settings\.proxyCore/);
     assert.match(rendererSource, /createRendererAppModule\(\{/);

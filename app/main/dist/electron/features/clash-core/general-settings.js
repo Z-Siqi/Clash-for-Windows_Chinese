@@ -1,7 +1,8 @@
 "use strict";
 
 const { MIN_PORT, MAX_PORT, parsePort } = require("../../core/network/tcp-port");
-const DASHBOARD_ORIGIN = "http://yacd.haishan.me/";
+// Remote HTTP navigation is rejected by the main-process URL policy.
+const DASHBOARD_ORIGIN = "https://yacd.haishan.me/";
 
 function buildDashboardUrl({ controllerPort, secret = "" }) {
     const port = parsePort(controllerPort);

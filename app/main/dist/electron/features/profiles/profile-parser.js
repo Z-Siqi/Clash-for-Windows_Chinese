@@ -1,5 +1,11 @@
 "use strict";
 
+const { writeAtomic } = require("../../core/storage/atomic-file");
+const { config: releaseConfig } = require("../../core/release/release-info");
+const { createCertificateExceptionMatcher } = require("../../core/network/certificate-exceptions");
+const { createCertificateRequestOptions } = require("../../core/network/certificate-request-options");
+const { resolveDownloadPolicy } = require("../../core/network/profile-download-policy");
+
 const SET = Symbol("set");
 const INSERT = Symbol("insert");
 const DELETE = Symbol("delete");
@@ -74,8 +80,9 @@ function applyCommand(config, command, { reduce, shuffle }) {
         if (Array.isArray(parent)) parent.splice(key, 0, ...(names || [parsedValue]));
         else parent[key] = names || parsedValue;
     } else if (Array.isArray(parent)) {
-        const index = parseInt(key) > -1 ? key : parent.findIndex(item => item.name === key);
-        parent.splice(index, 1);
+        const index = parseInt(key) > -1 && Number.isFinite(Number(key))
+            ? Math.trunc(Number(key)) : parent.findIndex(item => item?.name === key);
+        if (index >= 0) parent.splice(index, 1);
     } else delete parent[key];
 }
 
@@ -91,8 +98,10 @@ function parseSubscriptionInfo(value) {
 function parseHeaderString(value) {
     try {
         return value.split("\n").reduce((headers, line) => {
-            const [name, headerValue] = line.split(":");
-            headers[name.trim()] = headerValue.trim();
+            if (!line.trim()) return headers;
+            const separator = line.indexOf(":");
+            if (separator < 1) throw new Error("Invalid header");
+            headers[line.slice(0, separator).trim()] = line.slice(separator + 1).trim();
             return headers;
         }, {});
     } catch (_error) { return {}; }
@@ -136,13 +145,36 @@ function createProfileParser(dependencies) {
         let custom = {};
         const text = store.state.app.settings.headersText;
         if (text) try { custom = yaml.parse(text).headers || {}; } catch (_error) {}
-        return { pragma: "no-cache", ...extra, ...custom };
+        // HTTP header names are case-insensitive; custom UAs must replace the default.
+        const headers = { pragma: "no-cache", "user-agent": releaseConfig.subscriptionUserAgent };
+        for (const values of [extra, custom]) {
+            for (const [name, value] of Object.entries(values)) {
+                headers[name.toLowerCase() === "user-agent" ? "user-agent" : name] = value;
+            }
+        }
+        return headers;
+    }
+
+    function certificateOptions(url, createAgent) {
+        return createCertificateRequestOptions({
+            url, createAgent,
+            allowsCertificate: createCertificateExceptionMatcher({ yaml,
+                text: store.state.app.settings.unsafeURLsText, originsText: store.state.app.settings.unsafeURLOriginsText })
+        });
+    }
+
+    function downloadLimits(url) {
+        const { timeout, maxContentLength } = resolveDownloadPolicy({ settings: store.state.app.settings, yaml, url });
+        // Axios counts decompressed bytes, including gzip subscriptions.
+        return { timeout, maxContentLength };
     }
 
     function directRequest(url, options = {}, headers = {}) {
         return axios.get(url, {
             validateStatus: () => true,
             ...options,
+            ...certificateOptions(url),
+            ...downloadLimits(url),
             headers: configuredHeaders(headers),
             responseType: "text",
             transformResponse: [value => value]
@@ -151,26 +183,34 @@ function createProfileParser(dependencies) {
 
     function proxiedRequest(url, options = {}, headers = {}) {
         const { "mixed-port": mixedPort, authentication = [] } = store.state.app.confData;
-        const httpsAgent = new HttpsProxyAgent({
-            proxy: `http://${authentication.length ? `${authentication[0]}@` : ""}127.0.0.1:${mixedPort}`
-        });
+        const proxy = `http://${authentication.length ? `${authentication[0]}@` : ""}127.0.0.1:${mixedPort}`;
         return axios.get(url, {
             validateStatus: () => true,
             ...options,
+            ...certificateOptions(url, options => new HttpsProxyAgent({ proxy, ...options })),
+            ...downloadLimits(url),
             headers: configuredHeaders(headers),
             responseType: "text",
             transformResponse: [value => value],
-            httpsAgent,
             proxy: false
         });
     }
 
     async function parseProfile(url, content, logToFile = false) {
+        let logStream;
+        let logFinished;
         try {
             const files = store.state.app.profiles.files || [];
             const profile = files.find(item => item.url === url) || { url };
             const logPath = await store.dispatch("getParserLogPath");
-            const logger = new Console(fs.createWriteStream(logPath));
+            logStream = fs.createWriteStream(logPath);
+            if (typeof logStream.once === "function") {
+                logFinished = new Promise(resolve => {
+                    logStream.once("finish", resolve);
+                    logStream.on("error", resolve);
+                });
+            }
+            const logger = new Console(logStream);
             const context = {
                 axios, yaml, homeDir: store.state.app.clashPath,
                 console: logToFile ? logger : console,
@@ -205,6 +245,8 @@ function createProfileParser(dependencies) {
                     const { url: remoteUrl, cache = false } = parser.remote;
                     if (!remoteUrl) throw new Error("Remote parser url is required");
                     const response = await axios.get(remoteUrl, {
+                        ...certificateOptions(remoteUrl),
+                        ...downloadLimits(remoteUrl),
                         headers: { "cache-control": cache ? "max-age=3600" : "no-cache" }
                     });
                     if (response.status !== 200) {
@@ -216,6 +258,9 @@ function createProfileParser(dependencies) {
             return result;
         } catch (error) {
             throw { ...error, message: `[Parser Error] ${error.message}` };
+        } finally {
+            logStream?.end?.();
+            if (logFinished) await logFinished;
         }
     }
 
@@ -230,7 +275,7 @@ function createProfileParser(dependencies) {
             const status = response.status;
             const headers = response.headers || {};
             let name = "config.yaml";
-            const time = `${Date.now()}.yml`;
+            const time = dependencies.createProfileTime ? dependencies.createProfileTime() : `${Date.now()}.yml`;
             try { name = path.basename(url); } catch (error) { console.error(error.stack); }
             if (/([^/]*?)(?:$|\?)/.test(url)) name = decodeURIComponent(RegExp.$1.trim());
             const interval = parseInt(headers["profile-update-interval"] || 0) || 0;
@@ -253,29 +298,30 @@ function createProfileParser(dependencies) {
             const profilesPath = store.state.app.profilesPath;
             let targetPath = path.join(profilesPath, time);
             let targetIndex;
+            let mutation;
             if (index > -1) {
                 const existing = profiles[index];
                 targetPath = path.join(profilesPath, existing.time);
-                store.commit("CHANGE_PROFILE", {
+                mutation = ["CHANGE_PROFILE", {
                     index,
                     profile: {
                         ...existing,
                         subInfo: parseSubscriptionInfo(subscription || parsed),
                         homeWeb
                     }
-                });
+                }];
                 targetIndex = index;
             } else {
-                store.commit("APPEND_PROFILE", {
+                mutation = ["APPEND_PROFILE", {
                     profile: {
                         time, name, url, selected: [], interval,
                         subInfo: parseSubscriptionInfo(subscription || parsed), homeWeb
                     }
-                });
+                }];
                 targetIndex = profiles.length;
             }
-            const basePath = `${targetPath.slice(0, -4)}.base.yml`;
-            const changePath = `${targetPath.slice(0, -4)}.change.yml`;
+            const basePath = targetPath.replace(/\.ya?ml$/, ".base.yml");
+            const changePath = targetPath.replace(/\.ya?ml$/, ".change.yml");
             let finalContent = parsed;
             if (fs.existsSync(basePath) && fs.existsSync(changePath)) {
                 const base = fs.readFileSync(basePath).toString();
@@ -284,15 +330,16 @@ function createProfileParser(dependencies) {
                     return { success: false, message: language.diffChangeContainConflict() };
                 }
                 const merged = diff3Merge(change, base, parsed, { stringSeparator: /\n|\r\n/ });
-                fs.writeFileSync(basePath, parsed);
-                fs.writeFileSync(changePath, merged.result.join("\n"));
+                writeAtomic({ fs, path, file: basePath, content: parsed });
+                writeAtomic({ fs, path, file: changePath, content: merged.result.join("\n") });
                 if (merged.conflict) return { success: false, message: language.failMergeProfile() };
                 finalContent = merged.result.join("\n");
             }
-            fs.writeFileSync(targetPath, finalContent || parsed);
+            writeAtomic({ fs, path, file: targetPath, content: finalContent || parsed });
+            store.commit(...mutation);
             return { success: true, targetIndex };
         } catch (error) {
-            console.error(error);
+            // Axios errors retain request headers and proxy credentials; do not log them.
             if (error.message) {
                 return {
                     success: false,

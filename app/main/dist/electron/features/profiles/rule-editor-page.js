@@ -1,5 +1,7 @@
 "use strict";
 
+const { parseRule, serializeRule } = require("./rule-syntax");
+
 function createRuleEditor({
     defineComponent,
     Vuex,
@@ -7,6 +9,7 @@ function createRuleEditor({
     moment,
     yaml,
     fs,
+    profileFiles,
     path,
     lodash,
     notify,
@@ -39,9 +42,11 @@ function createRuleEditor({
             },
             handleMaskClick() { this.$emit("close"); }
         },
-        mounted() {
+        async mounted() {
             try {
-                const config = yaml.parse(fs.readFileSync(path.join(this.profilesPath, this.profileName)).toString());
+                const source = profileFiles ? await profileFiles.readProfile(this.profilesPath, this.profileName)
+                    : fs.readFileSync(path.join(this.profilesPath, this.profileName)).toString();
+                const config = yaml.parse(source);
                 const proxies = config.proxies || [];
                 const groups = config["proxy-groups"] || [];
                 this.proxyGroups = [
@@ -108,8 +113,8 @@ function createRuleEditor({
         data() {
             return {
                 listData: [], memoryData: [], showAlterModel: false,
-                saveBtnText: getLanguage().save(), axiosSource: null,
-                filterKeywords: "", providers: {}
+                saveBtnText: null, axiosSource: null,
+                filterKeywords: "", providers: {}, loading: true, loadFailed: false
             };
         },
         components: { RuleAlterView },
@@ -127,7 +132,7 @@ function createRuleEditor({
                 try {
                     const response = await this.clashApi.updateRuleProvider(rule.payload);
                     if (response.status === 204) {
-                        this.loadData();
+                        await this.refreshProviders();
                         notify("Success", `RULE-SET [${rule.payload}] has been updated!`);
                     } else notify("Failed", `RULE-SET [${rule.payload}] update failed(Server Error)!`);
                 } catch (_error) {
@@ -137,10 +142,10 @@ function createRuleEditor({
             fromNow(value) { return moment(value).locale(getLanguage().locale()).fromNow(); },
             providerOfPayload(payload) { return this.providers[payload] || null; },
             moveItem(top, item, index) {
-                this.removeItem(item, index);
+                if (!this.removeItem(item, index)) return;
                 if (top) this.memoryData.unshift(item);
                 else this.memoryData.push(item);
-                this.listData = this.memoryData.slice(0, 100);
+                this.refreshFilteredRules();
             },
             randomBGC(type) {
                 const existing = colors.find(value => value.type === type);
@@ -156,66 +161,69 @@ function createRuleEditor({
             },
             inputDone(value) {
                 this.showAlterModel = false;
-                if (value) { this.memoryData.unshift(value); this.listData.unshift(value); }
+                if (value) { this.memoryData.unshift(value); this.refreshFilteredRules(); }
             },
-            handleFilterKeywordInput: lodash.debounce(function(event) {
-                if (!event.target) return;
+            handleFilterKeywordInput(event) {
+                if (!event.target || event.target.composing) return;
                 this.filterKeywords = event.target.value;
-                this.loadData();
-            }, 500),
-            applyRules() {
-                const labels = getLanguage();
+                this.queueFilter();
+            },
+            refreshFilteredRules() {
+                const text = this.filterKeywords.trim();
+                let expression;
+                try { expression = new RegExp(text.split(/\s+/).join("|"), "i"); }
+                catch (_invalidRegex) { expression = new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"); }
+                this.listData = this.memoryData.filter(rule => expression.test(rule.proxy)
+                    || expression.test(rule.payload) || expression.test(rule.type)).slice(0, 100);
+            },
+            async applyRules() {
+                if (this.loading || this.loadFailed) return false;
                 try {
-                    const rules = cloneJson(this.memoryData).map(rule => {
-                        const params = rule.params ?? "";
-                        return rule.payload ? `${rule.type},${rule.payload},${rule.proxy}${params}`
-                            : `${rule.type},${rule.proxy}`;
-                    });
+                    const rules = cloneJson(this.memoryData).map(serializeRule);
                     const target = path.join(this.profilesPath, this.profileName);
-                    const config = yaml.parse(fs.readFileSync(target, "utf8"));
+                    const config = yaml.parse(profileFiles ? await profileFiles.readProfile(this.profilesPath, this.profileName) : fs.readFileSync(target, "utf8"));
                     config.rules = rules;
-                    fs.writeFileSync(target, yaml.stringify(config));
+                    if (profileFiles) await profileFiles.writeProfile(this.profilesPath, this.profileName, yaml.stringify(config));
+                    else fs.writeFileSync(target, yaml.stringify(config));
                     this.$emit("done");
                     this.saveBtnText = "Done";
                 } catch (_error) {
                     this.$emit("error");
                     this.saveBtnText = "Fail";
                 }
-                schedule(() => { this.saveBtnText = labels.save(); }, 3000);
+                schedule(() => { this.saveBtnText = null; }, 3000);
             },
             removeItem(item, index) {
-                const memoryIndex = this.memoryData.findIndex(value => value.payload === item.payload
-                    && value.proxy === item.proxy && value.type === item.type);
+                const memoryIndex = this.memoryData.indexOf(item);
                 if (memoryIndex > -1) {
                     this.memoryData.splice(memoryIndex, 1);
-                    this.listData.splice(index, 1);
+                    this.refreshFilteredRules();
+                    return true;
                 }
+                return false;
+            },
+            async refreshProviders() {
+                try {
+                    const providerResponse = await this.clashApi.getRuleProviders();
+                    this.providers = (providerResponse.data || {}).providers || {};
+                } catch (_offline) {}
             },
             async loadData() {
-                const target = path.join(this.profilesPath, this.profileName);
-                const source = fs.readFileSync(target, "utf8");
+                this.loading = true;
+                this.loadFailed = false;
                 try {
-                    const [rulesResponse, providerResponse] = await Promise.all([
-                        this.clashApi.getRules(), this.clashApi.getRuleProviders()
-                    ]);
-                    this.providers = (providerResponse.data || {}).providers || {};
+                    const target = path.join(this.profilesPath, this.profileName);
+                    const source = profileFiles ? await profileFiles.readProfile(this.profilesPath, this.profileName) : fs.readFileSync(target, "utf8");
                     const config = yaml.parse(source);
-                    this.memoryData = config.rules.map(rule => {
-                        const parts = rule.split(",");
-                        if (parts.length === 2) return { type: parts[0].trim(), payload: "", proxy: parts[1].trim(), params: "" };
-                        if (parts.length === 3) return { payload: parts[1].trim(), proxy: parts[2].trim(), type: parts[0].trim(), params: "" };
-                        if (parts.length === 4) return { payload: parts[1].trim(), proxy: parts[2].trim(), type: parts[0].trim(), params: `,${parts[3]}` };
-                        return null;
-                    }).filter(Boolean);
-                    if (this.filterKeywords !== "") {
-                        const expression = new RegExp(this.filterKeywords.trim().split(/\s+/).join("|"), "i");
-                        this.listData = this.memoryData.filter(rule => expression.test(rule.proxy)
-                            || expression.test(rule.payload) || expression.test(rule.type)).slice(0, 100);
-                    } else this.listData = this.memoryData.slice(0, 100);
-                    void rulesResponse;
-                } catch (_error) {}
+                    this.memoryData = (config.rules || []).map(parseRule);
+                    this.refreshFilteredRules();
+                } catch (_error) { this.loadFailed = true; this.saveBtnText = "Fail"; }
+                finally { this.loading = false; }
+                await this.refreshProviders();
             }
         },
+        created() { this.queueFilter = lodash.debounce(() => this.refreshFilteredRules(), 500); },
+        beforeDestroy() { this.queueFilter.cancel?.(); },
         mounted() { this.loadData(); }
     }, function renderRuleEditor() {
         const viewModel = this;
@@ -261,8 +269,9 @@ function createRuleEditor({
             on: { click() { viewModel.showAlterModel = true; } }
         }, [viewModel._v("\n        " + labels.add() + "\n      ")]), viewModel._v(" "), createElement("div", {
             staticClass: "btn btn-save md-button",
+            attrs: { "aria-disabled": String(viewModel.loading || viewModel.loadFailed) },
             on: { click: viewModel.applyRules }
-        }, [viewModel._v("\n        " + viewModel._s(viewModel.saveBtnText) + "\n      ")]), viewModel._v(" "), createElement("div", {
+        }, [viewModel._v("\n        " + viewModel._s(viewModel.saveBtnText == null ? labels.save() : viewModel.saveBtnText) + "\n      ")]), viewModel._v(" "), createElement("div", {
             staticClass: "btn btn-back md-button",
             on: { click() { return viewModel.$emit("cancel"); } }
         }, [viewModel._v("\n        " + labels.cancel() + "\n      ")])])]), viewModel._v(" "), createElement("div", {

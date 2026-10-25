@@ -1,11 +1,17 @@
 "use strict";
 
+const latestRequests = new WeakMap();
+
 async function persistSelection({ getProfiles, clashApi, changeProfile }) {
     const profiles = getProfiles();
     const profile = profiles.files && profiles.files[profiles.index];
     if (!(profiles.index >= 0) || !profile) return;
+    const request = {};
+    // The API is stable across calls; getProfiles is a fresh closure each time.
+    latestRequests.set(clashApi, request);
     try {
         const response = await clashApi.getProxies();
+        if (latestRequests.get(clashApi) !== request) return;
         const selected = Object.values(response.data.proxies || {})
             .filter(proxy => proxy.type === "Selector")
             .map(({ name, now }) => ({ name, now }));

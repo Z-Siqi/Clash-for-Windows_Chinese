@@ -13,11 +13,6 @@ const variants = [
         cores: ["clash-win64.exe", "mihomo-windows-amd64.exe"]
     },
     {
-        root: "app/clash_core/win32-ia32/static/files/win",
-        arch: "ia32",
-        cores: ["clash-win32.exe", "mihomo-windows-386.exe"]
-    },
-    {
         root: "app/clash_core/win32-arm64/static/files/win",
         arch: "arm64",
         cores: ["clash-win-arm64.exe", "mihomo-windows-arm64.exe"]
@@ -51,7 +46,7 @@ for (const variant of variants) {
     assert.match(script, /\$client\.ReceiveTimeout = 1000/);
     assert.match(script, /function Try-WriteHttpResponse/);
     assert.match(script, /\$request\.Path -eq '\/shutdown'/);
-    assert.match(script, /if \(\$validateRecoveredProcess\) \{ Resolve-TrustedCore \$candidatePath/);
+    assert.match(script, /if \(\$validateRecoveredProcess\) \{ Resolve-TrustedCore/);
     assert.match(script, /Managed core did not exit after termination/);
     assert.match(script, /LingerOption\]::new\(\$true, 1\)/);
     assert.equal(script.includes("-like 'mihomo-*'"), false);
@@ -76,6 +71,8 @@ for (const variant of variants) {
             `${variant.arch}/${core} hash allow-list is stale`
         );
     }
+    assert.deepEqual(manifest.dependencies.map(entry => [entry.core, entry.name]), [[variant.cores[0], "wintun.dll"]]);
+    assert.equal(manifest.dependencies[0].sha256, sha256(path.join(variantRoot, variant.arch, "wintun.dll")));
 }
 
 console.log("windows service helper smoke: PASS");

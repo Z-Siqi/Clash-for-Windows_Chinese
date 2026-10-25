@@ -2,7 +2,7 @@
 
 const { defineComponent } = require("../component");
 
-function createAlert({ Vuex, escCaptureComponent, Language, modifyState } = {}) {
+function createAlert({ Vuex, escCaptureComponent, getLanguage } = {}) {
     const options = {
         components: { EscCapture: escCaptureComponent },
         name: "AlertView",
@@ -11,7 +11,7 @@ function createAlert({ Vuex, escCaptureComponent, Language, modifyState } = {}) 
             return {
                 isShow: false,
                 content: "",
-                title: "错误",
+                title: null,
                 isShowErrorBtn: false,
                 resolve: null,
                 reject: null
@@ -22,7 +22,7 @@ function createAlert({ Vuex, escCaptureComponent, Language, modifyState } = {}) 
             ...Vuex.mapGetters(["theme"])
         },
         methods: {
-            show({ title = "错误", content = "", isShowErrorBtn = false }) {
+            show({ title = null, content = "", isShowErrorBtn = false }) {
                 this.isShow = true;
                 this.title = title;
                 this.content = content;
@@ -49,7 +49,7 @@ function createAlert({ Vuex, escCaptureComponent, Language, modifyState } = {}) 
     return defineComponent(options, function renderAlert() {
         const viewModel = this;
         const createElement = viewModel._self._c;
-        const labels = new Language(modifyState.language);
+        const labels = getLanguage();
         if (!viewModel.isShow) return viewModel._e();
 
         return createElement("EscCapture", {
@@ -60,7 +60,7 @@ function createAlert({ Vuex, escCaptureComponent, Language, modifyState } = {}) 
             staticClass: "card-main bg-[color:var(--bgc)] text-[color:var(--fgc)]",
             on: { mousedown: event => event.stopPropagation() }
         }, [createElement("div", { staticClass: "card-content" }, [
-            createElement("div", { staticClass: "content-title" }, [viewModel._v(viewModel._s(viewModel.title))]),
+            createElement("div", { staticClass: "content-title" }, [viewModel._v(viewModel._s(viewModel.title ?? labels.error()))]),
             viewModel._v(" "),
             createElement("div", { staticClass: "content-content" }, [viewModel._v(viewModel._s(viewModel.content))]),
             viewModel._v(" "),

@@ -1,6 +1,11 @@
 "use strict";
 
 const { supportsScriptMode } = require("../../core/clash-core/core-capabilities");
+const { readStableProfileState } = require("../../core/network/profile-refresh-state");
+const { createLatencyPolicy } = require("./latency-policy");
+
+// Store the core's zero-delay outcome, so translated text never becomes node state.
+const TIMEOUT_LATENCY = 0;
 
 function createProxiesPage({
     defineComponent,
@@ -18,14 +23,25 @@ function createProxiesPage({
     scheduler,
     getLanguage
 }) {
+    const latestFetch = new WeakMap();
+    const selections = new WeakMap();
+    const latencyRequests = new WeakMap();
+    const latencyPolicies = new WeakMap();
+    const policyFor = vm => {
+        if (!latencyPolicies.has(vm)) latencyPolicies.set(vm, createLatencyPolicy());
+        const policy = latencyPolicies.get(vm);
+        policy.setScope([vm.settings.proxyCore, vm.currentProfilePayload, vm.profileRefreshTimes, vm.proxyRefreshTimes]);
+        return policy;
+    };
     const ProxyModeSwitcher = defineComponent({
         components: { Hint },
-        props: ["mode", "scriptModeVisible"],
+        props: ["mode", "scriptModeVisible", "disabled"],
         methods: {
             btnTheme(mode) {
                 return ["btn", this.mode === mode.toLowerCase() ? "selected" : "normal"];
             },
             async switchMode(mode) {
+                if (this.disabled) return;
                 this.$parent.cancelLatencyTest();
                 this.$emit("switch", mode);
             }
@@ -36,9 +52,9 @@ function createProxiesPage({
         const labels = getLanguage();
         const renderMode = (mode, title, hint, icon) => createElement("Hint", {
             staticClass: "gap-x-2 clickable",
-            class: viewModel.btnTheme(mode),
+            class: [...viewModel.btnTheme(mode), viewModel.disabled ? "cfw-operation-disabled" : ""],
             staticStyle: { "flex-direction": "row" },
-            attrs: { position: "bottom", hint },
+            attrs: { position: "bottom", hint, "aria-disabled": String(!!viewModel.disabled) },
             on: { click() { return viewModel.switchMode(mode); } }
         }, [
             createElement("span", [viewModel._v(title)]),
@@ -104,6 +120,8 @@ function createProxiesPage({
             profileRefreshTimes() {
                 this.fetchData();
             },
+            proxyRefreshTimes() { this.cancelLatencyTest(); this.fetchData(); },
+            delayKeyName() { this.cancelLatencyTest(); this.fetchData(); },
             proxyBlinkIndex() {
                 setTimeout(() => { this.proxyBlinkIndex = -1; }, 300);
             },
@@ -122,6 +140,7 @@ function createProxiesPage({
                 confData: state => state.app.confData,
                 clashAxiosFlyingRequestCount: state => state.app.clashAxiosFlyingRequestCount,
                 profileRefreshTimes: state => state.app.profileRefreshTimes,
+                proxyRefreshTimes: state => state.app.proxyRefreshTimes,
                 currentMode: state => state.app.mode,
                 currentProfilePayload: state => state.app.currentProfilePayload,
                 scriptModeVisible: state => supportsScriptMode(state.app.settings.proxyCore)
@@ -191,6 +210,7 @@ function createProxiesPage({
                 }, {
                     text: getLanguage().runScript(),
                     icon: "code",
+                    hide: this.settings?.actionScriptsEnabled === false,
                     click: () => {
                         const proxy = (this.currentProfilePayload.proxies || []).find(item => item.name === proxyName)
                             || { name: proxyName };
@@ -213,22 +233,31 @@ function createProxiesPage({
             },
             checkBtnText(proxy) {
                 if (proxy.latency === -1) return "-- ms";
+                if (proxy.latency === TIMEOUT_LATENCY) return getLanguage().timeout();
                 return proxy.latency || getLanguage().check();
             },
             async handleSingleSpeedtest(group, proxy) {
                 const groupName = group.name;
                 const proxyName = proxy.name;
+                let request;
                 const updateLatency = latency => {
+                    if (latencyRequests.get(this) !== request || request.payload !== this.currentProfilePayload
+                        || request.revision !== this.profileRefreshTimes || request.core !== this.settings.proxyCore) return;
                     const currentGroup = this.proxyInMode.find(item => item.name === groupName);
                     const currentProxy = currentGroup?.data.all.find(item => item.name === proxyName);
                     if (currentProxy) {
                         currentProxy.latency = latency === -1
                             ? -1
-                            : latency + (/\d/.test(latency) ? " ms" : getLanguage().timeout());
+                            : Number(latency) > 0 ? `${latency} ms` : TIMEOUT_LATENCY;
+                        currentProxy.delay = Number(latency) > 0 ? Number(latency) : Number.MAX_SAFE_INTEGER;
+                        if (latency !== -1 && this.settings.proxyOrder === 1 && currentGroup.data.type !== "Fallback") currentGroup.data.all.sort((left, right) => left.delay - right.delay);
                     }
                 };
 
                 this.cancelLatencyTest();
+                request = { payload: this.currentProfilePayload, revision: this.profileRefreshTimes, core: this.settings.proxyCore };
+                latencyRequests.set(this, request);
+                latestFetch.set(this, {});
                 this.testingProxyNames = [...this.testingProxyNames, proxyName];
                 updateLatency(-1);
                 let latency = "";
@@ -241,6 +270,8 @@ function createProxiesPage({
                         proxy.provider
                     );
                 } catch (_error) {}
+                if (latencyRequests.get(this) !== request) return;
+                latestFetch.set(this, {});
                 this.testingProxyNames = this.testingProxyNames.filter(name => name !== proxyName);
                 updateLatency(latency);
             },
@@ -256,7 +287,8 @@ function createProxiesPage({
             },
             scrollToSelected(index) {
                 this.proxyBlinkIndex = index;
-                const selectedProxy = this.$refs[`selected${index}`][0];
+                const selectedProxy = this.$refs[`selected${index}`]?.[0];
+                if (!selectedProxy) return;
                 const scrollContainer = this.$refs["mixin-scroll-content"];
                 const targetTop = selectedProxy.offsetTop - 160;
                 if (targetTop < scrollContainer.scrollTop
@@ -300,32 +332,70 @@ function createProxiesPage({
                 return type;
             },
             cancelLatencyTest() {
+                latencyRequests.delete(this);
                 this.axiosCancelTokens.forEach(cancel => cancel());
                 this.axiosCancelTokens = [];
+                this.testingProxyNames = [];
+                for (const group of this.proxies || []) for (const proxy of group.data?.all || []) if (proxy.latency === -1) proxy.latency = "";
             },
             async switchProxy(groupName, proxyName, isUnselectable = false) {
-                if (isUnselectable) return;
+                if (isUnselectable || this.$parent?.proxyBusy) return false;
+                const payload = this.currentProfilePayload, revision = this.profileRefreshTimes, core = this.settings.proxyCore;
                 this.cancelLatencyTest();
-                const response = await this.clashApi.selectProxy(groupName, proxyName);
-                if (response.status !== 204) return;
-                const proxies = [...this.proxies];
-                const group = proxies.find(item => item.name === groupName);
-                if (group) group.data.now = proxyName;
-                this.proxies = proxies.length > 500 ? Object.freeze(proxies) : proxies;
-                this.$parent.persistSelectedProxy();
-                this.$parent.breakConnections(groupName);
+                let groups = selections.get(this);
+                if (!groups) { groups = new Map(); selections.set(this, groups); }
+                const previous = groups.get(groupName), request = {};
+                groups.set(groupName, request);
+                const currentProfile = () => !this.$parent?.proxyBusy && payload === this.currentProfilePayload
+                    && revision === this.profileRefreshTimes && core === this.settings.proxyCore;
+                const select = async () => {
+                    if (!currentProfile()) return false;
+                    const response = await this.clashApi.selectProxy(groupName, proxyName);
+                    if (response.status !== 204 || !currentProfile()) return false;
+                    latestFetch.set(this, {});
+                    const proxies = [...this.proxies];
+                    const group = proxies.find(item => item.name === groupName);
+                    if (group) group.data.now = proxyName;
+                    this.proxies = proxies.length > 500 ? Object.freeze(proxies) : proxies;
+                    this.$parent.persistSelectedProxy();
+                    this.$parent.breakConnections(groupName);
+                };
+                // Publish every successful ordered write: the next choice may
+                // fail, in which case this remains the core's actual selection.
+                request.promise = previous ? previous.promise.catch(() => {}).then(select) : select();
+                try { return await request.promise; }
+                finally { if (groups.get(groupName) === request) groups.delete(groupName); }
             },
             async startLatencyTest(groupName, groupIndex) {
                 this.cancelLatencyTest();
+                const request = { payload: this.currentProfilePayload, revision: this.profileRefreshTimes, core: this.settings.proxyCore };
+                latencyRequests.set(this, request);
+                latestFetch.set(this, {});
+                const current = () => latencyRequests.get(this) === request && request.payload === this.currentProfilePayload
+                    && request.revision === this.profileRefreshTimes && request.core === this.settings.proxyCore;
                 if (!this.showSecIdxs.includes(groupIndex)) this.showSecIdxs.push(groupIndex);
                 const group = this.proxies.find(item => item.name === groupName);
+                if (!group) return;
                 const { latencyTimeout, latencyUrl } = this.settings;
                 const proxies = group.data.all;
                 const ordered = groupIndex === this.topItemIndex
                     ? [...proxies.slice(this.topProxyIndex), ...proxies.slice(0, this.topProxyIndex).reverse()]
                     : proxies;
+                this.testingProxyNames = ordered.map(proxy => proxy.name);
+                const update = (name, latency) => {
+                    if (!current()) return;
+                    latestFetch.set(this, {});
+                    const visibleGroup = this.proxies.find(item => item.name === groupName);
+                    const visible = visibleGroup?.data.all.find(item => item.name === name);
+                    if (visible) {
+                        visible.latency = latency > 0 ? `${latency} ms` : TIMEOUT_LATENCY;
+                        visible.delay = latency > 0 ? latency : Number.MAX_SAFE_INTEGER;
+                        if (this.settings.proxyOrder === 1 && visibleGroup.data.type !== "Fallback") visibleGroup.data.all.sort((left, right) => left.delay - right.delay);
+                    }
+                    this.testingProxyNames = this.testingProxyNames.filter(item => item !== name);
+                };
                 ordered.forEach(proxy => { proxy.latency = -1; });
-                ordered.forEach(async proxy => {
+                await Promise.allSettled(ordered.map(async proxy => {
                     try {
                         const latency = await this.speedtest(
                             proxy.name,
@@ -333,23 +403,32 @@ function createProxiesPage({
                             latencyUrl || "https://www.gstatic.com/generate_204",
                             proxy.provider
                         );
-                        proxy.latency = latency > 0 ? `${latency} ms` : getLanguage().timeout();
+                        update(proxy.name, latency);
                     } catch (_error) {
-                        proxy.latency = getLanguage().timeout();
+                        update(proxy.name, TIMEOUT_LATENCY);
+                    }
+                }));
+                if (current()) latestFetch.set(this, {});
+            },
+            async speedtest(proxyName, timeout = 1000, url = "https://www.gstatic.com/generate_204", provider) {
+                const request = latencyRequests.get(this), payload = this.currentProfilePayload,
+                    revision = this.profileRefreshTimes, core = this.settings.proxyCore, kind = this.delayKeyName;
+                let cancelled = false;
+                const cancelToken = new CancelToken(cancel => { this.axiosCancelTokens.push(() => { cancelled = true; cancel(); }); });
+                return policyFor(this).measure({ name: proxyName, provider, core, kind, timeout: Number(timeout),
+                    current: () => !cancelled && latencyRequests.get(this) === request && this.currentProfilePayload === payload
+                        && this.profileRefreshTimes === revision && this.settings.proxyCore === core && this.delayKeyName === kind,
+                    sample: async remaining => {
+                        const response = await this.clashApi.testProxyDelay(proxyName, {
+                            params: { timeout: remaining, url }, cancelToken, timeout: remaining + 1000
+                        }, provider);
+                        return response.data || {};
                     }
                 });
             },
-            async speedtest(proxyName, timeout = 1000, url = "https://www.gstatic.com/generate_204", provider) {
-                const response = await this.clashApi.testProxyDelay(proxyName, {
-                    params: { timeout, url },
-                    cancelToken: new CancelToken(cancel => { this.axiosCancelTokens.push(cancel); }),
-                    timeout: 0
-                }, provider);
-                return response.data?.[this.delayKeyName] || 0;
-            },
             async handleModeSwitch(mode) {
                 try {
-                    await this.setMode({ mode });
+                    await this.$parent.requestRoutingMode(mode);
                 } catch (_error) {}
             },
             findProvider(providers, proxyName) {
@@ -360,13 +439,19 @@ function createProxiesPage({
                 return [null, {}];
             },
             async fetchData() {
-                if (!this.clashApi.isReady()) return;
+                const request = {};
+                latestFetch.set(this, request);
+                const api = this.clashApi;
+                if (!api.isReady()) return;
                 const maximumDelay = Number.MAX_SAFE_INTEGER;
-                const [proxyResponse, providerResponse] = await Promise.all([
-                    this.clashApi.getProxies(),
-                    this.clashApi.getProxyProviders({ validateStatus: () => true })
-                ]);
+                const [proxyResponse, providerResponse] = await readStableProfileState(api, () => Promise.all([
+                    api.getProxies(),
+                    api.getProxyProviders({ validateStatus: () => true })
+                ]));
+                // A provider update can finish while an older controller read is still in flight.
+                if (latestFetch.get(this) !== request) return;
                 const providers = providerResponse.data?.providers || {};
+                const latencyPolicy = policyFor(this);
                 const proxyData = proxyResponse.data.proxies;
                 const globalOrder = proxyData.GLOBAL?.all || Object.keys(proxyData);
                 this.viewData = proxyData;
@@ -379,24 +464,24 @@ function createProxiesPage({
                         if (!directProxy) {
                             const [provider, providerProxy] = this.findProvider(providers, proxyName);
                             const history = providerProxy.history || [];
-                            const delay = history.length ? history[history.length - 1][this.delayKeyName] : 0;
+                            const delay = latencyPolicy.read({ name: proxyName, provider, history, kind: this.delayKeyName });
                             return {
                                 name: proxyName,
                                 provider,
-                                latency: history.length ? (delay === 0 ? getLanguage().timeout() : `${delay} ms`) : "",
+                                latency: this.testingProxyNames.includes(proxyName) ? -1 : delay === undefined ? "" : delay === 0 ? TIMEOUT_LATENCY : `${delay} ms`,
                                 delay: delay || maximumDelay,
                                 udp: providerProxy.udp || false,
                                 alive: providerProxy.alive === undefined || providerProxy.alive
                             };
                         }
                         const history = directProxy.history || [];
-                        const delay = history.length ? history[history.length - 1][this.delayKeyName] : 0;
+                        const delay = latencyPolicy.read({ name: proxyName, history, kind: this.delayKeyName });
                         return {
                             name: proxyName,
                             provider: null,
                             latency: this.testingProxyNames.includes(proxyName)
                                 ? -1
-                                : history.length ? (delay === 0 ? getLanguage().timeout() : `${delay} ms`) : null,
+                                : delay === undefined ? null : delay === 0 ? TIMEOUT_LATENCY : `${delay} ms`,
                             delay: delay || maximumDelay,
                             udp: directProxy.udp || false,
                             alive: directProxy.alive === undefined || directProxy.alive
@@ -446,7 +531,7 @@ function createProxiesPage({
             directives: [{
                 name: "show",
                 rawName: "v-show",
-                value: (!viewModel.hideTimeoutSecNames.includes(group.name) || labels.timeout() !== proxy.latency)
+                value: (!viewModel.hideTimeoutSecNames.includes(group.name) || proxy.latency !== TIMEOUT_LATENCY)
                     && viewModel.filterKeywordReg.test(proxy.name)
             }],
             key: proxy.name + group.name + proxyIndex,
@@ -455,10 +540,11 @@ function createProxiesPage({
             staticClass: "proxy-item",
             class: {
                 selected: proxy.name === group.data.now,
-                clickable: group.data.type === "Selector",
+                clickable: group.data.type === "Selector" && !viewModel.$parent?.proxyBusy,
                 flick: proxy.name === group.data.now && groupIndex === viewModel.proxyBlinkIndex
             },
             style: [{ width: viewModel.proxyItemWidth }],
+            attrs: { "aria-disabled": String(group.data.type !== "Selector" || !!viewModel.$parent?.proxyBusy) },
             on: {
                 click() { return viewModel.switchProxy(group.name, proxy.name, group.data.type !== "Selector"); },
                 contextmenu(event) { return viewModel.handleProxyRightClick(event, proxy.name); }
@@ -479,8 +565,8 @@ function createProxiesPage({
                 viewModel._v(" "),
                 proxy.latency === -1 ? createElement("div", { staticClass: "time" }, [viewModel._v("- ms")]) : createElement("div", {
                     class: {
-                        offline: labels.timeout() === proxy.latency,
-                        online: ![labels.timeout(), -1, null, undefined, ""].includes(proxy.latency),
+                        offline: proxy.latency === TIMEOUT_LATENCY,
+                        online: ![TIMEOUT_LATENCY, -1, null, undefined, ""].includes(proxy.latency),
                         time: true
                     },
                     on: {
@@ -512,7 +598,7 @@ function createProxiesPage({
                 ]),
                 viewModel._v(" "),
                 createElement("div", { staticClass: "proxy-section-right" }, [
-                    renderSectionAction(labels.scrollToProxy(), "travel_explore", () => viewModel.scrollToSelected(groupIndex), viewModel.showSecIdxs.includes(groupIndex)),
+                    renderSectionAction(labels.scrollToProxy(), "travel_explore", () => viewModel.scrollToSelected(groupIndex), viewModel.showSecIdxs.includes(groupIndex) && !!group.data.now),
                     viewModel._v(" "),
                     renderSectionAction(labels.showHieTimedOutProxies(), `report${viewModel.hideTimeoutSecNames.includes(group.name) ? "_off" : ""}`, () => viewModel.switchHideTimeout(group.name)),
                     viewModel._v(" "),
@@ -534,7 +620,7 @@ function createProxiesPage({
 
         return createElement("div", { attrs: { id: "main-proxy-view" } }, [
             createElement("proxy-mode-switcher", {
-                attrs: { mode: viewModel.currentMode, "script-mode-visible": viewModel.scriptModeVisible },
+                attrs: { mode: viewModel.currentMode, "script-mode-visible": viewModel.scriptModeVisible, disabled: this.$parent?.proxyBusy },
                 on: { switch: viewModel.handleModeSwitch }
             }),
             viewModel._v(" "),

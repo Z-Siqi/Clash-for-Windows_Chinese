@@ -2,14 +2,27 @@
 
 // Capture before disabling a proxy, then close only that snapshot after success.
 // A bulk DELETE would also kill connections established after the user turned it off.
-async function prepareDisconnectCleanup({ api, settings = {}, disconnecting, onError = () => {} }) {
+function matchesInbound(connection, scope, includeSocks) {
+    if (scope === "all") return true;
+    const type = String(connection?.metadata?.type || "").toLowerCase().replace(/[\s_-]/g, "");
+    if (["socks", "socks4", "socks5"].includes(type)) return includeSocks === true;
+    // Legacy Clash calls CONNECT "HTTP CONNECT"; Mihomo reports "HTTPS".
+    if (scope === "system") return ["http", "https", "httpconnect"].includes(type);
+    if (scope === "tunnel") return ["tun", "redir", "tproxy"].includes(type);
+    // Older cores may omit inbound metadata. Keep ambiguous connections alive
+    // instead of disconnecting traffic belonging to another enabled entry.
+    return false;
+}
+
+async function prepareDisconnectCleanup({ api, settings = {}, disconnecting, scope = "all", includeSocks = false, onError = () => {} }) {
     const noop = async () => {};
     if (!disconnecting || settings.connProxyDisconnect === false || !api || !api.isReady()) return noop;
     let ids;
     try {
         const response = await api.getConnections({ timeout: 1000 });
         if (response.status !== 200 || !Array.isArray(response.data?.connections)) throw Error("Invalid snapshot");
-        ids = [...new Set(response.data.connections.map(connection => connection?.id).filter(id => typeof id === "string" && id.length))];
+        ids = [...new Set(response.data.connections.filter(connection => matchesInbound(connection, scope, includeSocks))
+            .map(connection => connection?.id).filter(id => typeof id === "string" && id.length))];
     } catch (_error) {
         onError();
         return noop;

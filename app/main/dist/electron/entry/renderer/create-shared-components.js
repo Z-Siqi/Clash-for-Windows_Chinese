@@ -24,8 +24,7 @@ const { installEditorLanguage } = require("../../features/renderer-ui/editor-lan
 const { getMonacoRuntime } = require("./monaco-runtime");
 
 function createSharedComponents({
-    Language,
-    modifyState,
+    getLanguage,
     windowObject,
     documentObject,
     electron,
@@ -34,15 +33,13 @@ function createSharedComponents({
     preferenceKeys,
     cache,
     store,
-    axios,
-    fs,
-    path,
+    publicContent,
+    providerFiles,
     editorLanguagesOverride
 }) {
     const common = {
         Vuex,
-        Language,
-        modifyState,
+        getLanguage,
         window: windowObject,
         document: documentObject
     };
@@ -56,15 +53,12 @@ function createSharedComponents({
     const monaco = getMonacoRuntime(windowObject);
     const editorLanguages = editorLanguagesOverride || installEditorLanguage({
         monaco,
-        axios,
-        fs,
-        path,
-        store,
+        publicContent,
+        providerFiles,
         hashText: utilities.hashText,
         showMessageBox: utilities.showMessageBox,
-        shell: electron.shell,
         clipboard: electron.clipboard,
-        labels: new Language(modifyState.language)
+        labels: getLanguage()
     });
     const editorCommon = {
         monaco,
@@ -75,8 +69,7 @@ function createSharedComponents({
         preferenceKeys,
         cache,
         electron,
-        Language,
-        modifyState,
+        getLanguage,
         window: windowObject,
         document: documentObject
     };

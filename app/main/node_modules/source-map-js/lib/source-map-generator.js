@@ -348,10 +348,12 @@ SourceMapGenerator.prototype._serializeMappings =
 
       if (mapping.generatedLine !== previousGeneratedLine) {
         previousGeneratedColumn = 0;
-        while (mapping.generatedLine !== previousGeneratedLine) {
-          next += ';';
-          previousGeneratedLine++;
-        }
+        // One ';' per skipped line. Build large gaps with a single flat
+        // string: appending ';' one by one creates a rope node per line, which
+        // can exhaust the heap for a big gap (CVE-2026-93749).
+        var lineDelta = mapping.generatedLine - previousGeneratedLine;
+        next += lineDelta === 1 ? ';' : ';'.repeat(lineDelta);
+        previousGeneratedLine = mapping.generatedLine;
       }
       else {
         if (i > 0) {

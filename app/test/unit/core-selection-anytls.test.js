@@ -22,8 +22,13 @@ const { mergeSettings } = require(path.join(
 ));
 
 assert.equal(normalizeCoreType("mihomo"), "mihomo");
-assert.equal(normalizeCoreType("invalid"), "clash");
+assert.equal(normalizeCoreType("invalid"), "mihomo");
 assert.equal(mergeSettings({}).proxyCore, "mihomo");
+assert.equal(normalizeCoreType(undefined), "mihomo");
+assert.equal(
+    resolveCoreBinaryPath({ path, filesPath: "C:\\files", platform: "win32", arch: "x64" }),
+    path.join("C:\\files", "win", "x64", "mihomo-windows-amd64.exe")
+);
 assert.equal(mergeSettings({ proxyCore: "mihomo" }).proxyCore, "mihomo");
 assert.equal(mergeSettings({ proxyCore: "clash" }).proxyCore, "clash");
 assert.equal(getCoreDisplayName("mihomo"), "Mihomo");

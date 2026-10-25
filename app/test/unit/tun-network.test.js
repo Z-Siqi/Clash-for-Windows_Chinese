@@ -35,7 +35,7 @@ const linuxConfig = buildTunConfig({
     isAutoRedir: true,
     isAutoRedirAutoRoute: false,
     defaultNameservers: ["1.1.1.1"]
-}, "linux");
+}, "linux", "clash");
 assert.equal(linuxConfig.tun.stack, "system");
 assert.equal(linuxConfig["interface-name"], "eth0");
 assert.deepEqual(linuxConfig["auto-redir"], { enable: true, "auto-route": false });
@@ -44,13 +44,13 @@ assert.deepEqual(linuxConfig.dns["default-nameserver"], ["1.1.1.1"]);
 const commands = [];
 const spawned = { pid: 42 };
 const childProcess = {
-    execSync(command) {
-        commands.push(["execSync", command]);
-        if (command === "net session") throw new Error("not elevated");
-        if (command.startsWith("route print")) {
-            return Buffer.from("10.0.0.0  255.255.255.0  10.0.0.1");
+    execFile(command, args, _options, callback) {
+        commands.push(["execFile", command, args]);
+        if (command === "net" && args[0] === "session") return callback(new Error("not elevated"));
+        if (command === "route" && args[0] === "print") {
+            return callback(null, "10.0.0.0  255.255.255.0  On-link  10.0.0.1  257\n0.0.0.0  0.0.0.0  10.0.0.0  10.0.0.1  2");
         }
-        return Buffer.from("");
+        callback(null, "");
     },
     exec(command, options, callback) {
         commands.push(["exec", command, options]);
@@ -73,7 +73,8 @@ const runtime = createTunRuntime({
     filesPath: "C:\\files",
     tapInfo: { ip: "10.0.0.1", subnet: "255.255.255.0", gateway: "10.0.0.0" },
     logger: { info: message => commands.push(["log", message]) },
-    sleep: () => Promise.resolve()
+    sleep: () => Promise.resolve(),
+    readTapState: async () => ({ exists: true, configured: commands.some(call => call[0] === "sudo" && call[1].includes("add_tap_device.bat")) })
 });
 
 const nullTapInfoRuntime = createTunRuntime({
@@ -86,13 +87,24 @@ const nullTapInfoRuntime = createTunRuntime({
     platform: "win32",
     arch: "x64",
     filesPath: "C:\\files",
-    tapInfo: null
+    tapInfo: null,
+    readTapState: async () => ({ exists: true, configured: commands.some(call => call[0] === "sudo" && call[1].includes("add_tap_device.bat")) })
 });
 
 async function run() {
+    const unsupportedCommands = [];
+    const unsupportedTap = createTunRuntime({
+        childProcess: { execFileSync: () => unsupportedCommands.push("exec") },
+        sudoExec: () => unsupportedCommands.push("sudo"), path,
+        platform: "win32", arch: "arm64", filesPath: "C:\\files"
+    });
+    await assert.rejects(unsupportedTap.setupTapDevice(), /packaged TAP driver is unavailable/);
+    assert.deepEqual(unsupportedCommands, []);
+    const linuxTap = createTunRuntime({ childProcess: {}, path, platform: "linux", arch: "x64", filesPath: "/files" });
+    assert.equal(await linuxTap.setupTapDevice(), false);
     assert.equal(await nullTapInfoRuntime.setupTapDevice(true), true);
     assert.equal(commands.some(call => call[0] === "sudo"
-        && call[1].endsWith("amd64 10.0.0.1 255.255.255.0 10.0.0.0")), true);
+        && call[1].endsWith("amd64 10.0.0.1 255.255.255.0 10.0.0.0 configure")), true);
 
     assert.equal(await runtime.setupTapDevice(true), true);
     assert.equal(commands.some(call => call[0] === "sudo" && call[1].includes("add_tap_device.bat")), true);
@@ -100,12 +112,12 @@ async function run() {
     const result = await runtime.spawnTun2socks({ currentProcess: null, mixedPort: 7890 });
     assert.equal(result, spawned);
     const spawn = commands.find(call => call[0] === "spawn");
-    assert.equal(spawn[1], "go-tun2socks.exe");
+    assert.equal(spawn[1], path.join("C:\\files", "win", "x64", "go-tun2socks.exe"));
     assert.equal(spawn[2].includes("127.0.0.1:7890"), true);
-    assert.equal(commands.some(call => call[1] && call[1].startsWith("route add")), true);
+    assert.equal(commands.some(call => call[1] === "route" && call[2][0] === "add"), false);
 
-    runtime.killSpawned(spawned);
-    assert.equal(commands.some(call => call[1] === "taskkill /F /PID 42"), true);
+    await runtime.killSpawned(spawned);
+    assert.equal(commands.some(call => call[1] === "taskkill" && call[2].join(" ") === "/F /PID 42"), true);
     await runtime.setRoutes();
     assert.equal(commands.some(call => call[0] === "sudo" && call[1].includes("set_routes.bat")), true);
 
@@ -114,10 +126,11 @@ const homePageOptionsSource = fs.readFileSync(path.join(
     root, "app/main/dist/electron/features/home/page-options.js"
 ), "utf8");
 assert.equal(/case 67:\s*const Lg = new Language/.test(rendererSource), false);
-assert.match(homePageOptionsSource, /return refreshRendererProfile\(this, \{/);
+assert.match(homePageOptionsSource, /return await refreshRendererProfile\(this, \{/);
 assert.match(rendererSource, /require\("\.\/refresh-profile"\)/);
     assert.match(rendererSource, /features\/tun\/build-tun-config/);
-    assert.match(rendererSource, /features\/tun\/tun-runtime/);
+    assert.doesNotMatch(rendererSource, /features\/tun\/tun-runtime/);
+    assert.match(rendererSource, /createTunRuntime: \(\) => runtime\.tun/);
     assert.match(homePageOptionsSource, /this\.createTunRuntime\(\)\.spawnTun2socks/);
     assert.match(homePageOptionsSource, /const previousProcess = this\.tun2socks;\s+this\.tun2socks = null;/);
     assert.match(homePageOptionsSource, /currentProcess: previousProcess/);

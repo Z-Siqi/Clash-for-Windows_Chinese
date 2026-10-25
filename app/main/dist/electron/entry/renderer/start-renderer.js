@@ -5,7 +5,6 @@ const Vuex = require("vuex");
 const Router = require("vue-router");
 const electronPlugin = require("vue-electron");
 
-const { Language } = require("../../core/i18n/language");
 const { proxyStatus } = require("../../features/application-state/status");
 const { createRendererRouter } = require("../../features/renderer-ui/router");
 const { createRendererCapabilities } = require("./capabilities");
@@ -14,45 +13,45 @@ const { createRendererRuntime } = require("./create-renderer-runtime");
 const { createSharedComponents } = require("./create-shared-components");
 const { mountRendererApplication } = require("./mount-application");
 
-const VERSION = "Opt-4";
+const { displayVersion } = require("../../core/release/release-info");
 
 function startRenderer({
     windowObject = window,
     documentObject = document,
-    staticRoot = globalThis.__static
+    staticRoot = globalThis.__static,
+    processObject = process,
+    electronHost
 } = {}) {
-    const modifyState = {
-        languageInProfile: -1,
+    const modifyState = Vue.observable({
         language: -1,
         isTun: false,
-        isMixin: false,
-        adImages: ""
-    };
+        isMixin: false
+    });
     const runtime = createRendererRuntime({
-        Vue, Vuex, Language, modifyState, windowObject, staticRoot
+        Vue, Vuex, modifyState, windowObject, staticRoot, processObject, electronHost
     });
     const components = createSharedComponents({
-        Language, modifyState, windowObject, documentObject,
+        getLanguage: runtime.getLanguage, windowObject, documentObject,
         electron: runtime.electron,
         platform: runtime.platform,
         utilities: runtime.utilities,
         preferenceKeys: runtime.keys,
         cache: runtime.cache,
         store: runtime.store,
-        axios: runtime.axios,
-        fs: runtime.fs,
-        path: runtime.path
+        publicContent: runtime.publicContent,
+        providerFiles: runtime.providerFiles
     });
     const pages = createRendererPages({
-        Vuex, Language, modifyState, runtime, components, version: VERSION
+        Vuex, modifyState, runtime, components, version: displayVersion()
     });
     const router = createRendererRouter({ Vue, Router, pages });
     const capabilities = createRendererCapabilities({
-        platform: process.platform,
+        platform: processObject.platform,
         ipcRenderer: runtime.electron.ipcRenderer,
         fs: runtime.fs,
         path: runtime.path,
         childProcess: runtime.childProcess,
+        systemProxy: runtime.systemProxy,
         runMacCommand: runtime.runMacSystemProxyCommand,
         parseBypass: runtime.yaml.parse,
         defaultBypass: runtime.defaultBypass,
@@ -65,15 +64,16 @@ function startRenderer({
     return mountRendererApplication({
         Vue, Vuex, store: runtime.store, router, document: documentObject,
         dialogs: components.dialogs, plugins: [capabilities],
-        electronPlugin: process.env.IS_WEB ? null : electronPlugin,
-        platform: process.platform,
+        electronPlugin: processObject.env?.IS_WEB ? null : electronPlugin,
+        platform: processObject.platform,
         ipcRenderer: runtime.electron.ipcRenderer,
         fs: runtime.fs,
         path: runtime.path,
         yaml: runtime.yaml,
+        settingsRepository: runtime.settingsRepository,
         cloneDeep: runtime.lodash.cloneDeep,
-        modifyState
+        setLanguageIndex: runtime.setLanguageIndex
     });
 }
 
-module.exports = { VERSION, startRenderer };
+module.exports = { VERSION: displayVersion(), startRenderer };

@@ -1,0 +1,20 @@
+{
+  "version": "0.20.39.5",
+  "displayVersion": "Opt-5",
+  "electronVersion": "44.7.2",
+  "productName": "Clash for Windows",
+  "applicationId": "com.lbyczf.clashwin",
+  "repository": "Z-Siqi/Clash-for-Windows_Chinese",
+  "updateBranch": "main",
+  "subscriptionUserAgent": "Mihomo.ClashforWindows/Optimize",
+  "publishedTargets": [
+    { "target": "win-x64", "format": "legacy" },
+    { "target": "win-x64", "format": "portable" },
+    "win-arm64",
+    { "target": "win-arm64", "format": "portable" },
+    "linux-x64",
+    { "target": "linux-x64", "format": "deb" },
+    "linux-arm64",
+    { "target": "linux-arm64", "format": "deb" }
+  ]
+}

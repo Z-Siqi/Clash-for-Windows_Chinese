@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"crypto/sha256"
-	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -35,13 +34,11 @@ type coreManifest struct {
 }
 
 type startRequest struct {
-	Path   string `json:"path"`
-	CWD    string `json:"cwd"`
+	Core   string `json:"core"`
 	Silent bool   `json:"silent"`
 }
 
 type systemProxyRequest struct {
-	Path string   `json:"path"`
 	Args []string `json:"args"`
 }
 
@@ -122,75 +119,6 @@ func loadAllowedExecutables(directory string) (map[string]string, map[string]str
 	return cores, helpers, nil
 }
 
-func validateExecutable(path string, allowed map[string]string, kind string) (string, error) {
-	if !filepath.IsAbs(path) {
-		return "", fmt.Errorf("%s path must be absolute", kind)
-	}
-	resolved, err := filepath.EvalSymlinks(filepath.Clean(path))
-	if err != nil {
-		return "", fmt.Errorf("%s path cannot be resolved", kind)
-	}
-	info, err := os.Stat(resolved)
-	if err != nil || !info.Mode().IsRegular() {
-		return "", fmt.Errorf("%s path is not a regular file", kind)
-	}
-	expected, ok := allowed[filepath.Base(path)]
-	if !ok {
-		return "", fmt.Errorf("%s is not allow-listed", kind)
-	}
-	file, err := os.Open(resolved)
-	if err != nil {
-		return "", fmt.Errorf("%s cannot be opened", kind)
-	}
-	defer file.Close()
-	hasher := sha256.New()
-	if _, err := io.Copy(hasher, file); err != nil {
-		return "", fmt.Errorf("%s cannot be hashed", kind)
-	}
-	actual := hex.EncodeToString(hasher.Sum(nil))
-	if subtle.ConstantTimeCompare([]byte(actual), []byte(expected)) != 1 {
-		return "", fmt.Errorf("%s hash is not allow-listed", kind)
-	}
-	return resolved, nil
-}
-
-func validateCore(path string, allowed map[string]string) (string, error) {
-	return validateExecutable(path, allowed, "core")
-}
-
-func validSystemProxyArgs(args []string) bool {
-	if len(args) == 1 {
-		return args[0] == "-show" || args[0] == "-stop"
-	}
-	if len(args) == 2 {
-		return (args[0] == "-bypass" || args[0] == "-dns") && len(args[1]) <= 16*1024
-	}
-	if len(args) != 6 {
-		return false
-	}
-	if args[0] != "-http" || args[2] != "-https" || args[4] != "-socks" {
-		return false
-	}
-	for _, value := range []string{args[1], args[3], args[5]} {
-		if value == "" || len(value) > 1024 {
-			return false
-		}
-	}
-	return true
-}
-
-func validateWorkingDirectory(path string) (string, error) {
-	if !filepath.IsAbs(path) {
-		return "", errors.New("working directory must be absolute")
-	}
-	cleaned := filepath.Clean(path)
-	info, err := os.Stat(cleaned)
-	if err != nil || !info.IsDir() {
-		return "", errors.New("working directory does not exist")
-	}
-	return cleaned, nil
-}
-
 func (manager *processManager) stopCurrent() {
 	manager.mutex.Lock()
 	process := manager.current
@@ -216,7 +144,7 @@ func (manager *processManager) stop() {
 	manager.stopCurrent()
 }
 
-func (manager *processManager) start(corePath, workingDirectory string, silent bool) (string, error) {
+func (manager *processManager) start(corePath string, policy *servicePolicy, silent bool) (string, error) {
 	manager.operation.Lock()
 	defer manager.operation.Unlock()
 	manager.stopCurrent()
@@ -224,19 +152,22 @@ func (manager *processManager) start(corePath, workingDirectory string, silent b
 	var output io.Writer = io.Discard
 	var logFile *os.File
 	if !silent {
-		logDirectory := filepath.Join(workingDirectory, "logs")
-		if err := os.MkdirAll(logDirectory, 0o755); err != nil {
+		logDirectory, err := policy.logDirectory()
+		if err != nil {
 			return "", err
 		}
-		logPath = filepath.Join(logDirectory, time.Now().Format("2006-01-02-150405")+".log")
-		var err error
-		logFile, err = os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+		logFile, err = os.CreateTemp(logDirectory, time.Now().Format("2006-01-02-150405")+"-*.log")
 		if err != nil {
+			return "", err
+		}
+		logPath = logFile.Name()
+		if err := logFile.Chmod(0644); err != nil {
+			logFile.Close()
 			return "", err
 		}
 		output = logFile
 	}
-	command := exec.Command(corePath, "-d", workingDirectory)
+	command := exec.Command(corePath, "-d", policy.DataDirectory)
 	command.Dir = filepath.Dir(corePath)
 	command.Stdout = output
 	command.Stderr = output
@@ -266,6 +197,7 @@ func (manager *processManager) start(corePath, workingDirectory string, silent b
 }
 
 func writeJSON(response http.ResponseWriter, status int, value any) {
+	response.Header().Set("X-CFW-Service-Protocol", "2")
 	response.Header().Set("Content-Type", "application/json")
 	response.WriteHeader(status)
 	_ = json.NewEncoder(response).Encode(value)
@@ -276,7 +208,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	allowedCores, allowedHelpers, err := loadAllowedExecutables(directory)
+	policy, err := loadServicePolicy(directory)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -303,17 +235,12 @@ func main() {
 			writeJSON(response, http.StatusBadRequest, "invalid request")
 			return
 		}
-		corePath, err := validateCore(payload.Path, allowedCores)
+		corePath, err := rejectUnknownCore(payload.Core, policy.corePaths)
 		if err != nil {
 			writeJSON(response, http.StatusForbidden, err.Error())
 			return
 		}
-		workingDirectory, err := validateWorkingDirectory(payload.CWD)
-		if err != nil {
-			writeJSON(response, http.StatusBadRequest, err.Error())
-			return
-		}
-		logPath, err := manager.start(corePath, workingDirectory, payload.Silent)
+		logPath, err := manager.start(corePath, policy, payload.Silent)
 		if err != nil {
 			writeJSON(response, http.StatusInternalServerError, "core could not be started")
 			return
@@ -333,8 +260,7 @@ func main() {
 			writeJSON(response, http.StatusBadRequest, "invalid request")
 			return
 		}
-		helperPath, err := validateExecutable(payload.Path, allowedHelpers, "helper")
-		if err != nil || filepath.Base(helperPath) != "sysproxy" {
+		if policy.proxyPath == "" {
 			writeJSON(response, http.StatusForbidden, "system proxy helper is not allow-listed")
 			return
 		}
@@ -342,17 +268,17 @@ func main() {
 		defer proxyOperation.Unlock()
 		ctx, cancel := context.WithTimeout(request.Context(), 15*time.Second)
 		defer cancel()
-		command := exec.CommandContext(ctx, helperPath, payload.Args...)
-		command.Dir = filepath.Dir(helperPath)
+		command := exec.CommandContext(ctx, policy.proxyPath, payload.Args...)
+		command.Dir = filepath.Dir(policy.proxyPath)
 		output, err := command.CombinedOutput()
 		if err != nil {
-			writeJSON(response, http.StatusInternalServerError, string(output))
+			writeJSON(response, http.StatusInternalServerError, "system proxy operation failed")
 			return
 		}
 		writeJSON(response, http.StatusOK, string(output))
 	})
 	mux.HandleFunc("/stop", func(response http.ResponseWriter, request *http.Request) {
-		if request.Method != http.MethodGet {
+		if request.Method != http.MethodPost {
 			writeJSON(response, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
@@ -365,7 +291,7 @@ func main() {
 		log.Fatal(err)
 	}
 	server := &http.Server{
-		Handler:           mux,
+		Handler:           policy.authorize(mux),
 		ReadHeaderTimeout: 2 * time.Second,
 		ReadTimeout:       5 * time.Second,
 		WriteTimeout:      5 * time.Second,

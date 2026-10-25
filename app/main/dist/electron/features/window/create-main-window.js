@@ -1,6 +1,7 @@
 "use strict";
 
 const { installEditShortcuts } = require("./install-edit-shortcuts");
+const { createTranslator } = require("../../core/i18n/language");
 
 function createMainWindow({
     BrowserWindow,
@@ -13,8 +14,9 @@ function createMainWindow({
     dialog,
     platform = process.platform,
     url,
-    localize,
-    onRelaunch
+    getLanguage = () => createTranslator(1),
+    onRelaunch,
+    initializeRenderer
 }) {
     const windowOptions = {
         height: 603,
@@ -28,18 +30,18 @@ function createMainWindow({
         frame: false,
         titleBarStyle: "hidden",
         webPreferences: {
-            // The CommonJS renderer runs inside the isolated preload world.
-            // No Node or generic IPC capability is exposed to the page main world.
+            // The browser renderer runs in the private world of a sandboxed preload.
             nodeIntegration: false,
             webSecurity: true,
             nodeIntegrationInWorker: false,
             contextIsolation: true,
-            sandbox: false,
+            sandbox: true,
             preload: path.resolve(path.join(dirname, "preload.js"))
         }
     };
     if (isLinux()) windowOptions.icon = path.join(staticRoot, "imgs", "icon_512.png");
     const mainWindow = new BrowserWindow(windowOptions);
+    initializeRenderer?.(mainWindow);
     mainWindow.setMenu(null);
     installEditShortcuts(mainWindow.webContents, platform);
     mainWindow.webContents.on("will-navigate", function(event) {
@@ -51,11 +53,12 @@ function createMainWindow({
     mainWindow.webContents.on("render-process-gone", async function(_event, details) {
         if (platform === "darwin" || details.reason !== "crashed") return;
 
+        const labels = getLanguage();
         const result = await dialog.showMessageBox(mainWindow, {
             type: "error",
             title: "Clash for Windows",
-            message: localize("Dashboard has crashed!", "仪表盘崩溃了!"),
-            buttons: localize(["Reload", "Exit"], ["重新加载", "退出"])
+            message: labels.dashboardCrashed(),
+            buttons: [labels.reloadDashboard(), labels.exitApplication()]
         });
         if (result.response === 0) onRelaunch();
         else app.quit();

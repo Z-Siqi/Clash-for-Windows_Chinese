@@ -1,5 +1,11 @@
 "use strict";
 
+const { createConnectionPipeline } = require("./connection-pipeline");
+const { windowRange, ROW_HEIGHT, LABEL_HEIGHT } = require("./connection-model");
+// Native Worker handles and the full dataset stay outside Vue's observer graph.
+const pipelines = new WeakMap();
+const observers = new WeakMap();
+
 function createConnectionsPage({
     defineComponent,
     Hint,
@@ -11,12 +17,11 @@ function createConnectionsPage({
     path,
     EscCapture,
     formatBytes,
-    flattenValues,
     notify,
     clipboard,
     getLanguage,
     getLanguageIndex,
-    normalizeConnectionsSnapshot
+    createWorker = () => new Worker(globalThis.__CFW_BOOTSTRAP__.connectionsWorker)
 }) {
     const ConnectionInfoView = defineComponent({
         name: "ConnectionInfoView",
@@ -34,17 +39,8 @@ function createConnectionsPage({
             },
             connection: {
                 immediate: true,
-                handler(connection, previousConnection) {
-                    if (!connection || !previousConnection) {
-                        this.speedStr = "";
-                        return;
-                    }
-                    this.speedStr = this.$parent.calcSpeedText({
-                        speed: {
-                            upload: connection.upload - previousConnection.upload,
-                            download: connection.download - previousConnection.download
-                        }
-                    });
+                handler(connection) {
+                    this.speedStr = connection ? this.$parent.calcSpeedText(connection) : "";
                 }
             }
         },
@@ -155,17 +151,50 @@ function createConnectionsPage({
     const ConnectionsPage = defineComponent({
         components: { Hint, ConnectionInfoView, EscCapture },
         data() {
-            const labels = getLanguage();
             return {
                 isPause: false,
+                isActive: false,
                 searchText: "",
                 client: null,
-                lastData: { uploadTotal: 0, downloadTotal: 0, connections: [] },
-                data: { uploadTotal: 0, downloadTotal: 0, connections: [] },
+                data: Object.freeze({ uploadTotal: 0, downloadTotal: 0, rows: [], labels: [], count: 0,
+                    range: windowRange(0), labelRange: windowRange(0), detail: null }),
+                scrollTop: 0, viewportHeight: 600, labelScrollTop: 0, labelViewportHeight: 400,
+                closingConnections: false,
                 labelSelected: 4,
                 reverseTags: [],
                 detailConnectionId: "",
-                filterTypes: [
+                filterTypeIndex: 0,
+                isShowTypeFilter: false
+            };
+        },
+        watch: {
+            searchText(value) {
+                cache.put(keys.CONNECTION_MODULE_SEARCH_TEXT, value);
+                this.resetViewport();
+            },
+            labelSelected() { this.resetViewport(); },
+            detailConnectionId() { this.updateView(); },
+            filterTypeIndex() {
+                this.labelScrollTop = 0;
+                if (this.$refs.labelsViewport) this.$refs.labelsViewport.scrollTop = 0;
+                this.updateView();
+            },
+            isShowTypeFilter() {
+                this.labelScrollTop = 0;
+                this.updateView();
+                this.$nextTick(() => this.observeViewport());
+            },
+            clashStatus(value) {
+                this.closeStream();
+                if (value === connectedStatus && this.isActive) this.setupComponent();
+            }
+        },
+        computed: {
+            ...Vuex.mapState({ clashStatus: state => state.app.clashStatus }),
+            ...Vuex.mapGetters(["clashAxiosClient", "clashWSClient"]),
+            filterTypes() {
+                const labels = getLanguage();
+                return [
                     { title: labels.sourceIP(), key: "sourceIP" },
                     { title: labels.destinationIP(), key: "destinationIP" },
                     { title: labels.domain(), key: "host" },
@@ -175,77 +204,77 @@ function createConnectionsPage({
                     { title: labels.sourcePort(), key: "sourcePort" },
                     { title: labels.destinationPort(), key: "destinationPort" },
                     { title: labels.modeDNS(), key: "dnsMode" }
-                ],
-                filterTypeIndex: 0,
-                isShowTypeFilter: false
-            };
-        },
-        watch: {
-            searchText(value) {
-                cache.put(keys.CONNECTION_MODULE_SEARCH_TEXT, value);
+                ];
             },
-            clashStatus(value) {
-                if (this.client) this.client.terminate();
-                if (value === connectedStatus) this.setupComponent();
-            }
-        },
-        computed: {
-            ...Vuex.mapState({ clashStatus: state => state.app.clashStatus }),
-            ...Vuex.mapGetters(["clashAxiosClient", "clashWSClient"]),
-            detailConnection() {
-                return this.detailConnectionId
-                    ? this.data.connections.find(connection => connection.id === this.detailConnectionId) || null
-                    : null;
-            },
-            searchTextReg() {
-                try {
-                    return new RegExp(this.searchText, "i");
-                } catch (_error) {
-                    return null;
-                }
-            },
-            orderedConnections() {
-                if (!this.data) return [];
-                const timestamp = value => new Date(value).getTime();
-                const connections = [...this.data.connections].map(connection => {
-                    const previous = this.lastData.connections.find(item => item.id === connection.id);
-                    connection.speed = previous ? {
-                        upload: connection.upload - previous.upload,
-                        download: connection.download - previous.download
-                    } : { upload: 0, download: 0 };
-                    return connection;
-                }).sort((left, right) => {
-                    if (this.labelSelected === 4) return timestamp(left.start) - timestamp(right.start);
-                    if (this.labelSelected === 3) return right.download - left.download;
-                    if (this.labelSelected === 2) return right.upload - left.upload;
-                    if (this.labelSelected === 1) return right.speed.download - left.speed.download;
-                    if (this.labelSelected === 0) return right.speed.upload - left.speed.upload;
-                    if (this.labelSelected === 5) {
-                        const rightDestination = right.metadata.host || right.metadata.destinationIP || "";
-                        const leftDestination = left.metadata.host || left.metadata.destinationIP || "";
-                        return rightDestination.localeCompare(leftDestination);
-                    }
-                    return 0;
-                });
-                const ordered = this.reverseTags?.[this.labelSelected] ? connections.reverse() : connections;
-                if (this.searchText === "") return ordered;
-                return ordered.filter(connection => {
-                    const exactFilter = /^(.+?)\=(.+)$/.exec(this.searchText);
-                    if (exactFilter) {
-                        const [, field, expected] = exactFilter;
-                        return connection?.metadata?.[field] === expected;
-                    }
-                    return !this.searchTextReg || this.searchTextReg.test(flattenValues(connection));
-                });
-            },
-            connTypeLabels() {
-                const field = this.filterTypes[this.filterTypeIndex].key;
-                return [...new Set(this.data.connections.map(connection => connection?.metadata?.[field]))]
-                    .filter(Boolean)
-                    .sort();
-            }
+            detailConnection() { return this.data.detail; },
+            orderedConnections() { return this.data.rows; },
+            connTypeLabels() { return this.data.labels; }
         },
         methods: {
+            viewQuery() {
+                return {
+                    sort: this.labelSelected, reverse: !!this.reverseTags[this.labelSelected], search: this.searchText,
+                    top: this.scrollTop, height: this.viewportHeight, detailId: this.detailConnectionId,
+                    showLabels: this.isShowTypeFilter, field: this.filterTypes[this.filterTypeIndex].key,
+                    labelTop: this.labelScrollTop, labelHeight: this.labelViewportHeight
+                };
+            },
+            updateView(payload) {
+                let pipeline = pipelines.get(this);
+                if (!this.isActive && !pipeline) return;
+                if (!pipeline) {
+                    // Keep the cached viewport until a real snapshot arrives. An
+                    // empty new worker would collapse its spacer and clamp scrolling.
+                    if (payload === undefined) return;
+                    pipeline = createConnectionPipeline({ worker: createWorker(), onView: view => { this.data = view; },
+                        onError: () => notify(getLanguage().failed(), getLanguage().connectionsProcessingFailed(), false) });
+                    pipelines.set(this, pipeline);
+                }
+                pipeline.update(this.viewQuery(), payload, Date.now());
+            },
+            resetViewport() {
+                this.scrollTop = 0;
+                if (this.$refs.connectionsViewport) this.$refs.connectionsViewport.scrollTop = 0;
+                this.updateView();
+            },
+            restoreViewport() {
+                if (!this.isActive) return;
+                let changed = false;
+                for (const [ref, key] of [["connectionsViewport", "scrollTop"], ["labelsViewport", "labelScrollTop"]]) {
+                    const element = this.$refs[ref];
+                    if (!element) continue;
+                    element.scrollTop = this[key];
+                    if (element.scrollTop !== this[key]) {
+                        this[key] = element.scrollTop;
+                        changed = true;
+                    }
+                }
+                if (changed) this.updateView();
+            },
+            observeViewport(restore = false) {
+                observers.get(this)?.disconnect();
+                const measure = () => {
+                    this.viewportHeight = this.$refs.connectionsViewport?.clientHeight || 600;
+                    this.labelViewportHeight = this.$refs.labelsViewport?.clientHeight || 400;
+                    // Restore only when the cached route returns. Normal worker
+                    // replies must not overwrite a scroll awaiting its DOM event.
+                    if (restore) { this.restoreViewport(); restore = false; }
+                    this.updateView();
+                };
+                if (typeof ResizeObserver !== "undefined") {
+                    const observer = new ResizeObserver(measure);
+                    for (const element of [this.$refs.connectionsViewport, this.$refs.labelsViewport]) {
+                        if (element) observer.observe(element);
+                    }
+                    observers.set(this, observer);
+                }
+                measure();
+            },
+            disposeConnections() {
+                this.closeStream();
+                pipelines.get(this)?.dispose(); pipelines.delete(this);
+                observers.get(this)?.disconnect(); observers.delete(this);
+            },
             itemStyle(index) {
                 const classes = [];
                 if (this.filterTypeIndex === index) classes.push("selected");
@@ -274,10 +303,11 @@ function createConnectionsPage({
                 return [1, 2].includes(chainType) && chains.length >= 1 ? chains[chains.length - 1] : "";
             },
             handleLabelSelect(index) {
-                if (this.labelSelected === index) this.reverseTags[index] = !this.reverseTags?.[index];
+                if (this.labelSelected === index) this.$set(this.reverseTags, index, !this.reverseTags?.[index]);
                 else this.labelSelected = index;
                 cache.put(keys.CONNECTION_ORDER_INDEX, index);
                 cache.put(keys.CONNECTION_ORDER_REVERSE_TAGS, this.reverseTags);
+                this.resetViewport();
             },
             calcLabelClasses(index) {
                 const classes = ["label"];
@@ -304,7 +334,7 @@ function createConnectionsPage({
                     value /= 1024;
                     unitIndex++;
                 }
-                return `${unitIndex === 0 ? value : value.toFixed(precision)} ${units[unitIndex]}`;
+                return `${unitIndex === 0 ? Math.round(value) : value.toFixed(precision)} ${units[unitIndex]}`;
             },
             upperCaseFirst(value) {
                 return value.charAt(0).toUpperCase() + value.slice(1);
@@ -313,7 +343,19 @@ function createConnectionsPage({
                 await this.clashApi.closeConnection(connectionId);
             },
             async handleCloseAllConnections() {
-                await Promise.allSettled(this.orderedConnections.map(connection => this.clashApi.closeConnection(connection.id)));
+                if (this.closingConnections) return;
+                this.closingConnections = true;
+                try {
+                    if (!this.searchText) { await this.clashApi.closeConnections(); return; }
+                    const pipeline = pipelines.get(this);
+                    if (!pipeline) return;
+                    await pipeline.command("beginClose", this.viewQuery());
+                    for (;;) {
+                        const { batch } = await pipeline.command("closeBatch");
+                        if (!batch.length) break;
+                        await Promise.allSettled(batch.map(id => this.clashApi.closeConnection(id)));
+                    }
+                } finally { this.closingConnections = false; }
             },
             handleItemSelected(connection) {
                 this.detailConnectionId = connection.id;
@@ -324,16 +366,16 @@ function createConnectionsPage({
                 else this.openStream();
             },
             closeStream() {
-                if (this.client) this.client.terminate();
+                const client = this.client;
                 this.client = null;
+                if (client) client.terminate();
             },
             openStream() {
+                if (this.client) this.client.terminate();
                 const client = this.clashWSClient("connections");
                 if (!client) return;
                 client.on("message", payload => {
-                    const snapshot = normalizeConnectionsSnapshot(JSON.parse(payload));
-                    this.lastData = this.data;
-                    this.data = snapshot;
+                    if (this.client === client) this.updateView(payload);
                 });
                 this.client = client;
             },
@@ -341,20 +383,30 @@ function createConnectionsPage({
                 this.labelSelected = cache.get(keys.CONNECTION_ORDER_INDEX) ?? 4;
                 this.reverseTags = cache.get(keys.CONNECTION_ORDER_REVERSE_TAGS) ?? [];
                 if (!this.isPause) this.openStream();
+                this.$nextTick(() => this.observeViewport(true));
             }
         },
         beforeRouteEnter(route, _previousRoute, next) {
             next(viewModel => {
+                viewModel.isActive = true;
                 viewModel.setupComponent();
                 const searchText = route.query.searchText || "";
                 viewModel.searchText = searchText
-                    ? searchText.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&")
+                    ? searchText.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&").replace(/=/g, "\\x3d")
                     : cache.get(keys.CONNECTION_MODULE_SEARCH_TEXT) ?? "";
             });
         },
         beforeRouteLeave(_route, _previousRoute, next) {
-            this.closeStream();
+            if (this.$refs.connectionsViewport) this.scrollTop = this.$refs.connectionsViewport.scrollTop;
+            if (this.$refs.labelsViewport) this.labelScrollTop = this.$refs.labelsViewport.scrollTop;
+            this.isActive = false;
+            // A paused, cached page retains its snapshot for search on return.
+            if (this.isPause) { this.closeStream(); observers.get(this)?.disconnect(); }
+            else this.disposeConnections();
             next();
+        },
+        beforeDestroy() {
+            this.disposeConnections();
         }
     }, function renderConnectionsPage() {
         const viewModel = this;
@@ -370,15 +422,16 @@ function createConnectionsPage({
         const renderConnection = connection => createElement("div", {
             key: connection.id,
             class: ["conn-item", connection.closed ? "conn-item-closed" : ""],
+            style: { height: `${ROW_HEIGHT}px`, boxSizing: "border-box", overflow: "hidden", flexShrink: 0 },
             on: { click() { return viewModel.handleItemSelected(connection); } }
         }, [
-            createElement("div", [
+            createElement("div", { style: { minWidth: 0, flex: 1 } }, [
                 createElement("div", { staticClass: "conn-item-top" }, [
-                    createElement("div", { staticClass: "conn-host" }, [viewModel._v(`\n            ${viewModel._s(connection.metadata.host || connection.metadata.destinationIP)}:${viewModel._s(connection.metadata.destinationPort)}\n          `)])
+                    createElement("div", { staticClass: "conn-host", style: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, [viewModel._v(`\n            ${viewModel._s(connection.metadata.host || connection.metadata.destinationIP)}:${viewModel._s(connection.metadata.destinationPort)}\n          `)])
                 ]),
                 viewModel._v(" "),
-                createElement("div", { staticClass: "conn-labels" }, [
-                    createElement("div", { staticClass: "conn1" }, [viewModel._v(`\n            ${viewModel._s(connection.metadata.network.toUpperCase())}\n          `)]),
+                createElement("div", { staticClass: "conn-labels", style: { flexWrap: "nowrap", overflow: "hidden", whiteSpace: "nowrap" } }, [
+                    createElement("div", { staticClass: "conn1" }, [viewModel._v(`\n            ${viewModel._s((connection.metadata.network || "").toUpperCase())}\n          `)]),
                     viewModel._v(" "),
                     createElement("div", { staticClass: "conn2" }, [viewModel._v(viewModel._s(connection.metadata.type))]),
                     viewModel._v(" "),
@@ -395,7 +448,7 @@ function createConnectionsPage({
             ]),
             viewModel._v(" "),
             connection.closed || viewModel.isPause ? viewModel._e() : createElement("div", {
-                staticClass: "close-btn",
+                staticClass: "close-btn", style: { flexShrink: 0 },
                 on: { click(event) { event.stopPropagation(); return viewModel.handleCloseConnection(connection.id); } }
             }, [createElement("span", { staticClass: "icon text flex justify-center items-center w-full h-full" }, [viewModel._v("block")])])
         ]);
@@ -404,8 +457,7 @@ function createConnectionsPage({
             staticClass: "main-connection-view relative",
             on: { click() { viewModel.isShowTypeFilter = false; } }
         }, [
-            createElement("EscCapture", {
-                directives: [{ name: "show", rawName: "v-show", value: viewModel.isShowTypeFilter, expression: "isShowTypeFilter" }],
+            viewModel.isShowTypeFilter ? createElement("EscCapture", {
                 staticClass: "translate-y-[2px] flex min-w-[500px] w-[calc(100%-200px)] h-[calc(100%-300px)] min-h-[400px] absolute rounded overflow-hidden z-10 shadow-lg text-sm border border-[color:var(--bc)] left-1/2 -translate-x-1/2 top-[32px]",
                 on: {
                     click(event) { event.stopPropagation(); },
@@ -425,19 +477,23 @@ function createConnectionsPage({
                     })
                 ]),
                 viewModel._v(" "),
-                createElement("div", { staticClass: "bg-[color:var(--bgc)] flex-1 flex flex-col overflow-y-auto scrolly" }, viewModel.connTypeLabels.map(value => createElement("div", {
-                    key: value,
-                    staticClass: "hover:bg-[color:var(--proxy-item-bgc)] h-fit flex items-center break-all py-1 font-normal px-2 clickable gap-x-1",
-                    on: { click() {
-                        viewModel.searchText = `${viewModel.filterTypes[viewModel.filterTypeIndex].key}=${value}`;
-                        viewModel.isShowTypeFilter = false;
-                    } }
-                }, [
-                    createElement("div", { staticClass: "icon text-sm" }, [viewModel._v("search")]),
-                    viewModel._v(" "),
-                    createElement("div", [viewModel._v(viewModel._s(value))])
-                ])))
-            ]),
+                createElement("div", {
+                    ref: "labelsViewport", staticClass: "bg-[color:var(--bgc)] flex-1 overflow-y-auto scrolly",
+                    style: { minWidth: 0, overflowAnchor: "none" },
+                    on: { scroll(event) { if (viewModel.isActive) { viewModel.labelScrollTop = event.target.scrollTop; viewModel.updateView(); } } }
+                }, [createElement("div", { style: { height: `${viewModel.data.labelRange.height}px`, position: "relative" } }, [
+                    createElement("div", { style: { position: "absolute", width: "100%", top: `${viewModel.data.labelRange.offset}px` } },
+                        viewModel.connTypeLabels.map(value => createElement("div", {
+                            key: value, staticClass: "hover:bg-[color:var(--proxy-item-bgc)] font-normal px-2 clickable",
+                            style: { height: `${LABEL_HEIGHT}px`, lineHeight: `${LABEL_HEIGHT}px`, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+                            attrs: { title: String(value) },
+                            on: { click() {
+                                viewModel.searchText = `${viewModel.filterTypes[viewModel.filterTypeIndex].key}=${value}`;
+                                viewModel.isShowTypeFilter = false;
+                            } }
+                        }, [viewModel._v(viewModel._s(value))])))
+                ])])
+            ]) : viewModel._e(),
             viewModel._v(" "),
             createElement("div", { staticClass: "header relative" }, [
                 createElement("div", { staticClass: "title" }, [createElement("div", [viewModel._v(labels.connections())])]),
@@ -495,12 +551,19 @@ function createConnectionsPage({
                     viewModel._v(" "),
                     createElement("div", { staticClass: "close-all-btn", on: { click: viewModel.handleCloseAllConnections } }, [
                         viewModel._v(`\n        ${labels.closeAll()}\n        `),
-                        createElement("span", [viewModel._v(`(${viewModel._s(viewModel.orderedConnections.length)})`)])
+                        createElement("span", [viewModel._v(`(${viewModel._s(viewModel.data.count)})`)])
                     ])
                 ], 1)
             ]),
             viewModel._v(" "),
-            createElement("div", { staticClass: "scroll-view" }, viewModel._l(viewModel.orderedConnections, renderConnection), 0),
+            createElement("div", {
+                ref: "connectionsViewport", staticClass: "scroll-view",
+                style: { overflowAnchor: "none", flex: 1, minHeight: 0 },
+                on: { scroll(event) { if (viewModel.isActive) { viewModel.scrollTop = event.target.scrollTop; viewModel.updateView(); } } }
+            }, [createElement("div", { style: { height: `${viewModel.data.range.height}px`, position: "relative" } }, [
+                createElement("div", { style: { position: "absolute", width: "100%", top: `${viewModel.data.range.offset}px` } },
+                    viewModel._l(viewModel.orderedConnections, renderConnection), 0)
+            ])]),
             viewModel._v(" "),
             viewModel.detailConnectionId ? createElement("ConnectionInfoView", {
                 attrs: { connection: viewModel.detailConnection },

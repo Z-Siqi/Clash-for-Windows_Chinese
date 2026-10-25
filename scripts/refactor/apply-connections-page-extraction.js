@@ -105,10 +105,10 @@ module.exports = { createConnectionsPage };
 // The first historical run used a byte-preserving latin1 read before the extracted
 // Chinese object keys made the new UTF-8 module encoding relevant. Repair that
 // one generated form idempotently without touching the bundle.
-if (fs.existsSync(featurePath)) {
+try {
     const generated = fs.readFileSync(featurePath, "utf8");
     if (generated.includes("ä¸"))
         fs.writeFileSync(featurePath, Buffer.from(generated, "latin1").toString("utf8"), "utf8");
-}
+} catch (error) { if (error.code !== "ENOENT") throw error; }
 
 console.log("Connections page extraction applied");

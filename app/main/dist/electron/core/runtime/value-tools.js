@@ -1,10 +1,10 @@
 "use strict";
 
-function createValueTools({ crypto, BigNumber, schedule = setTimeout }) {
+function createValueTools({ crypto, hashText, BigNumber, schedule = setTimeout }) {
     const flattenValues = value => Object.values(value).map(item => typeof item === "object" ? flattenValues(item) : item).join("\n");
     return {
         delay: milliseconds => new Promise(resolve => schedule(resolve, milliseconds)),
-        hashText: value => crypto.createHash("md5").update(value).digest("hex"),
+        hashText: hashText || (value => crypto.createHash("md5").update(value).digest("hex")),
         cloneJson: value => JSON.parse(JSON.stringify(value)),
         formatBytes(value, precision = 2, space = true) {
             const units = ["B", "KB", "MB", "GB", "TB", "PB", "EB"];

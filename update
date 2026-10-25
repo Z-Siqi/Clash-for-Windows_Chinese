@@ -1,13 +1,41 @@
 {
-  "html_url": "https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/0.20.39.4",
-  "tag_name": "0.20.39.4",
+  "html_url": "https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/tag/0.20.39.5",
+  "tag_name": "0.20.39.5",
+  "display_version": "Opt-5",
   "assets": [
     {
-      "name": "Clash.for.Windows.Setup_Opt-4.exe",
-      "browser_download_url": "https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/download/0.20.39.4/Clash.for.Windows.Setup_Opt-4.exe"
+      "name": "Setup_Opt-0.20.39.5.exe",
+      "browser_download_url": "https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/download/0.20.39.5/Setup_Opt-0.20.39.5.exe"
+    },
+    {
+      "name": "Clash.for.Windows-Opt-5-win.7z",
+      "browser_download_url": "https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/download/0.20.39.5/Clash.for.Windows-Opt-5-win.7z"
+    },
+    {
+      "name": "Clash.for.Windows.Setup_Opt-5.arm64.exe",
+      "browser_download_url": "https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/download/0.20.39.5/Clash.for.Windows.Setup_Opt-5.arm64.exe"
+    },
+    {
+      "name": "Clash.for.Windows-Opt-5-arm64-win.7z",
+      "browser_download_url": "https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/download/0.20.39.5/Clash.for.Windows-Opt-5-arm64-win.7z"
+    },
+    {
+      "name": "Clash.for.Windows-Opt-5-x64-linux.tar.gz",
+      "browser_download_url": "https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/download/0.20.39.5/Clash.for.Windows-Opt-5-x64-linux.tar.gz"
+    },
+    {
+      "name": "Clash.for.Windows-Opt-5-linux-x64.deb",
+      "browser_download_url": "https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/download/0.20.39.5/Clash.for.Windows-Opt-5-linux-x64.deb"
+    },
+    {
+      "name": "Clash.for.Windows-Opt-5-arm64-linux.tar.gz",
+      "browser_download_url": "https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/download/0.20.39.5/Clash.for.Windows-Opt-5-arm64-linux.tar.gz"
+    },
+    {
+      "name": "Clash.for.Windows-Opt-5-linux-arm64.deb",
+      "browser_download_url": "https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/download/0.20.39.5/Clash.for.Windows-Opt-5-linux-arm64.deb"
     }
   ],
   "body": "- **新版本已发布!**",
-  "reactions": {
-  }
+  "reactions": {}
 }

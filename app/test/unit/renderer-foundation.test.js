@@ -3,16 +3,16 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const path = require("node:path");
-const { Language, language } = require("../../main/dist/electron/core/i18n/language");
+const { createTranslator } = require("../../main/dist/electron/core/i18n/language");
 const { removeEmoji } = require("../../main/dist/electron/core/text/remove-emoji");
 const { getRendererTrayIcon } = require("../../main/dist/electron/features/tray/renderer-tray-icon");
-const { createAutoLaunch } = require("../../main/dist/electron/features/application/set-auto-launch");
+const { createAutoLaunch, createLoginItemRuntime } = require("../../main/dist/electron/features/application/set-auto-launch");
 const { createRendererCapabilities } = require("../../main/dist/electron/entry/renderer/capabilities");
 const { createPlatform } = require("../../main/dist/electron/core/runtime/platform");
 
-test("platform identities preserve packaged target comparisons and Windows ARM32 fallback", () => {
+test("platform identities preserve supported packaged target comparisons", () => {
     for (const [platform, arch, key] of [
-        ["win32", "x64", "windowsX64"], ["win32", "ia32", "windowsX86"], ["win32", "arm64", "windowsArm64"],
+        ["win32", "x64", "windowsX64"], ["win32", "arm64", "windowsArm64"],
         ["darwin", "x64", "macX64"], ["darwin", "arm64", "macArm64"],
         ["linux", "x64", "linuxX64"], ["linux", "arm64", "linuxArm64"]
     ]) {
@@ -23,22 +23,24 @@ test("platform identities preserve packaged target comparisons and Windows ARM32
         assert.equal(target.isMacOS(), platform === "darwin");
         assert.equal(target.isLinux(), platform === "linux");
     }
-    const arm = createPlatform({ platform: "win32", arch: "arm" });
-    assert.equal(arm.current(), arm.windowsArm);
-    assert.equal(arm.assetTarget(), arm.windowsX86);
+    for (const arch of ["ia32", "arm"]) {
+        const unsupported = createPlatform({ platform: "win32", arch });
+        assert.equal(unsupported.current(), unsupported.unknown);
+        assert.equal(unsupported.isWindows(), false);
+    }
     const unknown = createPlatform({ platform: "freebsd", arch: "x64" });
     assert.equal(unknown.current(), unknown.unknown);
     assert.equal(unknown.isLinux(), false);
 });
 
-test("language retains legacy defaults, fallback and every page translation method", () => {
-    assert.equal(new Language(null).locale(), "zh-cn");
-    assert.equal(new Language(0).feedback(), "关于");
-    assert.equal(new Language(1).feedback(), "Feedback");
-    assert.equal(language(-1, "en", "cn"), "en");
-    for (const key of Object.getOwnPropertyNames(Language.prototype).filter(key => key !== "constructor")) {
+test("i18n retains legacy defaults and every page translation method", () => {
+    assert.equal(createTranslator(null).locale(), "zh-cn");
+    assert.equal(createTranslator(0).feedback(), "关于");
+    assert.equal(createTranslator(1).feedback(), "Feedback");
+    assert.equal(createTranslator(-1).locale(), "en-us");
+    for (const key of Object.keys(createTranslator()).filter(key => key !== "t")) {
         for (const locale of [0, 1]) {
-            const value = new Language(locale)[key]();
+            const value = createTranslator(locale)[key]();
             assert.ok(typeof value === "string" || Array.isArray(value), `${key}/${locale}`);
         }
     }
@@ -67,21 +69,24 @@ test("tray icons reflect every TUN/mixin/proxy combination and custom/mode prefe
     ]) assert.equal(require("node:fs").existsSync(path.join(assetRoot, name)), true, name);
 });
 
-test("auto launch uses only injected filesystem on Linux and native IPC elsewhere", async () => {
+test("auto launch client delegates all platforms and the host owns Linux desktop files", async () => {
     const calls = [], files = new Map();
     const deps = { path: path.posix, ipcRenderer: { invoke: async (...args) => {
         calls.push(args);
         return args[1] === "getVersion" ? "1.0" : args[2] === "exe" ? "/app/cfw" : "/home/user";
     } }, fs: {
         existsSync: file => files.has(file), mkdirSync: file => files.set(file, "directory"),
-        writeFileSync: (file, content) => files.set(file, content), unlinkSync: file => files.delete(file)
+        writeFileSync: (file, content) => files.set(file, content), unlinkSync: file => files.delete(file),
+        renameSync: (from, to) => { files.set(to, files.get(from)); files.delete(from); }
     } };
-    const launch = createAutoLaunch({ ...deps, platform: "linux" });
+    const launch = createLoginItemRuntime({ ...deps, platform: "linux", app: {
+        getVersion: () => "1.0", getPath: name => name === "exe" ? "/app/cfw" : "/home/user"
+    } });
     await launch(true);
     assert.match(files.get("/home/user/.config/autostart/cfw.desktop"), /Exec="\/app\/cfw"/);
     await launch(false);
     assert.equal(files.has("/home/user/.config/autostart/cfw.desktop"), false);
-    for (const platform of ["win32", "darwin"]) {
+    for (const platform of ["win32", "darwin", "linux"]) {
         await createAutoLaunch({ ...deps, platform })(false);
         assert.deepEqual(calls.at(-1), ["app", "setLoginItemSettings", { openAtLogin: false }]);
     }
@@ -104,4 +109,28 @@ test("Vue capability plugin reads current settings and publishes proxy status on
     assert.equal(await Vue.prototype.$setSystemProxy(false), false);
     assert.equal(calls.length, count);
     assert.ok(commands.length >= 2);
+});
+
+test("all system proxy callers are serialized and a rejected command cannot strand later requests", async () => {
+    const requests = [];
+    let finish;
+    const Vue = { prototype: {} };
+    const store = { state: { app: { settings: {} } }, getters: { mixedPort: 7890 }, commit() {} };
+    createRendererCapabilities({
+        status: {},
+        systemProxy: { set: async ({ enabled }) => {
+            requests.push(enabled);
+            if (requests.length === 1) await new Promise((_resolve, reject) => { finish = reject; });
+            return true;
+        } }
+    }).install(Vue, { store });
+    const first = Vue.prototype.$setSystemProxy(true);
+    const second = Vue.prototype.$setSystemProxy(false);
+    const rejection = assert.rejects(first, /command failed/);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(requests, [true]);
+    finish(Error("command failed"));
+    await rejection;
+    assert.equal(await second, true);
+    assert.deepEqual(requests, [true, false]);
 });

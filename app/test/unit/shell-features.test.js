@@ -363,10 +363,10 @@ assert.equal(mainWindow.touchBar.items.length, 7);
 mainWindow.touchBar.items[1].click();
 assert.deepEqual(sent.at(-1), ["menu-item-change", "proxy"]);
 
-const policy = createUnsafeUrlPolicy({ ipcMain });
-ipcListeners.get("set-allow-unsafe-urls")(null, ["https://unsafe.test"]);
-assert.equal(policy.includes("https://unsafe.test"), true);
-assert.equal(policy.includes("https://other.test"), false);
+const policy = createUnsafeUrlPolicy({ ipcMain, getMainWindow: () => mainWindow });
+ipcListeners.get("set-allow-unsafe-urls")({ sender: mainWindow.webContents, senderFrame: mainWindow.webContents.mainFrame }, ["https://unsafe.test"]);
+assert.equal(policy.allowsCertificate("https://unsafe.test", mainWindow.webContents), true);
+assert.equal(policy.allowsCertificate("https://other.test", mainWindow.webContents), false);
 
 let axiosConfig;
 const clashClient = createClashClientRegistry({
@@ -377,11 +377,13 @@ const clashClient = createClashClientRegistry({
         }
     }
 });
-registerClashClientInfo({ ipcMain, registry: clashClient });
-ipcListeners.get("clash-core-info")(null, { port: 9090, secret: "token" });
+registerClashClientInfo({ ipcMain, registry: clashClient, getMainWindow: () => mainWindow });
+ipcListeners.get("clash-core-info")({ sender: mainWindow.webContents, senderFrame: mainWindow.webContents.mainFrame }, { port: 9090, secret: "token" });
 assert.deepEqual(axiosConfig, {
     baseURL: "http://127.0.0.1:9090/",
     timeout: 5000,
+    proxy: false,
+    maxRedirects: 0,
     headers: { Authorization: "Bearer token" }
 });
 assert.deepEqual(clashClient.getClient(), { id: "client" });

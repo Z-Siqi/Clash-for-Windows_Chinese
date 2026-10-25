@@ -5,18 +5,12 @@ const defineProperty = require("@babel/runtime/helpers/defineProperty");
 const slicedToArray = require("@babel/runtime/helpers/slicedToArray");
 const toConsumableArray = require("@babel/runtime/helpers/toConsumableArray");
 const regenerator = require("@babel/runtime/regenerator");
-const dhcp = require("dhcp");
 const qrcode = require("qrcode");
-const readLastLines = require("read-last-lines");
-const tarStream = require("tar-stream");
-const zlib = require("zlib");
 const draggable = require("vuedraggable");
 
 const { createClashApi } = require("../../core/network/clash-api");
-const { createClashServiceApi } = require("../../core/network/clash-service-api");
 const { connectionStatus, proxyStatus } = require("../../features/application-state/status");
-const { normalizeConnectionsSnapshot, normalizeStructuredLog, parseCoreLogLine } = require("../../features/clash-core/core-api-compat");
-const { createClashCoreRuntime } = require("../../features/clash-core/clash-core-runtime");
+const { normalizeStructuredLog, parseCoreLogLine } = require("../../features/clash-core/core-api-compat");
 const { createGeneralPage } = require("../../features/clash-core/general-page");
 const { createGeneralPageWorkflow } = require("../../features/clash-core/general-page-workflow");
 const { createConnectionsPage } = require("../../features/connections/page");
@@ -35,47 +29,75 @@ const { createProxiesPage } = require("../../features/proxies/page");
 const { defineComponent } = require("../../features/renderer-ui/component");
 const { createRouterPage } = require("../../features/router/page");
 const { createSettingsPage } = require("../../features/settings/page");
-const { createTunRuntime } = require("../../features/tun/tun-runtime");
 const { createRendererConfiguration } = require("./configuration");
-const { refreshProfile } = require("./refresh-profile");
+const { refreshProfile, refreshTapAfterSetup } = require("./refresh-profile");
 const { persistSelection } = require("../../features/profiles/persist-selection");
+const { networkModeDiagnostics } = require("../../features/profiles/network-mode-diagnostics");
+const { buildTunConfig } = require("../../features/tun/build-tun-config");
 
-function createRendererPages({ Vuex, Language, modifyState, runtime, components, version }) {
-    const language = () => new Language(modifyState.language);
+function createRendererPages({ Vuex, modifyState, runtime, components, version }) {
+    const language = runtime.getLanguage;
     const languageIndex = () => modifyState.language;
     const {
-        axios, cache, childProcess, cron, defaultBypass, defaultPac, electron, firewall,
+        axios, cache, cron, defaultBypass, defaultPac, electron, firewall,
         fs, getPort, getDefaultInterface, getNetworkInterfaces, getWlanInterfaces,
-        Koa, keys, lodash, logger, moment, mousetrap, net, os, path, platform,
-        profileParser, requireFromString, runMacSystemProxyCommand, scheduler,
-        scripts, serviceModule, store, sudoPrompt, updateApplication, utilities,
+        keys, lodash, logger, moment, mousetrap, net, path, platform,
+        profileParser, runMacSystemProxyCommand, scheduler,
+        scripts, serviceModule, store, utilities,
         uuid, yaml
     } = runtime;
 
     const home = createHomePage({
         defineComponent, Vuex, lodash, draggable, cache,
-        connectionStatus, proxyStatus, runtimeProcess: process, electron,
-        requireFromString, path, fs, moment, scheduler,
-        keys, Hint: components.Hint, childProcess, logger, os,
-        httpClient: axios, yaml, sudoPrompt,
+        connectionStatus, proxyStatus, runtimeProcess: runtime.processObject, electron,
+        path, fs, moment, scheduler,
+        keys, Hint: components.Hint, logger,
+        httpClient: axios, yaml,
+        publicContent: runtime.publicContent,
         validatePort: utilities.isPortInRange, notify: utilities.notify,
         showMessageBox: utilities.showMessageBox, updateYaml: utilities.updateYaml,
         hash: utilities.hashText,
         sleep: utilities.delay, shouldReplaceWintun: utilities.isNewVersion,
-        detectInterface: getDefaultInterface, store, defaultPac, Koa, getPort,
+        detectInterface: getDefaultInterface, store, defaultPac, getPort,
+        checkPort: runtime.checkPort,
+        checkMixedPort: runtime.checkMixedPort,
+        openCoreLog: runtime.openCoreLog,
+        startPacServer: async home => {
+            const result = await runtime.coreConfigRepository.startPac(home);
+            store.commit("SET_INNER_SERVER_PORT", { port: result.port });
+            return result;
+        },
+        refreshTapRuntime: (vm, installed) => refreshTapAfterSetup(vm, {
+            hasTap: runtime.profileNetworkEffects.hasTap, connectedStatus: connectionStatus.CONNECTED, getLanguage: language
+        }, installed),
         downloadProfile: profileParser.downloadProfile, net,
         runMacCommand: runMacSystemProxyCommand, uuid,
         firewallRuleExists: firewall.status, getWlanInterfaces,
         mousetrap, cron, serviceStatus: serviceModule.statusService,
         serviceActiveStatus: serviceModule.status.Active,
-        runtimeState: modifyState, languageKey: "language", getLanguage: language,
-        refreshRendererProfile: refreshProfile, createRendererConfiguration,
-        persistSelection, createClashServiceApi, createTunRuntime, createClashCoreRuntime,
+        runtimeState: modifyState, getLanguage: language,
+        refreshRendererProfile: (vm, dependencies) => refreshProfile(vm, {
+            ...dependencies, onProfileApplied: () => store.commit("ADD_PROFILE_REFRESH_TIMES", { times: 1 })
+        }),
+        profileNetworkEffects: runtime.profileNetworkEffects,
+        runMixin: runtime.runMixin,
+        prepareMixin: async settings => {
+            ensureMixinDefaults(settings);
+            if (Number(settings.mixinType) === 1) await runtime.validateMixinCode(settings.mixinCode);
+            else await validateMixinSettings(settings, { parseYaml: yaml.parse });
+        },
+        runTrayScript: runtime.runTrayScript,
+        startUserProcesses: runtime.startUserProcesses,
+        profileFiles: runtime.profilesRepository,
+        createRendererConfiguration: (vm, dependencies) => createRendererConfiguration(vm, {
+            ...dependencies, profilesRepository: runtime.profilesRepository, coreConfigRepository: runtime.coreConfigRepository
+        }),
+        persistSelection, createTunRuntime: () => runtime.tun,
+        createClashCoreRuntime: () => runtime.coreLifecycle,
         isMacOS: platform.isMacOS, isWindows: platform.isWindows,
         isLinux: platform.isLinux, currentTarget: platform.assetTarget,
         updateTargets: {
             windowsX64: platform.windowsX64,
-            windowsIa32: platform.windowsX86,
             windowsArm64: platform.windowsArm64,
             macArm64: platform.macArm64,
             macX64: platform.macX64,
@@ -84,15 +106,23 @@ function createRendererPages({ Vuex, Language, modifyState, runtime, components,
     });
 
     const generalWorkflow = createGeneralPageWorkflow({
-        getLanguage: language, path, fs, moment, yaml, httpClient: require("got"), zlib,
-        tarStream, childProcess, sudoExec: sudoPrompt.exec, electron, cache, keys,
+        getLanguage: language, path, moment, yaml, electron, cache, keys,
+        checkMixedPort: runtime.checkMixedPort,
         getNetworkInterfaces,
+        getTapInstalled: runtime.profileNetworkEffects.hasTap,
+        getNetworkDiagnostics: vm => networkModeDiagnostics({
+            config: vm.currentProfilePayload, tunRequested: vm.isTunEnable,
+            tunConfig: buildTunConfig(vm.$parent.tunSettings, runtime.processObject.platform, vm.settings.proxyCore),
+            systemProxyOn: vm.isSystemProxyOn, tapActive: !!vm.$parent.tun2socks
+        }),
+        terminal: runtime.terminal,
+        coreConfigRepository: runtime.coreConfigRepository,
         platform: {
             isMacOS: platform.isMacOS,
             isWindows: platform.isWindows,
             isLinux: platform.isLinux
         },
-        updateApplication, logger, connectedStatus: connectionStatus.CONNECTED,
+        connectedStatus: connectionStatus.CONNECTED,
         service: {
             needUpdate: serviceModule.needUpdate,
             update: serviceModule.updateService,
@@ -108,32 +138,31 @@ function createRendererPages({ Vuex, Language, modifyState, runtime, components,
             updateYaml: utilities.updateYaml,
             showMessageBox: utilities.showMessageBox,
             notify: utilities.notify
-        },
-        ensureMixinDefaults,
-        validateMixinSettings
+        }
     });
     const general = createGeneralPage({
         defineComponent, Vuex, getLanguage: language, version, workflow: generalWorkflow,
-        components, shell: electron.shell, fs, yaml,
+        components, shell: electron.shell, fs, yaml, readCoreLog: runtime.readCoreLog,
         platform: { isMacOS: platform.isMacOS, isWindows: platform.isWindows },
         utilities: {
-            buildTunConfig: utilities.buildTunConfig,
+            buildTunConfig: (settings, coreType) => buildTunConfig(settings, runtime.processObject.platform, coreType),
             showMessageBox: utilities.showMessageBox
         },
         scheduler,
-        os
+        getNetworkAddresses: runtime.getNetworkAddresses
     });
 
     const logs = createLogsPage({
         defineComponent, Vuex, getLanguage: language, moment,
         flattenValues: utilities.flattenValues, notify: utilities.notify,
         uniqueId: lodash.uniqueId, connectedStatus: connectionStatus.CONNECTED,
-        clipboard: electron.clipboard, readLastLines, cache, keys,
+        clipboard: electron.clipboard, readCoreLog: runtime.readCoreLog, cache, keys,
         SelectView: components.SelectView, normalizeStructuredLog, parseCoreLogLine
     });
     const provider = createProvidersPage({
         defineComponent, Vuex, getLanguage: language, moment,
-        connectedStatus: connectionStatus.CONNECTED, electron, fs, path,
+        connectedStatus: connectionStatus.CONNECTED, providerFiles: runtime.providerFiles,
+        onProxyProviderUpdated: () => store.commit("ADD_PROXY_REFRESH_TIMES", { times: 1 }),
         Hint: components.Hint
     });
     const proxy = createProxiesPage({
@@ -145,20 +174,21 @@ function createRendererPages({ Vuex, Language, modifyState, runtime, components,
         scheduler, getLanguage: language
     });
     const router = createRouterPage({
-        defineComponent, Vuex, getLanguage: language, electron, cache, keys, dhcp,
-        getNetworkInterfaces,
-        getHijackAddresses: () => store.state.app.routerHijackMacAddresses || []
+        defineComponent, Vuex, getLanguage: language, cache, keys,
+        getNetworkInterfaces, dhcpService: runtime.dhcpService
     });
 
     const ProfileEditor = createProfileEditor({
         defineComponent, Vuex, getLanguage: language, buildProxyConfig,
-        fs, path, yaml, draggable
+        fs, path, yaml, draggable, profileFiles: runtime.profilesRepository
     });
     const RuleEditor = createRuleEditor({
         defineComponent, Vuex, getLanguage: language, moment, yaml, fs, path, lodash,
+        profileFiles: runtime.profilesRepository,
         notify: utilities.notify, cloneJson: utilities.cloneJson
     });
     const serverWorkflow = createServerPageWorkflow({
+        profileFiles: runtime.profilesRepository,
         labels: language(), getLanguage: language, moment, yaml, fs, path, electron, lodash,
         CancelToken: axios.CancelToken, downloadProfile: profileParser.downloadProfile,
         runUserScript: scripts.run, profileScriptType: scripts.profileScriptType, scheduler,
@@ -166,7 +196,7 @@ function createRendererPages({ Vuex, Language, modifyState, runtime, components,
         showMessageBox: utilities.showMessageBox, formatBytes: utilities.formatBytes
     });
     const server = createServerPage({
-        defineComponent, Vuex, getLanguage: language, getLanguageIndex: languageIndex,
+        defineComponent, Vuex, getLanguage: language,
         workflow: serverWorkflow, draggable, ProfileEditor, RuleEditor,
         Hint: components.Hint, qrcode, shortenText: utilities.shortenText,
         confirmOpenExternal: utilities.confirmOpenExternal
@@ -179,24 +209,27 @@ function createRendererPages({ Vuex, Language, modifyState, runtime, components,
         EscCapture: components.EscCapture, formatBytes: utilities.formatBytes,
         flattenValues: utilities.flattenValues, notify: utilities.notify,
         clipboard: electron.clipboard, getLanguage: language,
-        getLanguageIndex: languageIndex, normalizeConnectionsSnapshot
+        getLanguageIndex: languageIndex
     });
     const setting = createSettingsPage({
+        openApplicationLog: runtime.openApplicationLog,
+        externalEditor: runtime.externalEditor,
+        profileDirectory: runtime.profileDirectory,
         defineComponent, cache, keys, yaml, fs, Vuex,
         SimpleInput: components.SimpleInput, SelectView: components.SelectView,
         SwitchView: components.SwitchView, draggable, Navigator: components.Navigator,
         Hint: components.Hint, defaultBypass, defaultPac,
-        getNetworkInterfaces, electron, path, childProcess, uuid,
+        getNetworkInterfaces, electron, path, uuid,
         isMacOS: platform.isMacOS, isWindows: platform.isWindows,
         logger, showMessageBox: utilities.showMessageBox, updateYaml: utilities.updateYaml,
         Info: components.InfoIcon, getWlanInterfaces,
         getLanguage: language,
-        setLanguageIndex: value => { modifyState.language = value; },
+        setLanguageIndex: runtime.setLanguageIndex,
         languageKey: "language", renderConnectionDisconnectSettings
     });
     const about = createFeedbackPage({
-        defineComponent, escCaptureComponent: components.EscCapture, Language,
-        modifyState, cache, keys, httpClient: axios, shell: electron.shell
+        defineComponent, escCaptureComponent: components.EscCapture, getLanguage: language,
+        cache, keys, publicContent: runtime.publicContent, shell: electron.shell
     });
 
     return { home, general, proxy, provider, log: logs, server, connection, router, setting, about };

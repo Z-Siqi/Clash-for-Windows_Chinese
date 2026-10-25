@@ -1,9 +1,14 @@
 "use strict";
 
+const { languageIndex } = require("../../core/i18n/language");
+const { renderSecurityCompatibilitySettings } = require("./security-controls");
+const { settingsElement } = require("./proxy-operation-guards");
+const { parsePort } = require("../../core/network/tcp-port");
+
 function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, languageKey, renderConnectionDisconnectSettings }) {
     return function renderSettingsPage() {
                     const viewModel = this;
-                    const createElement = viewModel._self._c;
+                    const createElement = settingsElement(viewModel, viewModel._self._c);
                     const labels = getLanguage();
                     return createElement("div", {
                         staticClass: "main-setting-view"
@@ -83,14 +88,11 @@ function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, 
                         model: {
                             value: viewModel.settings.disableLoadingAdsLink,
                             callback: function (value) {
-                                if (value) {
-                                    cache.put(keys.AD_IMAGES, "");
-                                }
                                 viewModel.$set(viewModel.settings, "disableLoadingAdsLink", value)
                             },
                             expression: "settings.disableLoadingAdsLink"
                         }
-                    })], 1)]), viewModel._v(" "), createElement("Section", {
+                    })], 1), ...renderSecurityCompatibilitySettings(viewModel.$createElement, viewModel, labels)]), viewModel._v(" "), createElement("Section", {
                         attrs: {
                             title: labels.general()
                         }
@@ -254,32 +256,18 @@ function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, 
                             },
                             expression: "settings.showNewVersionIcon"
                         }
-                    })], 1), viewModel._v(" "), viewModel.isMacOS ? createElement("div", {
-                        staticClass: "item"
-                    }, [createElement("div", {
-                        staticClass: "flex items-center"
-                    }, [createElement("div", [viewModel._v(labels.automaticUpgrade())]), viewModel._v(" "), createElement("Info", [viewModel._v(labels.automaticUpgradeDescribe())])], 1), viewModel._v(" "), createElement("SwitchView", {
-                        model: {
-                            value: viewModel.settings.silentUpdate,
-                            callback: function(value) {
-                                viewModel.$set(viewModel.settings, "silentUpdate", value)
-                            },
-                            expression: "settings.silentUpdate"
-                        }
-                    })], 1) : viewModel._e(), viewModel._v(" "), createElement("div", {
+                    })], 1), viewModel._v(" "), createElement("div", {
                         staticClass: "item"
                     }, [createElement("div", [viewModel._v(labels.languageString())]), viewModel._v(" "), createElement("SelectView", {
                         attrs: {
                             items: ["简体中文", "English"]
                         },
                         model: {
-                            value: cache.get(languageKey) === null ? 0 : cache.get(languageKey),
+                            value: languageIndex(labels.locale()),
                             callback: function (value) {
-                                if (value != cache.get(languageKey)) {
-                                    cache.put(languageKey, value);
-                                    setLanguageIndex(value);
+                                if (value !== cache.get(languageKey)) {
                                     viewModel.$set(viewModel.settings, "language", value);
-                                    require("electron").ipcRenderer.invoke("window", "reload");
+                                    setLanguageIndex(value);
                                 }
                             },
                             expression: "settings.language"
@@ -455,7 +443,7 @@ function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, 
                             },
                             expression: "settings.trayProxiesStyle"
                         }
-                    })], 1), viewModel._v(" "), !viewModel.isLinux && [0, 1].includes(viewModel.settings.trayProxiesStyle) ? createElement("div", {
+                    })], 1), viewModel._v(" "), !viewModel.isLinux && [0, 1].includes(viewModel.settings.trayProxiesStyle ?? 0) ? createElement("div", {
                         staticClass: "item"
                     }, [createElement("div", {
                         staticClass: "flex items-center"
@@ -477,7 +465,7 @@ function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, 
                         staticClass: "item"
                     }, [createElement("div", {
                         staticClass: "flex items-center"
-                    }, [createElement("div", [viewModel._v(labels.enhancedTray())]), viewModel._v(" "), createElement("Info", [viewModel._v(labels.enhancedTrayDescribeFirst()), createElement("br"), createElement("br"), createElement("b", [viewModel._v("")]), viewModel._v(labels.enhancedTrayDescribeSecond() + ' \n           \n            '), createElement("a", {
+                    }, [createElement("div", [viewModel._v(labels.enhancedTray())]), viewModel._v(" "), createElement("Info", { props: { rounded: true } }, [viewModel._v(labels.enhancedTrayDescribeFirst()), createElement("br"), createElement("br"), createElement("b", [viewModel._v("")]), viewModel._v(labels.enhancedTrayDescribeSecond() + ' \n           \n            '), createElement("a", {
                         attrs: {
                             href: "https://web.archive.org/web/20230304232259/docs.cfw.lbyczf.com/contents/tray.html"
                         }
@@ -626,12 +614,13 @@ function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, 
                         staticClass: "item"
                     }, [createElement("div", {
                         staticClass: "flex items-center"
-                    }, [createElement("div", [viewModel._v("PAC Server Port")]), viewModel._v(" "), createElement("Info", [viewModel._v("\n            Leave it empty to use a random port."), createElement("br"), createElement("br"), viewModel._v(" "), createElement("strong", [viewModel._v("Restart the APP")]), viewModel._v(" to take effect.\n          ")])], 1), viewModel._v(" "), createElement("div", {
+                    }, [createElement("div", [viewModel._v(labels.pacServerPort())]), viewModel._v(" "), createElement("Info", [viewModel._v(labels.pacPortRestart())])], 1), viewModel._v(" "), createElement("div", {
                         staticClass: "item"
                     }, [createElement("SimpleInput", {
                         attrs: {
                             placeholder: "random",
-                            type: "number"
+                            type: "number",
+                            validate: value => value === "" || parsePort(value) !== null ? "" : labels.invalidPort()
                         },
                         model: {
                             value: viewModel.settings.innerServerPort,
@@ -640,7 +629,7 @@ function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, 
                             },
                             expression: "settings.innerServerPort"
                         }
-                    })], 1)]) : viewModel._e(), viewModel._v(" "), 1 !== viewModel.settings.systemProxyTypeIndex || viewModel.isMacOS ? createElement("div", {
+                    }), viewModel.pacRuntimePort > 0 ? createElement("span", { attrs: { role: "status" } }, [viewModel._v(labels.pacCurrentPort({ port: viewModel.pacRuntimePort }))]) : viewModel._e()], 1)]) : viewModel._e(), viewModel._v(" "), 1 !== viewModel.settings.systemProxyTypeIndex || viewModel.isMacOS ? createElement("div", {
                         staticClass: "item"
                     }, [createElement("div", {
                         staticClass: "flex items-center"
@@ -1019,16 +1008,17 @@ function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, 
                     }, [createElement("div", [viewModel._v(labels.folderPath())]), viewModel._v(" "), createElement("Info", [viewModel._v(labels.folderPathDescribe())])], 1), viewModel._v(" "), createElement("div", {
                         staticClass: "item"
                     }, [createElement("SimpleInput", {
+                        ref: "profilePathInput",
                         staticClass: "short-input",
                         attrs: {
                             placeholder: labels.profilesFolderPath()
                         },
                         model: {
-                            value: viewModel.settings.profilePath,
+                            value: viewModel.profilePathDraft,
                             callback: function(value) {
-                                viewModel.$set(viewModel.settings, "profilePath", value)
+                                viewModel.profilePathDraft = value
                             },
-                            expression: "settings.profilePath"
+                            expression: "profilePathDraft"
                         }
                     }), viewModel._v(" "), createElement("MoreHint", {
                         staticClass: "hint",
@@ -1038,6 +1028,10 @@ function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, 
                         on: {
                             click: viewModel.handleChooseProfilePath
                         }
+                    }), viewModel._v(" "), createElement("MoreHint", {
+                        staticClass: "hint",
+                        attrs: { text: labels.saveAndRestart() },
+                        on: { click: viewModel.handleSaveProfilePath }
                     })], 1)]), viewModel._v(" "), createElement("div", {
                         staticClass: "item"
                     }, [createElement("div", {
@@ -1137,7 +1131,14 @@ function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, 
                         attrs: {
                             title: labels.actions()
                         }
-                    }, [createElement("div", {
+                    }, [createElement("div", { staticClass: "item" }, [
+                        createElement("div", { attrs: { title: labels.actionScriptsEnabledDescribe() } }, [viewModel._v(labels.actionScriptsEnabled())]),
+                        createElement("SwitchView", { model: {
+                            value: viewModel.settings.actionScriptsEnabled !== false,
+                            callback: value => viewModel.$set(viewModel.settings, "actionScriptsEnabled", value),
+                            expression: "settings.actionScriptsEnabled"
+                        } })
+                    ]), createElement("div", {
                         staticClass: "item"
                     }, [createElement("div", {
                         staticClass: "flex items-center"
@@ -1363,11 +1364,11 @@ function createSettingsPageRender({ getLanguage, cache, keys, setLanguageIndex, 
                             list: viewModel.sections
                         },
                         on: {
-                            select: viewModel.handleNavigatToGroup
+                            select: viewModel.handleNavigateToGroup
                         }
                     }), viewModel._v(" "), viewModel.isEditingExternal ? createElement("div", {
                         staticClass: "edit-hint"
-                    }, [createElement("div", [viewModel._v("\n      " + viewModel._s(["", "Visual Studio Code", "Sublime Text"][viewModel.settings.editor]) + " is\n      launching for editing.\n    ")]), viewModel._v(" "), createElement("div", [viewModel._v(labels.closeEditingFileSave())]), viewModel._v(" "), createElement("div", {
+                    }, [createElement("div", [viewModel._v(labels.externalEditorLaunching({ editor: ["", "Visual Studio Code", labels.custom()][viewModel.settings.editor] }))]), viewModel._v(" "), createElement("div", [viewModel._v(labels.closeEditingFileSave())]), viewModel._v(" "), createElement("div", {
                         staticClass: "btn",
                         on: {
                             click: viewModel.cancelExternalEdit

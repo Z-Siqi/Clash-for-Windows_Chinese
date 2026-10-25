@@ -11,9 +11,10 @@ const yaml = require("../../main/node_modules/yaml");
 const { createRendererUtilities } = require("../../main/dist/electron/entry/renderer/utilities");
 const { installEditorLanguage } = require("../../main/dist/electron/features/renderer-ui/editor-language");
 
-function utilities({ store, ipcRenderer, shell, Notification, storage = new Map(), locale = 0 }) {
+function utilities({ store, ipcRenderer, shell, Notification, updateConfig, storage = new Map(), locale = 0 }) {
     return createRendererUtilities({
         fs, path, yaml, crypto, BigNumber, store, ipcRenderer, shell, Notification,
+        updateConfig,
         getLanguage: () => locale,
         cache: { get: key => storage.get(key), put: (key, value) => storage.set(key, value) },
         keys: { LAST_VERSION_CODE: "lastVersion" }
@@ -35,8 +36,14 @@ test("Renderer utilities: confirmed links, notification click behavior and seman
     response = 1;
     await api.confirmOpenExternal("https://example.com");
     assert.deepEqual(opened, ["https://example.com/"]);
+    assert.equal(await api.confirmOpenExternal("http://lan.test/home"), false);
+    store.state.app.settings.allowHttpExternalLinks = true;
+    assert.equal(await api.confirmOpenExternal("http://lan.test/home"), true);
+    assert.equal(opened.at(-1), "http://lan.test/home");
+    store.state.app.settings.allowHttpExternalLinks = false;
+    assert.equal(await api.confirmOpenExternal("http://lan.test/home"), false);
     assert.equal(await api.confirmOpenExternal("file:///C:/malware.exe"), false);
-    assert.deepEqual(opened, ["https://example.com/"]);
+    assert.deepEqual(opened, ["https://example.com/", "http://lan.test/home"]);
     api.notify("disabled");
     assert.equal(notices.length, 0);
     store.state.app.settings.showNotifications = true;
@@ -55,11 +62,13 @@ test("Renderer utilities: confirmed links, notification click behavior and seman
     assert.deepEqual(calls.at(-1), ["example.com", "A"]);
 });
 
-test("Renderer utilities: settings helpers, version cache and temporary directory removal preserve their contracts", async t => {
+test("Renderer utilities: value helpers and version cache use a restricted configuration writer", async t => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), "cfw-ui-tools-"));
     t.after(() => fs.rmSync(home, { recursive: true, force: true }));
     const storage = new Map([["lastVersion", "old"]]);
-    const api = utilities({ store: { state: { app: { settings: {} } } }, storage, ipcRenderer: { invoke: async () => "current" } });
+    const writes = [];
+    const api = utilities({ store: { state: { app: { settings: {}, clashPath: home } } }, storage, ipcRenderer: { invoke: async () => "current" },
+        updateConfig: (key, value) => writes.push([key, value]) });
     assert.equal(await api.isNewVersion(), true);
     assert.equal(await api.isNewVersion(), true);
     assert.equal(storage.get("lastVersion"), "current");
@@ -70,19 +79,15 @@ test("Renderer utilities: settings helpers, version cache and temporary director
     for (const port of [1, 65535, "7890"]) assert.equal(api.isPortInRange(port), true);
     for (const port of [0, 65536, 1.5, "1.5", true, NaN]) assert.equal(api.isPortInRange(port), false);
     const file = path.join(home, "config.yaml");
-    fs.writeFileSync(file, "mode: rule\n");
-    await api.updateYaml(file, "mode", "direct");
-    assert.match(fs.readFileSync(file, "utf8"), /mode: direct/);
-    const directory = path.join(home, "nested");
-    fs.mkdirSync(path.join(directory, "child"), { recursive: true });
-    fs.writeFileSync(path.join(directory, "child", "data"), "test");
-    api.removeDirectory(directory);
-    assert.equal(fs.existsSync(directory), false);
-    assert.equal(fs.existsSync(file), true);
+    await api.updateYaml(file, "mixed-port", 12345);
+    assert.deepEqual(writes, [["mixed-port", 12345]]);
+    await assert.rejects(() => api.updateYaml(path.join(home, "arbitrary.yaml"), "mixed-port", 12345), /Unsupported/);
+    assert.equal(api.removeDirectory, undefined);
 });
 
 test("Editor foundation: production bridge registers YAML completion, provider lenses, commands and scroll state", async () => {
     const providers = {}, commands = {}, calls = [];
+    let locale = 1;
     let fail = false;
     const monaco = {
         languages: {
@@ -95,17 +100,14 @@ test("Editor foundation: production bridge registers YAML completion, provider l
         monaco,
         hashText: () => "hash",
         showMessageBox: options => calls.push(options),
-        shell: { showItemInFolder: file => calls.push(file) },
+        providerFiles: { findCache: async () => "proxy", revealCache: async hash => calls.push(hash) },
         clipboard: { writeText: value => calls.push(value) },
-        axios: { get: async url => {
-            calls.push(url);
+        publicContent: { getSnippets: async section => {
+            calls.push(section);
             if (fail) throw Error("offline");
             return { status: 200, data: { rule: { prefix: "MATCH", body: ["MATCH,${1:policy}"] } } };
         } },
-        fs: { existsSync: file => file.endsWith(path.join("proxy", "hash.yaml")) },
-        path,
-        store: { state: { app: { clashPath: "/profile" } } },
-        labels: new (require("../../main/dist/electron/core/i18n/language").Language)(1)
+        labels: require("../../main/dist/electron/core/i18n/language").createTranslator(() => locale)
     });
     const model = {
         getValue: () => 'proxies:\n  - name: "node"\nrules:\n  ',
@@ -115,7 +117,7 @@ test("Editor foundation: production bridge registers YAML completion, provider l
     const result = await providers.completion.provideCompletionItems(model, { lineNumber: 4, column: 3 });
     assert.equal(result.suggestions[0].insertText, "MATCH,${1|DIRECT,REJECT,GLOBAL,node|}");
     assert.ok(result.suggestions.some(item => item.label === "node"));
-    assert.match(calls[0], /\/rules\.code-snippets$/);
+    assert.equal(calls[0], "rules");
     fail = true;
     assert.deepEqual(await providers.completion.provideCompletionItems(model, { lineNumber: 4, column: 3 }), { suggestions: [] });
     const lenses = await providers.lens.provideCodeLenses(model);
@@ -125,6 +127,10 @@ test("Editor foundation: production bridge registers YAML completion, provider l
     assert.equal(calls.at(-1), file);
     await commands.copyURLMD5(null, "hash");
     assert.equal(calls.at(-2), "hash.yaml");
+    assert.equal(calls.at(-1).title, "MD5 Copied");
+    locale = 0;
+    await commands.copyURLMD5(null, "hash");
+    assert.deepEqual(calls.at(-1), { title: "MD5 已复制", message: "MD5: hash" });
     api.saveScrollPosition("document", 84);
     assert.equal(api.getScrollPosition("document"), 84);
     assert.equal(api.getScrollPosition("new"), 0);

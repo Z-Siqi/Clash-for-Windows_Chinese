@@ -2,6 +2,11 @@
 
 ## Runtime model
 
+The repository maintains an unpacked Electron application without the complete
+original Vue/Webpack source project. The files under `app/main/dist/electron`
+are maintained source. The build emits browser assets under `app/build/generated`
+without regenerating these maintained entries.
+
 ```text
 main.js (Electron main process)
   |-- BrowserWindow, tray, native menus, and application lifecycle
@@ -10,13 +15,13 @@ main.js (Electron main process)
                          <-> IPC
 renderer.js (Vue 2 renderer process)
   |-- routing, Vuex, page components, and localized text
-  |-- Clash HTTP and WebSocket clients
+  |-- semantic IPC clients for Clash HTTP and WebSocket operations
   `-- General, Proxies, Logs, Connections, and other views
 ```
 
-The dashboard page runs with `nodeIntegration: false` and `contextIsolation: true`. `preload.js` loads Monaco and the readable CommonJS renderer composition in the isolated preload world after the DOM is ready. The page main world receives no generic Node or IPC bridge and cannot access `process`, `require`, runtime paths, or the Monaco object. Its CSP disallows string evaluation; the isolated world's own CSP retains `unsafe-eval` only because user-script compatibility still requires it. Axios is explicitly pinned to its Node HTTP adapter before the renderer loads so DOM globals cannot silently select XHR and subject core or profile requests to the isolated world's origin and CSP. The preload remains unsandboxed only for this compatibility loader; moving the remaining privileged renderer operations behind narrow main-process IPC is required before enabling Chromium renderer sandboxing.
+The dashboard runs with `sandbox: true`, `nodeIntegration: false` and `contextIsolation: true`. Its small sandboxed preload requires only Electron and keeps its IPC object private to isolated world 999. After DOM readiness, the main process injects the fixed local Monaco asset and the browser renderer into that world, checking the renderer's SHA-256 manifest first. The renderer is built from the readable CommonJS source with browser-targeted esbuild; Node built-ins are rejected during compilation. The page main world receives no generic Node or IPC bridge and cannot access `process`, `require`, runtime paths or Monaco. Both worlds' CSP disallows string evaluation. User JavaScript executes in separate utility workers rather than the renderer. Native controller transport and fixed public-content requests run in the host; Chromium CORS enforcement remains enabled.
 
-`main.js` and `renderer.js` are small executable CommonJS entry points. They delegate to named composition modules below `entry/main` and `entry/renderer`; numeric webpack module tables and numeric loaders are not permitted in production source.
+`main.js` composes the Electron main process, and `renderer.js` starts the composition root under `entry/renderer`. Both are executable CommonJS source files. Product behavior belongs in `core/` or its owning feature, with cross-feature composition under `entry/`; numeric webpack module tables and loaders are not permitted in production source.
 
 ## Module layers
 
@@ -28,6 +33,104 @@ The dashboard page runs with `nodeIntegration: false` and `contextIsolation: tru
 | Executable entries | Start the Electron main and renderer composition roots | Must remain small and contain no product behavior |
 
 Architecture tests reject upward dependencies from `core/` and horizontal dependencies between features.
+
+Connections snapshots are parsed, indexed, sorted and filtered in a dedicated
+browser worker composed by `entry/worker/connections.js`. The renderer forwards
+raw snapshots with at most one waiting update and receives only the visible
+connection rows, visible filter labels, totals and selected detail. Both lists
+use fixed-height windows; the full dataset stays outside Vue observation.
+The build emits and hashes the worker beside the renderer, and the host checks
+both assets before startup. Paused cached pages retain their worker snapshot;
+other route exits and component destruction terminate the worker.
+
+## Localization
+
+`core/i18n/` owns the packaged i18next catalogs for `zh-CN` and `en-US`. Existing
+settings retain their numeric language values (`0` and `1`). Renderer consumers
+share a translator that reads the observable language selection on each call;
+existing page methods are thin adapters to the catalog keys. Utility workers use
+fixed translators so concurrent downloads cannot change the renderer's locale.
+
+Until an explicit preference is saved, startup uses the first operating-system
+UI language: Chinese selects Simplified Chinese; English and all unsupported
+languages select English. This automatic choice is not persisted, so later
+system-language changes remain effective. Saved profile and cache choices take
+precedence over the system default.
+
+Language selection updates the current Vue application and notifies the tray
+without reloading the window or restarting the proxy core. Sidebar entries and
+saved ordering use route paths; legacy ordering stored as either language's titles
+is still understood. Translated component labels belong in render functions or
+computed properties, rather than initial component data. Caller-supplied dialog
+content remains the caller's text.
+
+Successful configuration application advances the profile refresh revision;
+updating an active subscription also reapplies its downloaded file. Proxy-provider
+updates advance a separate proxy revision so retained proxy pages refresh without
+resetting concurrent provider operations. Reads wait for pending configuration
+application, and an older fetch cannot replace a newer proxy snapshot.
+
+Native network enumeration, local core lifecycle, controller REST operations and
+WebSocket subscriptions are owned by the main process. Renderer clients use named
+IPC operations; callers cannot supply controller endpoints, transport overrides,
+core executable paths or process IDs. These handlers authorize the dashboard's
+main frame. Core startup resolves the packaged binary locally and accepts only
+the standard or portable application data directory.
+
+Settings and profile-list repositories also run in the main process. Their narrow
+synchronous IPC preserves Vuex's persist-before-publish behavior; core configuration
+initialization and port randomization use asynchronous IPC. The PAC listener runs
+in the main process and binds only to loopback. Profile reads, modification times,
+and orphan cleanup are named operations restricted to the configured profile folder.
+Service Mode, system proxy, TAP, DHCP renewal, fixed terminal choices and current
+core log reads are owned by the main process. Saved Profile and Proxy action
+scripts execute in a separate Electron utility process, with notification, dialog
+and DNS context operations mediated by the host. A script that does not finish
+within 30 seconds terminates its worker and rejects pending script jobs. User scripts
+retain their intentional Node capabilities; the utility process is not an OS sandbox
+for those user-authored programs. Saved Mixin and tray scripts use the same worker;
+Mixin validation compiles syntax without executing the submitted source. Profile
+downloads and configured parsers use a separate worker with saved settings and
+profile metadata, a two-minute default deadline, and cancellation by its requesting frame.
+Saved per-URL download exceptions can raise finite size/time limits for trusted
+subscriptions; the host and utility worker resolve the same shared policy.
+The Router page also delegates DHCP startup, stop and live gateway/DNS policy to
+the main process. The host validates the selected local interface and subnet,
+owns the fixed UDP port 67 listener and its power-save blocker, and releases both
+on dashboard navigation, destruction or application shutdown. Tests use fake
+servers and never send DHCP packets to the developer's network.
+
+Port availability checks and random candidate selection use a named main-process
+interface bound to loopback. Mixed-port changes still require confirmation from
+the core that it activated the requested port. Settings opens parser, script and
+GUI logs by fixed identity rather than supplying a filesystem target.
+
+External editors receive only a private temporary document. The host loads the
+editor command from saved settings and spawns it without a shell; shell pipelines
+and redirection are not supported in custom editor commands. GeoIP downloads and
+archive extraction are hosted in the main process and replace only the fixed
+`Country.mmdb` atomically, with bounded downloads and expanded archives.
+
+User-defined executables come only from saved settings and their process handles
+remain in the main process. Provider editing resolves names from the last
+successfully applied configuration. Generated cache files stay under the fixed
+provider cache directories; other File providers require a matching native file
+selection before access is granted. Monaco cache links use validated hashes,
+never renderer-supplied filesystem paths. Folder and current-log navigation also
+use fixed host operations. HTTPS external links and loopback HTTP dashboard links
+are validated by the host before opening.
+
+Windows TAP filters IPv4 multicast before lwIP/SOCKS in the pinned native helper
+to prevent local discovery traffic from recursively re-entering the proxy. The
+TAP management preference `tapAllowMulticast` defaults to false; explicit true
+restores legacy forwarding and skips multicast route bypass. Preference changes
+use the shared profile operation and restore the accepted TAP policy on failure.
+`features/tun/multicast-routes.js` leases only the managed TAP's active multicast
+route and restores its previous metric on cancellation, stop, or process exit,
+without overwriting a subsequent route edit. Route bypass is best effort for
+non-admin sessions; native packet filtering remains active independently of the
+selected core and routing mode. Native source pins, builds, and portable packet
+tests are documented in `scripts/native/tap-forwarder/README.md`.
 
 ## Primary owners
 
@@ -41,7 +144,7 @@ Architecture tests reject upward dependencies from `core/` and horizontal depend
 - `features/settings/core-config-repository.js`: core configuration initialization, legacy port migration, and startup port persistence.
 - `features/profiles/`: profile preparation/application, provider path rewriting, profile list persistence, and selected-proxy snapshots. `server-page-workflow.js` owns the Profiles/Server page state, profile actions, download cancellation, file watcher, and route lifecycle. `server-page.js` owns the page shell and QR dialog; `profile-editor-page.js` and `rule-editor-page.js` own the two embedded editors.
 - `features/providers/page.js`: owns the Providers page, provider refresh/health-check/edit interactions, and its page-specific button component.
-- `features/router/page.js`: owns the Router/Hijack page, DHCP configuration dialog, client aliases, gateway selection, and DHCP server lifecycle.
+- `features/router/page.js`: owns the Router/Hijack page, DHCP configuration dialog, client aliases and gateway selection. `register-dhcp-ipc.js` owns the native server lifecycle.
 - `features/home/page.js`: owns the Home application shell, startup orchestration, core/TUN/configuration lifecycle, scheduled profile updates, tray traffic rendering, main menu, and status bar.
 - `features/settings/page.js`: owns the Settings page, its local controls, editor/file workflows, core selection, and settings navigation.
 - `features/proxies/page.js`: owns the Proxies page, group and provider projection, latency tests, selection, filtering, animation, and route lifecycle.
@@ -54,7 +157,8 @@ Architecture tests reject upward dependencies from `core/` and horizontal depend
 - `entry/renderer/`: composes profile/TUN/network behavior and Vuex with settings/profile repositories. Existing page mutation/action names remain compatible.
 - `core/i18n/language.js`: the shared translation catalog and legacy language-selection semantics.
 - `core/runtime/`: platform identities, value formatting, module interoperability, and the page interval scheduler without Vue or Electron dependencies.
-- `features/application/update-runtime.js`: self-update download progress, listener cleanup, and platform installation mechanics. Page code owns only the user-facing update decision flow.
+- `core/release/`: single release configuration, asset naming, version comparison and trusted update asset selection. See `docs/development/releases.md` for release synchronization and update delivery.
+- `features/application/update-runtime.js`: dormant download/install helper with listener-order regression coverage. The current General page opens the release page; automatic installation has no production entry point.
 - `features/renderer-ui/`: routing policy, the application shell, shared component factories, dialog registration, native UI actions, and Monaco YAML language integration.
 - `features/feedback/page.js`: the Feedback/About page, its external-link policy, advertisement cache refresh, and lazy-image state.
 - `entry/renderer/mount-application.js`: installs the shared dialogs, capability plugin, global mixin, and root Vue instance. The root uses a render function and does not require template compilation.
@@ -65,14 +169,14 @@ Architecture tests reject upward dependencies from `core/` and horizontal depend
 
 Shared components live under `features/renderer-ui/components/`. Each exports a named factory accepting its runtime dependencies. `entry/renderer/create-shared-components.js` constructs them and publishes the stable dialog names. Styles are stored separately in `dist/electron/styles.css`.
 
-`features/renderer-ui/component.js` attaches render functions and preserves the original Vue scope IDs. The migrated render functions retain the established DOM, classes, slots, and event contracts so packaged CSS and existing page callers remain compatible. Vue and Babel helpers are loaded as ordinary declared dependencies. Monaco is an exact, lockfile-controlled build-time dependency compiled into a browser-only asset under `app/build/generated/monaco/` and injected into packages before ASAR creation.
+`features/renderer-ui/component.js` attaches render functions and preserves the original Vue scope IDs. Render functions retain the established DOM, classes, slots, and event contracts so packaged CSS and existing page callers remain compatible. Vue and Babel helpers are loaded as ordinary declared dependencies. Monaco is an exact, lockfile-controlled build-time dependency compiled into a browser-only asset under `app/build/generated/monaco/` and injected into packages before ASAR creation.
 
 The singleton dialog names (`$alert`, `$code`, `$diff`, `$dns`, `$input`, `$menu`, `$script`, `$select`, and `$toast`) remain stable. Install the global mixin before constructing these instances so dialogs receive the same settings, semantic Clash API, and platform computed properties as routed pages. Platform and native capabilities are composed at renderer entry points rather than imported across feature boundaries. Monaco link detection is disabled in embedded editors so an editor upgrade cannot bypass the application's public external-navigation policy through a private Monaco opener API.
 
-`scripts/build/build-monaco.js` is the only owner of the Monaco browser build. It checks the expected Monaco, DOMPurify, and esbuild versions, emits local worker and style assets, copies license notices, and writes SHA-256 hashes to `manifest.json`. Generated assets are intentionally ignored by Git and are rebuilt by install, every test entry point, and every packaging script; production packaging must never fetch Monaco from a CDN. The isolated preload loader supplies explicit Monaco and renderer asset bases because neither script is loaded by a page `<script>` element.
+`scripts/build/build-monaco.js` is the only owner of the Monaco browser build. It checks the expected Monaco, DOMPurify, and esbuild versions, emits local worker and style assets, copies license notices, and writes SHA-256 hashes to `manifest.json`. Generated assets are intentionally ignored by Git and are rebuilt by install, every test entry point, and every packaging script; production packaging must never fetch Monaco from a CDN. The main-process sandbox loader supplies explicit Monaco and renderer asset bases because neither script is loaded by a page `<script>` element. `scripts/build/build-renderer.js` builds the browser renderer and records its source inputs and SHA-256 checksum.
 
 Settings and profile-list writes use same-directory atomic replacement. Store mutations publish the new persisted state only after the write succeeds. Local-storage preferences keep their existing keys, and SSID overrides do not replace permanent TUN, mixin, or system-proxy preferences. Renderer refreshes are serialized per component instance to prevent asynchronous mixins from applying configurations out of order.
 
 ## How to trace runtime behavior
 
-Start from `main.js` or `renderer.js`, follow the named composition root, and then open the owning feature. Cross-feature wiring belongs in `entry/`; product behavior belongs in the corresponding feature. Architecture tests reject numeric webpack loaders and verify that the entries continue to delegate to named modules.
+Start from `main.js` or `renderer.js`, follow the named composition, and then open the owning feature. Architecture tests enforce dependency direction and named delegation, reject numeric webpack loaders and regenerator state machines, and require descriptive production bindings.

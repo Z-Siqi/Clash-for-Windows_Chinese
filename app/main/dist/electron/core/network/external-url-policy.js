@@ -1,6 +1,6 @@
 "use strict";
 
-function normalizeExternalUrl(value, { allowLoopbackHttp = false } = {}) {
+function normalizeExternalUrl(value, { allowLoopbackHttp = false, allowHttp = false } = {}) {
     let parsed;
     try {
         parsed = new URL(String(value));
@@ -8,6 +8,7 @@ function normalizeExternalUrl(value, { allowLoopbackHttp = false } = {}) {
         return null;
     }
     if (parsed.protocol === "https:") return parsed.toString();
+    if (parsed.protocol === "http:" && allowHttp === true) return parsed.toString();
     if (
         allowLoopbackHttp &&
         parsed.protocol === "http:" &&

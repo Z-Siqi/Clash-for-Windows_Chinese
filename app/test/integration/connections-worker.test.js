@@ -1,0 +1,50 @@
+"use strict";
+
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const { Worker } = require("node:worker_threads");
+const { createConnectionPipeline } = require("../../main/dist/electron/features/connections/connection-pipeline");
+const { largeConnections } = require("../fixtures/large-connections");
+
+test("built browser worker processes 100k raw connections off-thread and returns bounded views", { timeout: 20000 }, async t => {
+    const source = fs.readFileSync(path.resolve(__dirname, "../../build/generated/renderer/connections-worker.js"), "utf8");
+    const thread = new Worker(`const { parentPort } = require('node:worker_threads');
+        globalThis.self = { postMessage: value => parentPort.postMessage(value) };
+        parentPort.on('message', data => self.onmessage({data, origin: ''}));\n${source}`, { eval: true });
+    const worker = { postMessage: value => thread.postMessage(value), terminate: () => thread.terminate() };
+    thread.on("message", data => worker.onmessage({ data }));
+    thread.on("error", error => worker.onerror(error));
+    let resolveView;
+    const nextView = () => new Promise(resolve => { resolveView = resolve; });
+    const pipeline = createConnectionPipeline({ worker, onView: view => resolveView(view) });
+    t.after(() => pipeline.dispose());
+    const payload = JSON.stringify({ connections: largeConnections(), uploadTotal: 123 });
+    let ticks = 0;
+    const timer = setInterval(() => ticks++, 5);
+    t.after(() => clearInterval(timer));
+    let pending = nextView();
+    pipeline.update({ sort: 3, height: 600 }, payload, 1000);
+    const first = await pending;
+    assert.equal(first.total, 100000);
+    assert.equal(first.count, 100000);
+    assert.ok(first.rows.length < 30);
+    assert.equal(first.rows[0].id, "connection-99999");
+    assert.ok(ticks > 1, "renderer event loop stays available while the worker parses/sorts");
+    pending = nextView();
+    pipeline.update({ sort: 4, search: "host-99999", detailId: "connection-0" });
+    const filtered = await pending;
+    assert.equal(filtered.count, 1);
+    assert.equal(filtered.detail.id, "connection-0", "detail lookup includes offscreen and filtered connections");
+    await pipeline.command("beginClose", { search: "network=udp", sort: 4 });
+    const { batch } = await pipeline.command("closeBatch");
+    assert.equal(batch.length, 16);
+    assert.equal(batch[0], "connection-1");
+    const malformed = await new Promise(resolve => {
+        worker.onmessage = ({ data }) => resolve(data);
+        worker.postMessage({ id: 100, payload: "sensitive-payload-is-not-json", query: {} });
+    });
+    assert.equal(malformed.error, "Could not process connections");
+    assert.equal(JSON.stringify(malformed).includes("sensitive-payload"), false);
+});

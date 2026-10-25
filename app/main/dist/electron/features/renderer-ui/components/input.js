@@ -2,8 +2,8 @@
 
 const { defineComponent } = require("../component");
 
-function createInput({ Vuex, escCaptureComponent, Language, modifyState } = {}) {
-    const labels = new Language(modifyState.language);
+function createInput({ Vuex, escCaptureComponent, getLanguage } = {}) {
+    const labels = getLanguage();
     const options = {
         components: { EscCapture: escCaptureComponent },
         name: "InputView",
@@ -17,7 +17,8 @@ function createInput({ Vuex, escCaptureComponent, Language, modifyState } = {}) 
                 hint: "",
                 resolve: null,
                 reject: null,
-                confirmText: labels.ok()
+                confirmText: null,
+                submitOnEnter: false
             };
         },
         watch: {},
@@ -25,13 +26,14 @@ function createInput({ Vuex, escCaptureComponent, Language, modifyState } = {}) 
             ...Vuex.mapGetters(["theme"])
         },
         methods: {
-            show({ data = [], title = "", hint = "", confirmText = labels.ok() }) {
+            show({ data = [], title = "", hint = "", confirmText = null, submitOnEnter = false }) {
                 this.error = "";
                 this.isShow = true;
                 this.data = data;
                 this.title = title;
                 this.hint = hint;
                 this.confirmText = confirmText;
+                this.submitOnEnter = submitOnEnter;
                 this.$nextTick(() => {
                     for (const index in data) {
                         const textarea = this.$refs[`ta${index}`][0];
@@ -49,15 +51,21 @@ function createInput({ Vuex, escCaptureComponent, Language, modifyState } = {}) 
                 textarea.style.height = "";
                 textarea.style.height = `${textarea.scrollHeight + 2}px`;
             },
-            handleKeyDown() {},
+            handleKeyDown(event) {
+                if (!this.submitOnEnter || event.isComposing || event.keyCode === 229
+                    || !(event.key === "Enter" || event.keyCode === 13)) return;
+                event.preventDefault();
+                event.stopPropagation();
+                if (!event.repeat) this.handleDone();
+            },
             handleCancel() {
                 this.isShow = false;
                 this.reject();
             },
             handleDone() {
-                const missingRequiredValue = this.data.some(item => item.required && item.value === "");
+                const missingRequiredValue = this.data.some(item => item.required && (item.value == null || String(item.value).trim() === ""));
                 if (missingRequiredValue) {
-                    this.error = "required key(*) must have a value";
+                    this.error = labels.requiredFieldMissing();
                     return;
                 }
 
@@ -142,7 +150,7 @@ function createInput({ Vuex, escCaptureComponent, Language, modifyState } = {}) 
             createElement("div", { staticClass: "card-btns" }, [
                 createElement("div", { staticClass: "btn btn-cancel", on: { click: viewModel.handleCancel } }, [viewModel._v(labels.cancel())]),
                 viewModel._v(" "),
-                createElement("div", { staticClass: "btn btn-ok", on: { click: viewModel.handleDone } }, [viewModel._v(viewModel._s(viewModel.confirmText))])
+                createElement("div", { staticClass: "btn btn-ok", on: { click: viewModel.handleDone } }, [viewModel._v(viewModel._s(viewModel.confirmText == null ? labels.ok() : viewModel.confirmText))])
             ])
         ])])]);
     }, "15034054");

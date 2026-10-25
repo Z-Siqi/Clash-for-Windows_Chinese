@@ -16,6 +16,8 @@ const { loadSettingsFromDisk } = require(
 
 const defaults = mergeSettings({});
 assert.deepEqual(defaults, {
+    shortcutSystemProxy: "", shortcutTun: "", shortcutMixin: "", shortcutGlobalMode: "",
+    shortcutRuleMode: "", shortcutDirectMode: "", shortcutScriptMode: "", shortcutRunTrayScript: "", shortcutShowHideDashboard: "",
     showNewVersionIcon: true,
     hideAfterStartup: false,
     randomControllerPort: true,
@@ -24,10 +26,14 @@ assert.deepEqual(defaults, {
     hideTrayIcon: false,
     connShowProcess: true,
     connProxyDisconnect: true,
+    legacyTapMode: "mixin",
+    tapAllowMulticast: false,
     showTrayProxyDelayIndicator: true,
     checkForUpdates: true,
+    actionScriptsEnabled: true,
     disableLoadingAdsLink: true,
     allowRemoteProfileParsers: false,
+    allowHttpExternalLinks: false,
     proxyCore: "mihomo"
 });
 
@@ -45,6 +51,7 @@ const custom = mergeSettings({
     checkForUpdates: false,
     disableLoadingAdsLink: false,
     allowRemoteProfileParsers: true,
+    allowHttpExternalLinks: true,
     preserved: "value"
 });
 assert.equal(custom.showNewVersionIcon, false);
@@ -54,7 +61,15 @@ assert.equal(custom.runTimeFormat, "HH:mm:ss");
 assert.equal(custom.trayOrders, customTrayOrders);
 assert.equal(custom.preserved, "value");
 assert.equal(custom.connProxyDisconnect, false);
+assert.equal(mergeSettings({ legacyTapEnabled: false, proxyCore: "clash" }).legacyTapMode, "disabled");
+assert.equal(mergeSettings({ proxyCore: "clash" }).legacyTapMode, "mixin");
+assert.equal(mergeSettings({ tapAllowMulticast: true }).tapAllowMulticast, true);
+assert.equal(mergeSettings({ tapAllowMulticast: "true" }).tapAllowMulticast, false);
 assert.equal(custom.allowRemoteProfileParsers, true);
+assert.equal(custom.allowHttpExternalLinks, true);
+assert.equal(mergeSettings({ actionScriptsEnabled: false }).actionScriptsEnabled, false);
+assert.equal(mergeSettings({ shortcutTun: "Control+F9" }).shortcutTun, "Control+F9");
+assert.equal(mergeSettings({ allowHttpExternalLinks: "true" }).allowHttpExternalLinks, false);
 
 const defaultsAgain = mergeSettings({});
 defaults.trayOrders[0].push("mutated");
@@ -93,7 +108,11 @@ assert.match(
 );
 const mixinSource = fs.readFileSync(path.join(path.dirname(rendererPath), "entry/renderer/global-mixin.js"), "utf8");
 assert.match(mixinSource, /require\("..\/..\/features\/settings\/load-settings"\)/);
-assert.match(mixinSource, /const mergedSettings = loadSettingsFromDisk\(\{/);
+assert.match(mixinSource, /settingsRepository\.load\(this\.clashPath, onProfileLanguage\)/);
+assert.match(mixinSource, /loadSettingsFromDisk\(\{/);
+assert.equal(mergeSettings({ proxyCore: "mihomo" }).proxyCore, "mihomo");
+assert.equal(mergeSettings({ proxyCore: "unknown" }).proxyCore, "mihomo");
+assert.equal(mergeSettings({ proxyCore: "clash" }).proxyCore, "clash");
 assert.match(
     settingsPageComponentsSource,
     /viewModel\.\$slots\.default\?\.length/,

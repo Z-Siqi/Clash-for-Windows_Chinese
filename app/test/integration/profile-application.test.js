@@ -19,7 +19,7 @@ test("Application: production refresh adapter reads disk, applies config, update
         const events = [];
         const model = {
             profilesPath: home, profiles: { index: 0, files: [{ time: "profile.yaml", mode: "direct", selected: [{ name: "group", now: "DIRECT" }] }] },
-            confData: { ipv6: false, "log-level": "warning" }, settings: {}, menuItems: [{ title: "Providers" }],
+            confData: { ipv6: false, "log-level": "warning" }, settings: {}, menuItems: [{ path: "/home/provider" }],
             clashApi: { async putConfig(body) { events.push("apply"); assert.equal(yaml.parse(body.payload)["log-level"], "warning"); return { status: 204 }; }, async selectProxy() { events.push("select"); } },
             setCurrentProfilePayload({ payload }) { this.payload = payload; },
             setMenuItems({ items }) { this.menuItems = items; }, resetDNS() { events.push("resetDNS"); },
@@ -27,7 +27,7 @@ test("Application: production refresh adapter reads disk, applies config, update
         };
         const refresh = bundledRefresh("linux");
         assert.equal((await refresh.call(model)).success, true);
-        assert.deepEqual(events, ["apply", "resetDNS", "select", "direct", "stopTAP"]);
+        assert.deepEqual(events, ["apply", "select", "direct", "resetDNS", "stopTAP"]);
         assert.equal(model.menuItems.length, 0); assert.deepEqual(model.payload.rules, []);
         fs.writeFileSync(path.join(home, "profile.yaml"), "[broken");
         const previous = events.length;
@@ -54,8 +54,16 @@ for (const locale of [0, 1]) {
         const page = profilePage({ store, parent, dialogs, locale });
         await page.handleProfileClick(0);
         assert.equal(apiCalls, 0); assert.equal(dialogs.length, 1);
-        assert.equal(dialogs[0].message, new (rendererLanguage())(locale).couldNotSwitchProfile());
-        assert.match(dialogs[0].detail, /Error:/);
+        assert.equal(dialogs[0].message, (rendererLanguage())(locale).couldNotSwitchProfile());
+        const labels = (rendererLanguage())(locale);
+        assert.ok(dialogs[0].detail.includes(labels.profileInvalidYaml()));
+        assert.equal(store.state.app.profiles.index, -1);
+        assert.equal(page.loadingProfileIndex.length, 0);
+        fs.writeFileSync(path.join(home, "broken.yaml"), "not a configuration");
+        await page.handleProfileClick(0);
+        assert.equal(dialogs.length, 2);
+        assert.equal(dialogs[1].detail, labels.profileApplyError({ reason: labels.profileNotMapping(), location: "" }));
+        assert.equal(apiCalls, 0);
         assert.equal(store.state.app.profiles.index, -1);
         assert.equal(page.loadingProfileIndex.length, 0);
     });
@@ -65,12 +73,12 @@ for (const locale of [0, 1]) {
         t.after(() => fs.rmSync(home, { recursive: true, force: true }));
         fs.writeFileSync(path.join(home, "profile.yaml"), "dns:\n  enable: true\n  listen: 0.0.0.0:53\n");
         const result = await bundledRefresh("win32", locale).call({
-            profilesPath: home, profiles: { index: 0, files: [{ time: "profile.yaml" }] }, settings: {},
+            profilesPath: home, profiles: { index: 0, files: [{ time: "profile.yaml" }] }, settings: { legacyTapMode: "enabled" },
             detectInterfaceName() {}, finalInterfaceName: "",
             clashApi: { putConfig() { throw Error("must not apply without an interface"); } }
         });
         assert.equal(result.success, false);
-        assert.equal(result.message, new (rendererLanguage())(locale).modeTAPEnableNoINthisYAML());
+        assert.equal(result.message, (rendererLanguage())(locale).modeTAPEnableNoINthisYAML());
         assert.match(result.message, locale === 0 ? /接口名称/ : /interface-name/);
     });
 }

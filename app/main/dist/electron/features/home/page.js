@@ -15,8 +15,7 @@ function createHomePage(dependencies) {
         connectedStatus: dependencies.connectionStatus.CONNECTED,
         electron: dependencies.electron,
         path: dependencies.path,
-        fs: dependencies.fs,
-        requireFromString: dependencies.requireFromString,
+        runTrayScript: dependencies.runTrayScript,
         scheduler: dependencies.scheduler,
         Hint: dependencies.Hint,
         getLanguage: dependencies.getLanguage

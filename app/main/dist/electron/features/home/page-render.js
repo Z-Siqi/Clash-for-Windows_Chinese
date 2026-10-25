@@ -16,9 +16,9 @@ function renderHomePage() {
             attrs: { src: "static/imgs/minecraft.png" }
         }) : viewModel._e(),
         viewModel._v(" "),
-        createElement("StatusBar"),
+        createElement("StatusBar", { attrs: { inert: viewModel.serviceOperation ? "" : null } }),
         viewModel._v(" "),
-        createElement("main", [
+        createElement("main", { attrs: { inert: viewModel.serviceOperation ? "" : null } }, [
             createElement("div", { staticClass: "left-side" }, [createElement("main-menu", {
                 attrs: {
                     "download-progress": viewModel.pkgDownloadProgress,
@@ -46,7 +46,19 @@ function renderHomePage() {
                     on: { click() { return viewModel.showLogsFolder(); } }
                 }, [viewModel._v(`\n        ${viewModel._s(viewModel.statusHint)}\n      `)])
             ])
-        ])
+        ]),
+        viewModel.serviceOperation ? createElement("div", {
+            attrs: { role: "status", "aria-live": "polite", "aria-busy": "true" },
+            style: {
+                position: "fixed", inset: "0", zIndex: "10000", display: "flex",
+                flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "16px",
+                background: "var(--bgc)", color: "var(--fgc)", cursor: "wait"
+            },
+            on: { click: event => event.stopPropagation() }
+        }, [
+            createElement("span", { staticClass: "icon cfw-operation-spinner", style: { display: "inline-block", fontSize: "32px" } }, [viewModel._v("autorenew")]),
+            createElement("div", [viewModel._v(viewModel.serviceOperationHint)])
+        ]) : viewModel._e()
     ], 1);
 }
 

@@ -40,6 +40,7 @@ async function main() {
     };
 
     let maximized = true;
+    let pinned = false;
     const mainWindow = {
         on(event, callback) {
             windowListeners.set(event, callback);
@@ -73,13 +74,16 @@ async function main() {
         hide: operation("hide"),
         minimize: operation("minimize"),
         maximize: operation("maximize"),
-        setAlwaysOnTop: operation("setAlwaysOnTop"),
+        setAlwaysOnTop: value => { calls.push(["setAlwaysOnTop", value]); pinned = value; },
+        isAlwaysOnTop: () => pinned,
         isVisible: operation("isVisible"),
         setFullScreen: operation("setFullScreen"),
         reload: operation("reload")
     };
 
     const app = {
+        commandLine: { getSwitchValue: () => "x11" },
+        once() {},
         isQuiting: false,
         isPackaged: true,
         dock: {
@@ -134,7 +138,7 @@ async function main() {
         clipboard,
         getMainWindow: () => mainWindow
     });
-    registerDownloadIpc({ ipcMain, getMainWindow: () => mainWindow });
+    registerDownloadIpc({ ipcMain, getMainWindow: () => mainWindow, app: { getPath: () => "C:/temp" }, fs: { mkdtempSync: () => "C:/temp/private-update" }, path });
     registerMainWindowLifecycle({
         mainWindow,
         app,
@@ -152,7 +156,10 @@ async function main() {
             "globalShortcut",
             "native-admin",
             "nativeTheme",
+            "network-info",
             "powerSaveBlocker",
+            "profile-directory",
+            "profile-files",
             "start-download",
             "webContent",
             "window"
@@ -164,16 +171,16 @@ async function main() {
     assert.deepEqual(calls.at(-1), ["getPath", "temp"]);
     assert.equal(await invoke("app", "exit", 7), "exit-result");
     assert.deepEqual(calls.slice(-2), [["unmaximize"], ["exit", 7]]);
-    ipcListeners.get("cleanup-done")();
+    ipcListeners.get("cleanup-done")({ sender: mainWindow.webContents });
     assert.equal(app.isQuiting, true);
     assert.deepEqual(calls.at(-1), ["quit"]);
 
-    assert.equal(await invoke("window", "setAlwaysOnTop", true), "setAlwaysOnTop-result");
+    assert.equal(await invoke("window", "setAlwaysOnTop", true), true);
     assert.deepEqual(calls.at(-1), ["setAlwaysOnTop", true]);
     assert.equal(await invoke("webContent", "toggleDevTools"), "devtools");
 
     assert.equal(await invoke("dialog", "showMessageBox", { title: "test" }), "showMessageBox-result");
-    assert.deepEqual(calls.at(-1), ["showMessageBox", mainWindow, { title: "test" }]);
+    assert.deepEqual(calls.at(-1), ["showMessageBox", mainWindow, { buttons: ["OK"], title: "test" }]);
 
     assert.equal(await invoke("globalShortcut", "register", "Ctrl+Shift+X"), true);
     shortcutCallback();
@@ -192,8 +199,9 @@ async function main() {
     await handlers.get("clipboard")({ sender: mainWindow.webContents }, "writeText", "copy me");
     assert.deepEqual(calls.at(-1), ["clipboard-write", "copy me"]);
 
-    await handlers.get("start-download")(null, "https://example.test/app.exe", "C:\\Temp\\app.exe");
-    assert.deepEqual(calls.at(-1), ["downloadURL", "https://example.test/app.exe"]);
+    const updateUrl = "https://github.com/Z-Siqi/Clash-for-Windows_Chinese/releases/download/v1/update.exe";
+    const updateTarget = await handlers.get("start-download")({ sender: mainWindow.webContents, senderFrame: mainWindow.webContents.mainFrame }, updateUrl);
+    assert.deepEqual(calls.at(-1), ["downloadURL", updateUrl]);
     const itemListeners = new Map();
     const downloadItem = {
         setSavePath: operation("setSavePath"),
@@ -205,10 +213,12 @@ async function main() {
         },
         isPaused: () => false,
         getReceivedBytes: () => 25,
-        getTotalBytes: () => 100
+        getTotalBytes: () => 100,
+        getURLChain: () => [updateUrl]
     };
-    sessionListeners.get("will-download")(null, downloadItem);
-    assert.deepEqual(calls.at(-1), ["setSavePath", "C:\\Temp\\app.exe"]);
+    mainWindow.webContents.isDestroyed = () => false;
+    sessionListeners.get("will-download")(null, downloadItem, mainWindow.webContents);
+    assert.deepEqual(calls.at(-1), ["setSavePath", updateTarget]);
     itemListeners.get("updated")(null, "progressing");
     assert.deepEqual(sent.at(-1), ["download", "downloading", 0.25]);
     itemListeners.get("done")(null, "completed");
@@ -223,6 +233,11 @@ async function main() {
     assert.deepEqual(sent.at(-1), ["window-event", "close"]);
     windowListeners.get("session-end")(closeEvent);
     assert.deepEqual(sent.at(-1), ["app-exit"]);
+    app.isQuiting = true;
+    const quitting = calls.length;
+    windowListeners.get("close")(closeEvent);
+    assert.equal(calls.slice(quitting).some(([name]) => name === "exit" || name === "preventDefault"), false,
+        "app.quit must reach will-quit cleanup rather than app.exit or close-to-tray");
 
     verifyEnforcedDelegation();
     console.log("core IPC smoke: PASS");
@@ -235,7 +250,7 @@ async function main() {
     }
 
     function invoke(channel, operationName, ...args) {
-        return handlers.get(channel)(null, operationName, ...args);
+        return handlers.get(channel)({ sender: mainWindow.webContents }, operationName, ...args);
     }
 }
 

@@ -25,6 +25,7 @@ const { registerTrayStatusIpc } = require("./features/tray/register-tray-status-
 const { createTrayIconController } = require("./features/tray/tray-icon-controller");
 const { createTrayLifecycle } = require("./features/tray/tray-lifecycle");
 const { createTrayState, registerTrayStateIpc } = require("./features/tray/tray-state");
+const { createTrayProxyProgress } = require("./features/tray/proxy-operation-progress");
 const { createMainWindow: createMainWindowShell } = require("./features/window/create-main-window");
 const { registerMainWindowLifecycle } = require("./features/window/register-main-window-lifecycle");
 const { registerWindowControlIpc } = require("./features/window/register-window-control-ipc");
@@ -34,6 +35,9 @@ const { createClashApi } = require("./core/network/clash-api");
 const { createClashClientRegistry } = require("./core/network/clash-client-registry");
 const { registerClashClientInfo } = require("./entry/main/register-clash-client-info");
 const { registerCoreIpc } = require("./entry/main/register-core-ipc");
+const { installSandboxedRenderer } = require("./entry/main/load-sandboxed-renderer");
+const { createAuthorizedIpcMain } = require("./core/native/authorized-ipc");
+const { getSystemLanguage, createTranslator, initialLanguageIndex } = require("./core/i18n/language");
 
 function selectLanguage(language, chinese, english) {
     return language === 0 ? chinese : english;
@@ -43,6 +47,14 @@ function startApplication() {
     let mainWindow;
     let tray;
     let trayState;
+    let speedIndicator;
+    const labels = createTranslator(() => trayState?.language ?? initialLanguageIndex(null, getSystemLanguage(electron.app)));
+    const getLanguage = () => labels;
+    const authorizedIpcMain = createAuthorizedIpcMain({
+        ipcMain: electron.ipcMain,
+        getMainWindow: () => mainWindow,
+        getIndicatorWindow: () => speedIndicator?.getWindow()
+    });
 
     const packagedStaticRoot = path.join(process.resourcesPath, "static");
     const staticRoot = (fs.existsSync(packagedStaticRoot)
@@ -54,10 +66,9 @@ function startApplication() {
     global.__static = staticRoot;
     fixShellPath();
     electron.app.disableHardwareAcceleration();
-    electron.app.commandLine.appendSwitch("disable-features", "OutOfBlinkCors");
     if (process.platform === "darwin") electron.app.dock.hide();
 
-    const unsafeUrlPolicy = createUnsafeUrlPolicy({ ipcMain: electron.ipcMain });
+    const unsafeUrlPolicy = createUnsafeUrlPolicy({ ipcMain: authorizedIpcMain, getMainWindow: () => mainWindow });
     const clashClientRegistry = createClashClientRegistry({ axios });
     const clashApi = createClashApi({ getClient: clashClientRegistry.getClient });
     const showMainWindow = createShowMainWindow({ getMainWindow: () => mainWindow });
@@ -67,11 +78,12 @@ function startApplication() {
     });
 
     registerClashClientInfo({
-        ipcMain: electron.ipcMain,
-        registry: clashClientRegistry
+        ipcMain: authorizedIpcMain,
+        registry: clashClientRegistry,
+        getMainWindow: () => mainWindow
     });
     const stopNetworkChangeMonitor = registerWlanStatus({
-        ipcMain: electron.ipcMain,
+        ipcMain: authorizedIpcMain,
         networkChangeMonitor: createNetworkChangeMonitor({
             networkInterfaces: os.networkInterfaces
         }),
@@ -95,27 +107,39 @@ function startApplication() {
             nativeTheme: electron.nativeTheme,
             path,
             dirname: __dirname,
+            initializeRenderer: window => installSandboxedRenderer({
+                window, fs, path, crypto: require("crypto"), pathToFileURL: require("url").pathToFileURL,
+                dirname: __dirname, staticRoot, platform: process.platform, arch: process.arch, cwd: process.cwd(),
+                systemLanguage: getSystemLanguage(electron.app)
+            }),
             staticRoot,
             isLinux,
             app: electron.app,
             dialog: electron.dialog,
             url: dashboardUrl,
-            localize,
+            getLanguage,
             onRelaunch: relaunchApplication
         });
 
         registerDownloadIpc({
-            ipcMain: electron.ipcMain,
-            getMainWindow: () => mainWindow
+            ipcMain: authorizedIpcMain,
+            getMainWindow: () => mainWindow,
+            app: electron.app, fs, path
         });
         registerCoreIpc({
-            ipcMain: electron.ipcMain,
+            ipcMain: authorizedIpcMain,
             app: electron.app,
             dialog: electron.dialog,
             globalShortcut: electron.globalShortcut,
             nativeTheme: electron.nativeTheme,
             powerSaveBlocker: electron.powerSaveBlocker,
             clipboard: electron.clipboard,
+            shell: electron.shell,
+            clashApi,
+            clashClientRegistry,
+            unsafeUrlPolicy,
+            staticRoot,
+            getLanguage,
             getMainWindow: () => mainWindow
         });
         registerMainWindowLifecycle({
@@ -134,17 +158,17 @@ function startApplication() {
             getMainWindow: () => mainWindow
         });
         registerWindowControlIpc({
-            ipcMain: electron.ipcMain,
+            ipcMain: authorizedIpcMain,
             app: electron.app,
             getMainWindow: () => mainWindow,
             showMainWindow
         });
         registerTrayStatusIpc({
-            ipcMain: electron.ipcMain,
+            ipcMain: authorizedIpcMain,
             trayIconController
         });
         registerNotificationIpc({
-            ipcMain: electron.ipcMain,
+            ipcMain: authorizedIpcMain,
             Notification: electron.Notification,
             nativeImage: electron.nativeImage,
             shell: electron.shell,
@@ -153,7 +177,11 @@ function startApplication() {
         });
 
         trayState = createTrayState();
+        let trayProgress;
         const trayActions = {
+            requestProxyOperation: (operation, target) => trayProgress.request(operation, target),
+            getProxyProgressIcon: () => trayProgress?.getIcon(),
+            updateProxyIcons: items => trayLifecycle.updateProxyIcons(items),
             showDashboard: showMainWindow,
             sendRenderer(channel, ...args) {
                 return mainWindow.webContents.send(channel, ...args);
@@ -189,7 +217,7 @@ function startApplication() {
             actions: trayActions
         });
         const trayLifecycle = createTrayLifecycle({
-            ipcMain: electron.ipcMain,
+            ipcMain: authorizedIpcMain,
             Tray: electron.Tray,
             Menu: electron.Menu,
             nativeImage: electron.nativeImage,
@@ -221,17 +249,22 @@ function startApplication() {
         };
 
         refreshLinuxTrayMenu();
+        trayProgress = createTrayProxyProgress({ state: trayState, nativeImage: electron.nativeImage,
+            sendRenderer: trayActions.sendRenderer,
+            getMenus: () => [englishTrayMenu, chineseTrayMenu, trayLifecycle.getOpenMenu()],
+            refreshMenu: refreshLinuxTrayMenu });
         registerTrayStateIpc({
-            ipcMain: electron.ipcMain,
+            ipcMain: authorizedIpcMain,
             state: trayState,
             isLinux,
             getLocalizedMenu: () => localize(englishTrayMenu, chineseTrayMenu),
             getMenus: () => [englishTrayMenu, chineseTrayMenu],
             refreshMenu: refreshLinuxTrayMenu,
+            proxyProgress: trayProgress,
             showMainWindow
         });
-        registerSpeedIndicator({
-            ipcMain: electron.ipcMain,
+        speedIndicator = registerSpeedIndicator({
+            ipcMain: authorizedIpcMain,
             BrowserWindow: electron.BrowserWindow,
             nativeImage: electron.nativeImage,
             app: electron.app,
@@ -252,6 +285,7 @@ function startApplication() {
     registerAppLifecycle({
         app: electron.app,
         dialog: electron.dialog,
+        getLanguage,
         getMainWindow: () => mainWindow,
         createMainWindow: createApplicationWindow,
         showMainWindow,

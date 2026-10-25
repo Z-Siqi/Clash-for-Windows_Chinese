@@ -1,5 +1,7 @@
 "use strict";
 
+const { createTapViews } = require("./tap-management-view");
+
 function createGeneralPage({
     defineComponent,
     Vuex,
@@ -9,11 +11,12 @@ function createGeneralPage({
     components,
     shell,
     fs,
+    readCoreLog,
     yaml,
     platform,
     utilities,
     scheduler,
-    os
+    getNetworkAddresses
 }) {
     const {
         SelectView,
@@ -23,6 +26,8 @@ function createGeneralPage({
         InfoIcon,
         Hint
     } = components;
+    const { TapManagementView, TapStatusIcon } = createTapViews({ defineComponent, EscCapture, Hint, getLanguage });
+    const pendingTunSaves = new WeakSet();
 
     const ErrorView = defineComponent({
         data() {
@@ -55,12 +60,12 @@ function createGeneralPage({
             }
         },
         mounted() {
-            const refresh = () => {
+            const refresh = async () => {
                 const labels = getLanguage();
                 this.retries += 1;
                 if (this.clashPath && this.logFilePath) {
                     try {
-                        const content = fs.readFileSync(this.logFilePath);
+                        const content = readCoreLog ? await readCoreLog(1000) : fs.readFileSync(this.logFilePath);
                         const fatal = content.toString().split("\n")
                             .filter(line => /level=fatal/.test(line)).join("\n\n");
                         if (fatal) this.logs = fatal;
@@ -204,15 +209,16 @@ function createGeneralPage({
                 staticClass: "icon text-white"
             }, [viewModel._v("remove")])])]);
         }), viewModel._v(" "), viewModel.disabled ? viewModel._e() : createElement("div", {
-            staticClass: "flex items-center gap-2",
-            on: { click: viewModel.handleAddItem }
+            staticClass: "flex items-center gap-2"
         }, [createElement("input", {
             directives: [{ name: "model", rawName: "v-model", value: viewModel.addKey, expression: "addKey" }],
             attrs: { type: "text", placeholder: viewModel.keyPlaceHolder },
             domProps: { value: viewModel.addKey },
             on: { input: event => { if (!event.target.composing) viewModel.addKey = event.target.value; } }
-        }), viewModel._v(" "), createElement("span", {
-            staticClass: "btn btn-add clickable icon text-[#41b883]"
+        }), viewModel._v(" "), createElement("button", {
+            staticClass: "btn btn-add clickable icon text-[#41b883]",
+            attrs: { type: "button" },
+            on: { click: viewModel.handleAddItem }
         }, [viewModel._v("add")])])], 2);
     }, "352b843a");
 
@@ -232,21 +238,51 @@ function createGeneralPage({
                 interfaceName: "",
                 dnsHijacks: [],
                 isAutoRedir: false,
-                isAutoRedirAutoRoute: false
+                isAutoRedirAutoRoute: false,
+                mihomoAutoRedirect: null
             };
         },
         computed: {
             ...Vuex.mapState({ tunSettings: state => state.app.tunSettings }),
-            obj() { return utilities.buildTunConfig(this.$data); },
+            proxyCore() { return this.$store.state.app.settings?.proxyCore === "clash" ? "clash" : "mihomo"; },
+            autoRedirEnabled: {
+                get() { return this.proxyCore === "clash" ? this.isAutoRedir : this.mihomoAutoRedirect === true; },
+                set(value) {
+                    if (this.proxyCore === "clash") this.isAutoRedir = value;
+                    else this.mihomoAutoRedirect = value === true;
+                }
+            },
+            proxyBusy() { return !!this.$parent?.proxyBusy; },
+            obj() { return utilities.buildTunConfig(this.$data, this.proxyCore); },
             text() { return yaml.stringify(this.obj); }
         },
         methods: {
             ...Vuex.mapMutations({ setTunSettings: "SET_TUN_SETTINGS" }),
-            handleSave() {
-                this.setTunSettings({ settings: this.$data });
-                this.$emit("close");
+            async handleSave() {
+                if (this.proxyBusy || pendingTunSaves.has(this)) return false;
+                pendingTunSaves.add(this);
+                try {
+                    const core = this.proxyCore;
+                    if (this.isLinux && core === "mihomo" && this.mihomoAutoRedirect === true && this.tunSettings?.mihomoAutoRedirect !== true) {
+                        const labels = getLanguage();
+                        let selection;
+                        try {
+                            [selection] = await this.$select({ title: "Auto Redir", message: labels.autoRedirectConfirm(), items: [labels.enable(), labels.cancel()] });
+                        } catch { return false; }
+                        if (selection !== 0 || this.proxyBusy || this.proxyCore !== core || this._isDestroyed || this._isBeingDestroyed) return false;
+                    }
+                    this.setTunSettings({ settings: { ...this.$data } });
+                    this.$emit("close");
+                    return true;
+                } finally {
+                    pendingTunSaves.delete(this);
+                }
             },
-            handleReset() { this.setupComponent({}); },
+            handleReset() {
+                const otherCore = this.proxyCore === "clash" ? { mihomoAutoRedirect: this.mihomoAutoRedirect }
+                    : { isAutoRedir: this.isAutoRedir, isAutoRedirAutoRoute: this.isAutoRedirAutoRoute };
+                this.setupComponent(otherCore);
+            },
             handleOpenDocument() {
                 shell.openExternal("https://web.archive.org/web/20231001060822/dreamacro.github.io/clash/configuration/configuration-reference.html");
             },
@@ -263,7 +299,8 @@ function createGeneralPage({
                     interfaceName,
                     dnsHijacks,
                     isAutoRedir,
-                    isAutoRedirAutoRoute
+                    isAutoRedirAutoRoute,
+                    mihomoAutoRedirect
                 } = settings;
                 this.ipv6 = ipv6 !== undefined && ipv6;
                 this.stackType = [0, 1].includes(stackType) ? stackType : 0;
@@ -280,9 +317,12 @@ function createGeneralPage({
                 this.nameserverPolicy = nameserverPolicy || {};
                 this.isAutoDetectInterface = isAutoDetectInterface === undefined || isAutoDetectInterface;
                 this.interfaceName = interfaceName || "";
-                this.dnsHijacks = dnsHijacks || ["any:53"];
+                // Match the runtime default; opening and saving must not enable
+                // DNS interception for users who never selected it.
+                this.dnsHijacks = dnsHijacks || [];
                 this.isAutoRedir = isAutoRedir !== undefined && isAutoRedir;
                 this.isAutoRedirAutoRoute = isAutoRedirAutoRoute !== undefined && isAutoRedirAutoRoute;
+                this.mihomoAutoRedirect = typeof mihomoAutoRedirect === "boolean" ? mihomoAutoRedirect : null;
             }
         },
         mounted() { this.setupComponent(this.tunSettings || {}); }
@@ -294,7 +334,7 @@ function createGeneralPage({
             attrs: attributes,
             model: {
                 value: viewModel[propertyName],
-                callback: value => { viewModel[propertyName] = value; },
+                callback: value => { if (!viewModel.proxyBusy) viewModel[propertyName] = value; },
                 expression: propertyName
             }
         });
@@ -320,7 +360,9 @@ function createGeneralPage({
             viewModel._v(" "),
             createElement("div", { staticClass: "pannel" }, [
                 createElement("div", {
-                    staticClass: "left border-[1px] border-[color:var(--bc)]"
+                    staticClass: "left border-[1px] border-[color:var(--bc)]",
+                    class: { "cfw-operation-disabled": viewModel.proxyBusy },
+                    attrs: { inert: viewModel.proxyBusy ? "" : undefined }
                 }, [
                     renderSection("DNS IPv6", renderModelComponent("SwitchView", "ipv6"), "flex"),
                     viewModel._v(" "),
@@ -376,10 +418,16 @@ function createGeneralPage({
                     ]),
                     viewModel._v(" "),
                     viewModel.isLinux
-                        ? renderSection("Auto Redir", renderModelComponent("SwitchView", "isAutoRedir"), "flex")
+                        ? renderSection("Auto Redir", renderModelComponent("SwitchView", "autoRedirEnabled"), "flex")
                         : viewModel._e(),
                     viewModel._v(" "),
-                    viewModel.isLinux && viewModel.isAutoRedir
+                    viewModel.isLinux && viewModel.proxyCore === "mihomo"
+                        ? createElement("div", { staticClass: "text-sm opacity-70" }, [viewModel._v(
+                            viewModel.mihomoAutoRedirect === null && viewModel.isAutoRedir
+                                ? labels.autoRedirectConfirmationPending() : labels.autoRedirectRequiresRoute()
+                        )]) : viewModel._e(),
+                    viewModel._v(" "),
+                    viewModel.isLinux && viewModel.proxyCore === "clash" && viewModel.isAutoRedir
                         ? renderSection(
                             "Auto Route(Auto Redir)",
                             renderModelComponent("SwitchView", "isAutoRedirAutoRoute"),
@@ -406,6 +454,8 @@ function createGeneralPage({
                 viewModel._v(" "),
                 createElement("div", {
                     staticClass: "btn clickable",
+                    class: { "cfw-operation-disabled": viewModel.proxyBusy },
+                    attrs: { "aria-disabled": String(viewModel.proxyBusy) },
                     on: { click: viewModel.handleSave }
                 }, [viewModel._v(labels.save())])
             ])
@@ -459,13 +509,7 @@ function createGeneralPage({
         }, [viewModel._v(labels.resetDNSSettings())]), viewModel._v(" "), createElement("div", {
             staticClass: "font-normal mb-1 text-sm hint"
         }, [
-            viewModel._v("\n      If "),
-            createElement("span", [viewModel._v(labels.enabled())]),
-            viewModel._v(", "),
-            createElement("span", [viewModel._v(labels.customServers())]),
-            viewModel._v(" will be used to\n      reset the system DNS after TUN mode is disabled. Otherwise,\n      "),
-            createElement("span", [viewModel._v("Detected Servers")]),
-            viewModel._v("\n      will be used.\n    ")
+            viewModel._v(labels.resetDNSSettingsDescribe())
         ]), viewModel._v(" "), createElement("div", {
             staticClass: "pannel"
         }, [createElement("div", {
@@ -479,13 +523,13 @@ function createGeneralPage({
                 expression: "isUsingCustom"
             }
         })], 1), viewModel._v(" "), createElement("div", [
-            createElement("div", [viewModel._v("Custom Servers:")]),
+            createElement("div", [viewModel._v(`${labels.customServers()}:`)]),
             viewModel._v(" "),
             renderList("servers")
         ], 1)]), viewModel._v(" "), createElement("div", {
             staticClass: "right border-[1px] border-[color:var(--bc)]"
         }, [createElement("div", [
-            createElement("div", [viewModel._v("Detected Servers:")]),
+            createElement("div", [viewModel._v(`${labels.detectedServers()}:`)]),
             viewModel._v(" "),
             renderList("userDNS", true)
         ], 1)])]), viewModel._v(" "), createElement("div", {
@@ -511,8 +555,8 @@ function createGeneralPage({
                 }, []);
             }
         },
-        mounted() {
-            this.interfaces = Object.entries(os.networkInterfaces()).map(([name, addrs]) => ({ name, addrs }));
+        async mounted() {
+            this.interfaces = Object.entries(await getNetworkAddresses()).map(([name, addrs]) => ({ name, addrs }));
         }
     }, function renderInterfacesView() {
         const viewModel = this;
@@ -524,13 +568,13 @@ function createGeneralPage({
             style: { color: address.internal ? "#D44545" : "#13AF42" }
         }, [
             createElement("div", { staticClass: "flex" }, [
-                createElement("span", { staticClass: "w-[80px]" }, [viewModel._v("Address:")]),
+                createElement("span", { staticClass: "w-[80px]" }, [viewModel._v(`${labels.IPaddress()}:`)]),
                 viewModel._v(" "),
                 createElement("span", [viewModel._v(viewModel._s(address.address))])
             ]),
             viewModel._v(" "),
             createElement("div", { staticClass: "flex" }, [
-                createElement("span", { staticClass: "w-[80px]" }, [viewModel._v("Netmask:")]),
+                createElement("span", { staticClass: "w-[80px]" }, [viewModel._v(`${labels.subnetMask()}:`)]),
                 viewModel._v(" "),
                 createElement("span", [
                     viewModel._v(`${viewModel._s(address.netmask)}\n              `),
@@ -583,6 +627,8 @@ function createGeneralPage({
             TunSettingsView,
             ResetDNSSettingsView,
             InterfacesView,
+            TapManagementView,
+            TapStatusIcon,
             SwitchView,
             SelectView,
             InfoIcon,
@@ -673,8 +719,8 @@ function createGeneralPage({
             staticClass: iconClass,
             ...(style ? { style } : {})
         }, [viewModel._v(viewModel._s(icon))])]);
-        const renderSwitch = (enabled, handler) => createElement("switch-view", {
-            attrs: { on: enabled },
+        const renderSwitch = (enabled, handler, loading = false) => createElement("switch-view", {
+            attrs: { on: enabled, loading, pendingOn: loading ? (viewModel.$parent.proxyTarget ?? enabled) : undefined, disabled: viewModel.proxyBusy || loading },
             on: { change: handler }
         });
 
@@ -727,7 +773,7 @@ function createGeneralPage({
                     on: { click: viewModel.handleEditBindAddress }
                 }, [viewModel._v(`\n          ${labels.bind()}${viewModel._s(viewModel.bindAddress)}\n        `)]) : viewModel._e(),
                 viewModel._v(" "),
-                renderSwitch(viewModel.isAllowLan, () => viewModel.handleAllowLANChange(viewModel.isAllowLan))
+                renderSwitch(viewModel.isAllowLan, () => viewModel.handleAllowLANChange(viewModel.isAllowLan), viewModel.allowLanLoading)
             ]),
             viewModel._v(" "),
             renderItem(labels.logLevel(), createElement("div", {
@@ -735,7 +781,7 @@ function createGeneralPage({
                 on: { click: viewModel.handleEditLogLevel }
             }, [viewModel._v(`\n          ${logLevelLabels[String(viewModel.logLevel)] || viewModel._s(viewModel.logLevel)}\n        `)])),
             viewModel._v(" "),
-            renderItem("IPv6", renderSwitch(viewModel.isIPV6, () => viewModel.handleIPV6Change(viewModel.isIPV6))),
+            renderItem("IPv6", renderSwitch(viewModel.isIPV6, () => viewModel.handleIPV6Change(viewModel.isIPV6), viewModel.ipv6Loading)),
             viewModel._v(" "),
             renderItem([
                 createElement("div", [viewModel._v(labels.clashCore())]),
@@ -766,11 +812,11 @@ function createGeneralPage({
                     onClick: stopAndRun(viewModel.handleShowDNSQueryDialog)
                 }),
                 viewModel._v(" "),
-                renderHintIcon({
+                viewModel.scriptModeVisible ? renderHintIcon({
                     hint: labels.testByScriptMode(),
                     icon: "play_arrow",
                     onClick: stopAndRun(viewModel.handleShowScriptTestDialog)
-                })
+                }) : viewModel._e()
             ], createElement("div", {
                 staticClass: "clickable",
                 on: { click: viewModel.handleCopyControllerURL }
@@ -791,10 +837,16 @@ function createGeneralPage({
                 on: { click: event => viewModel.spawnLoopback(event) }
             }, [viewModel._v(`\n        ${labels.launchHelper()}\n      `)])) : viewModel._e(),
             viewModel._v(" "),
-            viewModel.isWindows ? renderItem(labels.deviceTAP(), createElement("div", {
-                staticClass: "clickable",
-                on: { click: event => viewModel.installTapDevice(event) }
-            }, [viewModel._v(`\n        ${labels.manage()}\n      `)])) : viewModel._e(),
+            viewModel.isWindows ? renderItem([
+                viewModel._v(labels.tapAdapter()),
+                createElement("info-icon", [viewModel._v(labels.tapPermissionDescribe())]),
+                createElement("TapStatusIcon", { staticClass: "cfw-tap-status-home", props: { installed: viewModel.tapInstalled, mode: viewModel.legacyTapMode } })
+            ], [
+                createElement("div", {
+                    staticClass: "clickable",
+                    on: { click: event => { if (!viewModel.proxyBusy) viewModel.installTapDevice(event); } }
+                }, [viewModel._v(labels.manage())])
+            ]) : viewModel._e(),
             viewModel._v(" "),
             createElement("div", { staticClass: "item" }, [
                 createElement("div", { staticClass: "item-left" }, [viewModel._v(labels.serviceMode())]),
@@ -831,7 +883,7 @@ function createGeneralPage({
                     }),
                     viewModel._v(" "),
                     viewModel.isMacOS ? renderHintIcon({
-                        hint: "System DNS servers that will be set after TUN Mode is disabled",
+                        hint: labels.resetDNSSettingsHint(),
                         icon: "manage_history",
                         onClick: stopAndRun(() => {
                             viewModel.isResetDNSSettingsVisible = !viewModel.isResetDNSSettingsVisible;
@@ -839,7 +891,7 @@ function createGeneralPage({
                     }) : viewModel._e()
                 ]),
                 viewModel._v(" "),
-                renderSwitch(viewModel.isTunEnable, viewModel.handleTunSwitchClick)
+                renderSwitch(viewModel.isTunEnable, viewModel.handleTunSwitchClick, viewModel.tunLoading)
             ]),
             viewModel._v(" "),
             createElement("div", { staticClass: "item" }, [
@@ -860,17 +912,17 @@ function createGeneralPage({
                     })
                 ]),
                 viewModel._v(" "),
-                renderSwitch(viewModel.isMixinEnable, viewModel.handleMixinSwitchClick)
+                renderSwitch(viewModel.isMixinEnable, viewModel.handleMixinSwitchClick, viewModel.mixinLoading)
             ]),
             viewModel._v(" "),
             viewModel.isLinux ? viewModel._e() : renderItem(
                 labels.sysProxy(),
-                renderSwitch(viewModel.isSystemProxyOn, viewModel.handleSystemProxySwitchClick)
+                renderSwitch(viewModel.isSystemProxyOn, viewModel.handleSystemProxySwitchClick, viewModel.systemProxyBusy)
             ),
             viewModel._v(" "),
             renderItem(
                 viewModel._s(viewModel.autoLaunchHint),
-                renderSwitch(viewModel.autoLaunch, viewModel.handleAutoLaunchSwitchClick)
+                renderSwitch(viewModel.autoLaunch, viewModel.handleAutoLaunchSwitchClick, viewModel.autoLaunchLoading)
             )
         ];
 
@@ -899,9 +951,11 @@ function createGeneralPage({
                 ])
             ]),
             viewModel._v(" "),
-            viewModel.isLaunching
+            viewModel.coreErrorVisible
                 ? viewModel._e()
-                : createElement("div", { staticClass: "content" }, contentItems),
+                : createElement("div", { staticClass: "content",
+                    attrs: { inert: viewModel.$parent?.coreRestorePending ? "" : null }
+                }, contentItems),
             viewModel._v(" "),
             viewModel.matchedSSID ? createElement("div", {
                 staticClass: "font-normal text-xs flex items-center justify-center absolute bottom-3 left-[calc(50%+85px)] -translate-x-1/2 gap-x-1 rounded-md bg-[color:var(--proxy-item-bgc)] border-opacity-50 px-3 py-1 clickable !border-b-0",
@@ -912,10 +966,14 @@ function createGeneralPage({
                 createElement("span", [viewModel._v(viewModel._s(viewModel.matchedSSID))])
             ]) : viewModel._e(),
             viewModel._v(" "),
-            viewModel.isLaunching ? createElement("error-view") : viewModel._e(),
+            viewModel.coreErrorVisible ? createElement("error-view") : viewModel._e(),
             viewModel._v(" "),
             viewModel.isResetDNSSettingsVisible ? createElement("ResetDNSSettingsView", {
                 on: { close: () => { viewModel.isResetDNSSettingsVisible = false; } }
+            }) : viewModel._e(),
+            viewModel.isTapManagementVisible ? createElement("TapManagementView", {
+                props: { mode: viewModel.legacyTapMode, installed: viewModel.tapInstalled, busy: viewModel.proxyBusy, allowMulticast: viewModel.settings.tapAllowMulticast === true },
+                on: { close: () => { if (!viewModel.proxyBusy) viewModel.isTapManagementVisible = false; }, "change-mode": viewModel.handleTapModeChange, "change-multicast": viewModel.handleTapMulticastChange, action: viewModel.handleTapManagementAction }
             }) : viewModel._e(),
             viewModel._v(" "),
             viewModel.isTunSettingsVisible ? createElement("tun-settings-view", {

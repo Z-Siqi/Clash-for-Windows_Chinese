@@ -113,6 +113,13 @@ SourceNode.fromStringWithSourceMap =
       // to the SourceNode without any mapping.
       // Each line is added as separate string.
       while (lastGeneratedLine < mapping.generatedLine) {
+        if (remainingLinesIndex >= remainingLines.length) {
+          // The generated code is exhausted. Skip the rest instead of adding
+          // empty lines one by one: a mapping may point far past the end of
+          // the code (e.g. an indexed map section with a huge offset.line).
+          lastGeneratedLine = mapping.generatedLine;
+          break;
+        }
         node.add(shiftNextLine());
         lastGeneratedLine++;
       }

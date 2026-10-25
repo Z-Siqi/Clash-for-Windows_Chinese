@@ -5,6 +5,7 @@ const { defineComponent } = require("../component");
 function createInfoIcon({ utilities, window, schedule = setTimeout, cancel = clearTimeout } = {}) {
     const options = {
         name: "info-icon",
+        props: { rounded: { type: Boolean, default: false } },
         data() {
             return {
                 isShowContent: false,
@@ -60,7 +61,7 @@ function createInfoIcon({ utilities, window, schedule = setTimeout, cancel = cle
             createElement("div", {
                 ref: "content",
                 staticClass: "content",
-                style: viewModel.contentPosition,
+                style: { ...viewModel.contentPosition, borderRadius: viewModel.rounded ? "8px" : undefined },
                 on: { click: viewModel.handleContentClick }
             }, [viewModel._t("default")], 2),
             viewModel._v(" "),

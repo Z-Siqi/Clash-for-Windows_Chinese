@@ -4,10 +4,66 @@ const fs = require("node:fs");
 const http = require("node:http");
 const os = require("node:os");
 const path = require("node:path");
-const { app } = require("electron");
+const { app, utilityProcess, ipcMain, BrowserWindow, shell, dialog, clipboard } = require("electron");
+require("./native-boundaries");
+// Exhaustive interaction checks must not write the host clipboard, autostart
+// preference, or launch Explorer/file dialogs.
+clipboard.writeText = () => {};
+clipboard.readText = () => "";
+app.setLoginItemSettings = () => {};
+shell.openPath = async () => "";
+shell.showItemInFolder = () => {};
+dialog.showOpenDialogSync = () => undefined;
+const { verifyLanguageHotload } = require("./language-hotload");
+const { verifyEditorDigits } = require("./editor-digits");
 
 const root = path.resolve(__dirname, "../../../..");
+const applicationRoot = process.env.CFW_SECURITY_SMOKE_APP_ROOT || path.join(root, "app", "main");
 const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "cfw-security-smoke-"));
+// The compatibility controls persist only to the fixture's temporary profile.
+// No configured remote parser exists and HTTP navigation remains faked below.
+const originalShowMessageBox = dialog.showMessageBox;
+let securityConfirmations = 0;
+dialog.showMessageBox = async (...args) => {
+    const options = args.at(-1);
+    if (/remote JavaScript parsers|远程 JavaScript|HTTP links to open|HTTP 链接/.test(options.message || "")) {
+        securityConfirmations++;
+        return { response: 1 };
+    }
+    return originalShowMessageBox(...args);
+};
+async function verifyScriptWorker() {
+    const output = path.join(temporaryRoot, "utility-script-result.txt");
+    const worker = utilityProcess.fork(path.join(applicationRoot, "dist/electron/entry/utility/script-worker.js"), [], { stdio: "ignore" });
+    const run = message => new Promise((resolve, reject) => {
+        const receive = result => {
+            if (result.type !== "result" || result.job !== message.job) return;
+            worker.removeListener("message", receive);
+            result.ok ? resolve(result.value) : reject(new Error("Utility script failed"));
+        };
+        worker.on("message", receive);
+        worker.on("exit", code => { if (code !== 0) reject(new Error("Utility script worker exited")); });
+        worker.postMessage(message);
+    });
+    const first = run({
+        type: "run", job: 1, home: temporaryRoot, scriptType: "proxy", payload: { output },
+        logPath: path.join(temporaryRoot, "utility-script.log"),
+        scriptsText: JSON.stringify({ scripts: { proxy: { code: [
+            "module.exports.run = payload => {",
+            "  if (process.type !== 'utility' || require('electron').app) throw new Error('Unexpected script process');",
+            "  require('fs').writeFileSync(payload.output, 'utility-ok');",
+            "};"
+        ].join("\n") } } })
+    });
+    try {
+        await first;
+        const mixin = await run({
+            type: "run", job: 2, scriptType: "mixin", payload: { content: { rules: [] } },
+            mixinCode: "module.exports.parse = async ({ content }) => { if (process.type !== 'utility' || require('electron').app) throw new Error('Unexpected Mixin process'); return { ...content, utilityVerified: true }; }"
+        });
+        return fs.readFileSync(output, "utf8") === "utility-ok" && mixin.utilityVerified === true;
+    } finally { worker.kill(); }
+}
 for (const name of ["home", "userData", "sessionData", "temp", "logs"]) {
     const directory = path.join(temporaryRoot, name);
     fs.mkdirSync(directory, { recursive: true });
@@ -15,18 +71,38 @@ for (const name of ["home", "userData", "sessionData", "temp", "logs"]) {
 }
 
 let finished = false;
+let startupProfileReloaded = false;
 let profileUrl = "";
 let profileResponseVersion = 0;
 let controllerMode = "rule";
+const fixtureProxySelection = { GLOBAL: "Outer", Outer: "Auto", Auto: "DIRECT" };
+let fixtureConnectionOpen = true;
+let largeConnectionPayload;
 const controllerRequests = [];
 const consoleMessages = [];
-const timeout = setTimeout(() => finish({ ok: false, error: "window load timed out" }), 30000);
+let enhancedTrayFrames = 0;
+let enhancedTrayRendered = false;
+let dashboardOpened = false;
+// Exercise the real navigation IPC without opening a browser or recording a secret.
+shell.openExternal = async value => {
+    const url = new URL(value);
+    dashboardOpened = url.protocol === "https:" && url.hostname === "yacd.haishan.me"
+        && url.searchParams.get("hostname") === "127.0.0.1" && Number(url.searchParams.get("port")) > 0;
+};
+ipcMain.on("speed-update", (_event, image) => {
+    if (typeof image === "string" && image.startsWith("data:image/png;")) {
+        enhancedTrayFrames++;
+    }
+});
+let phase = "window load";
+const timeout = setTimeout(() => finish({ ok: false, error: `Electron verification timed out during ${phase}` }), 120000);
 const controllerServer = http.createServer((request, response) => {
     const chunks = [];
     request.on("data", chunk => chunks.push(chunk));
     request.on("end", () => {
         const body = Buffer.concat(chunks).toString("utf8");
-        controllerRequests.push({ method: request.method, url: request.url, origin: request.headers.origin, body });
+        // Diagnostics keep neither controller payloads nor authenticated query strings.
+        controllerRequests.push({ method: request.method, url: request.url.split("?")[0], origin: request.headers.origin, bodyBytes: Buffer.byteLength(body) });
         if (request.url === "/profile.yaml") {
             profileResponseVersion++;
             response.writeHead(200, { "content-type": "text/yaml" });
@@ -35,7 +111,7 @@ const controllerServer = http.createServer((request, response) => {
         }
         if (request.url === "/configs" && request.method === "GET") {
             response.writeHead(200, { "content-type": "application/json" });
-            response.end(JSON.stringify({ mode: controllerMode }));
+            response.end(JSON.stringify({ mode: controllerMode, "mixed-port": 7890, "allow-lan": false, "bind-address": "*", "log-level": "info", ipv6: false }));
             return;
         }
         if (request.url === "/configs" && ["PATCH", "PUT"].includes(request.method)) {
@@ -46,8 +122,23 @@ const controllerServer = http.createServer((request, response) => {
         }
         if (request.url === "/proxies") {
             response.writeHead(200, { "content-type": "application/json" });
-            response.end(JSON.stringify({ proxies: {} }));
+            response.end(JSON.stringify({ proxies: {
+                GLOBAL: { type: "Selector", now: fixtureProxySelection.GLOBAL, all: ["Outer", "Auto", "DIRECT", "REJECT"] },
+                Outer: { type: "Selector", now: fixtureProxySelection.Outer, all: ["Auto", "DIRECT"] },
+                Auto: { type: "Selector", now: fixtureProxySelection.Auto, all: ["DIRECT", "REJECT"] },
+                DIRECT: { type: "Direct", history: [] }, REJECT: { type: "Reject", history: [] }
+            } }));
             return;
+        }
+        if (/^\/proxies\/[^/]+\/delay\?/.test(request.url)) {
+            response.writeHead(200, { "content-type": "application/json" }); response.end(JSON.stringify({ delay: 8 })); return;
+        }
+        if (/^\/proxies\/[^/]+$/.test(request.url) && request.method === "PUT") {
+            try { fixtureProxySelection[decodeURIComponent(request.url.split("/")[2])] = JSON.parse(body).name; } catch (_error) {}
+            response.writeHead(204); response.end(); return;
+        }
+        if (/^\/connections(?:\/[^/]+)?$/.test(request.url) && request.method === "DELETE") {
+            fixtureConnectionOpen = false; response.writeHead(204); response.end(); return;
         }
         if (request.url === "/providers/proxies") {
             response.writeHead(200, { "content-type": "application/json" });
@@ -64,7 +155,34 @@ const controllerServer = http.createServer((request, response) => {
     });
 });
 
+const { WebSocketServer } = require(path.join(root, "app/main/node_modules/ws"));
+const streamServer = new WebSocketServer({ noServer: true });
+controllerServer.on("upgrade", (request, socket, head) => {
+    const endpoint = request.url.split("?")[0];
+    if (!["/traffic", "/connections", "/logs"].includes(endpoint)) { socket.destroy(); return; }
+    streamServer.handleUpgrade(request, socket, head, stream => {
+        let sequence = 0;
+        const timer = setInterval(() => {
+            if (stream.readyState !== 1) return;
+            sequence++;
+            if (endpoint === "/traffic") stream.send(JSON.stringify({ up: sequence * 1024, down: sequence * 2048 }));
+            if (endpoint === "/connections" && largeConnectionPayload) {
+                if (sequence % 10 === 0) stream.send(`{"uploadTotal":${sequence},"downloadTotal":${sequence},"connections":${largeConnectionPayload}}`);
+                return;
+            }
+            if (endpoint === "/connections") stream.send(JSON.stringify({ uploadTotal: sequence, downloadTotal: sequence, connections: fixtureConnectionOpen ? [{
+                id: "fixture-connection", start: "2026-01-01T00:00:00Z", upload: sequence, download: sequence,
+                chains: ["DIRECT"], metadata: { host: "fixture.live.test", network: "tcp", type: "HTTP", sourceIP: "127.0.0.1", sourcePort: "1234", destinationIP: "127.0.0.1", destinationPort: "80" }
+            }] : [] }));
+        }, 100);
+        stream.on("close", () => clearInterval(timer));
+    });
+});
+
 app.on("browser-window-created", (_event, window) => {
+    // CSS transition assertions need compositor frames even if the test window
+    // is covered by the desktop app that launched it.
+    window.webContents.setBackgroundThrottling(false);
     window.webContents.on("console-message", (_consoleEvent, ...details) => {
         consoleMessages.push(details.map(detail =>
             typeof detail === "object" ? detail.message : String(detail)
@@ -77,17 +195,73 @@ app.on("browser-window-created", (_event, window) => {
         finish({ ok: false, error: `render-process-gone: ${details.reason}` });
     });
     window.webContents.on("did-finish-load", async () => {
+        if (window.webContents.getURL().endsWith("/cfw-sub.html")) {
+            enhancedTrayRendered = await window.webContents.executeJavaScript(`Boolean(document.querySelector("#img")?.src.startsWith("data:image/png;"))`);
+            return;
+        }
         await new Promise(resolve => setTimeout(resolve, 2000));
         try {
+            // Restore Profiles on a fresh renderer, before Home has initialized
+            // its data paths. Keep the fixture's real file timestamp authoritative.
+            if (!startupProfileReloaded) {
+                startupProfileReloaded = true;
+                const folder = path.join(app.getPath("home"), ".config", "clash", "profiles");
+                const file = path.join(folder, "startup-time.yml");
+                fs.writeFileSync(file, "rules: ['MATCH,DIRECT']\n");
+                const modified = new Date(Date.now() - 5 * 60000);
+                fs.utimesSync(file, modified, modified);
+                await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: `(() => {
+                    const store = document.querySelector("#app").__vue__.$store;
+                    store.commit("APPEND_PROFILE", { profile: { name: "Startup timestamp", time: "startup-time.yml", url: "" } });
+                    store.commit("SET_CURRENT_ROUTE_PATH", { path: "/home/server" });
+                })()` }]);
+                window.webContents.reload();
+                return;
+            }
+            const profileStartupTime = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: `(() => {
+                const root = document.querySelector("#app").__vue__;
+                const card = [...document.querySelectorAll(".list-view .list-item")].find(element => element.textContent.includes("Startup timestamp"));
+                return root.$route.path === "/home/server" && /5\\s*(?:分钟前|minutes ago)/.test(card?.querySelector(".item-time")?.textContent || "");
+            })()` }]);
+            if (!profileStartupTime) throw Error("Restoring Profiles at startup did not load the existing file's actual modification time");
             const result = await window.webContents.executeJavaScript(`({
                 processType: typeof process,
                 requireType: typeof require,
                 staticType: typeof window.__static,
                 monacoType: typeof window.__CFW_MONACO__,
+                hostType: typeof window.__CFW_HOST__,
                 appChildren: document.querySelector("#app").childElementCount,
                 menuItems: Array.from(document.querySelectorAll(".main-main-menu li.item")).map(item => item.innerText.trim()),
                 route: location.hash
             })`);
+            phase = "script isolation";
+            const scriptWorkerIsolated = await verifyScriptWorker();
+            const isolation = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: `(() => {
+                let nodeModulesBlocked = false;
+                try { require('fs'); } catch { nodeModulesBlocked = true; }
+                return { rendererSandboxed: globalThis.__CFW_HOST__?.rendererSandboxed === true, nodeModulesBlocked };
+            })()` }]);
+            isolation.rendererSandboxed = isolation.rendererSandboxed && window.webContents.getLastWebPreferences().sandbox === true;
+            const monacoEditingVerified = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: `(async () => {
+                const container = document.createElement('div');
+                container.style.cssText = 'position:fixed;width:400px;height:200px;left:-1000px;top:0';
+                document.body.appendChild(container);
+                const monaco = globalThis.__CFW_MONACO__;
+                const original = monaco.editor.createModel('rules:\\n- MATCH,DIRECT', 'yaml');
+                const modified = monaco.editor.createModel('rules:\\n- MATCH,REJECT', 'yaml');
+                const editor = monaco.editor.createDiffEditor(container, { renderSideBySide: false, automaticLayout: false, links: false, minimap: { enabled: false } });
+                try {
+                    const updated = new Promise(resolve => {
+                        const timer = setTimeout(() => resolve(false), 5000);
+                        const listener = editor.onDidUpdateDiff(() => { clearTimeout(timer); listener.dispose(); resolve(true); });
+                    });
+                    editor.setModel({ original, modified });
+                    return await updated && editor.getLineChanges()?.length > 0 && editor.getModifiedEditor().getValue().includes('REJECT');
+                } finally { editor.dispose(); original.dispose(); modified.dispose(); container.remove(); }
+            })()` }]);
+            const isolatedEvalBlocked = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{
+                code: "(() => { try { Function('return 1')(); return false; } catch (_error) { return true; } })()"
+            }]);
             const settingsClick = await window.webContents.executeJavaScript(`(() => {
                 const item = Array.from(document.querySelectorAll(".main-main-menu li.item"))
                     .find(candidate => /Settings|设置/i.test(candidate.innerText));
@@ -101,6 +275,18 @@ app.on("browser-window-created", (_event, window) => {
                 visible: Boolean(document.querySelector(".main-setting-view")),
                 rightText: document.querySelector(".right-side").innerText.slice(0, 300)
             })`);
+            // Fresh profiles now use Mihomo. Select legacy Clash explicitly for
+            // the Script-mode checks, which remain a supported legacy capability.
+            phase = "language and editor controls";
+            const languageHotload = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: `(${verifyLanguageHotload.toString()})()` }]);
+            const editorDigits = await verifyEditorDigits(window);
+            const defaultMihomo = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: `(() => {
+                const root = document.querySelector("#app").__vue__;
+                const selected = root.$store.state.app.settings.proxyCore;
+                root.$store.commit("SAVE_SETTINGS_OBJECT", { obj: { proxyCore: "clash" } });
+                return selected === "mihomo";
+            })()` }]);
+            await new Promise(resolve => setTimeout(resolve, 250));
             const proxiesClick = await window.webContents.executeJavaScript(`(() => {
                 const item = Array.from(document.querySelectorAll(".main-main-menu li.item"))
                     .find(candidate => /Proxies|代理/i.test(candidate.innerText));
@@ -166,7 +352,7 @@ app.on("browser-window-created", (_event, window) => {
             const profileUpdatePersisted = downloadedContent?.["profile-version"] === profileRequestCount;
             const pageResults = await window.webContents.executeJavaScript(`(async () => {
                 const pages = [
-                    [/Home|主页/i, "#/home/general"],
+                    [/General|主页/i, "#/home/general"],
                     [/Proxies|代理/i, "#/home/proxy"],
                     [/Profiles|配置/i, "#/home/server"],
                     [/Logs|日志/i, "#/home/log"],
@@ -196,14 +382,63 @@ app.on("browser-window-created", (_event, window) => {
             const allPagesRendered = pageResults.every(page =>
                 page.clicked && page.route === page.expectedRoute && page.rightChildren > 0
             );
+            let connectionsPerformance;
+            if (process.env.CFW_CONNECTIONS_PERF === "1") {
+                phase = "100,000 live connections";
+                largeConnectionPayload = JSON.stringify(require("../large-connections").largeConnections());
+                try {
+                    const { verifyLargeConnections } = require("./large-connections");
+                    connectionsPerformance = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: `(${verifyLargeConnections.toString()})()` }]);
+                } finally { largeConnectionPayload = undefined; }
+            }
+            phase = "page UI regressions";
+            const { verifyUiRegressions } = require("./ui-regressions");
+            const screenshots = new Map();
+            const screenshotDirectory = process.env.CFW_SECURITY_SMOKE_SCREENSHOTS;
+            if (screenshotDirectory) fs.mkdirSync(screenshotDirectory, { recursive: true });
+            const screenshotTimer = screenshotDirectory && setInterval(async () => {
+                try {
+                    const stage = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: "globalThis.__cfwScreenshotStage" }]);
+                    if (!["replacement-list", "tap-scroll"].includes(stage) || screenshots.has(stage)) return;
+                    screenshots.set(stage, window.webContents.capturePage().then(image => fs.writeFileSync(path.join(screenshotDirectory, `${stage}.png`), image.toPNG())));
+                } catch (_closing) {}
+            }, 50);
+            let uiRegressions;
+            try { uiRegressions = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: `(${verifyUiRegressions.toString()})()` }]); }
+            finally { clearInterval(screenshotTimer); await Promise.all(screenshots.values()); }
+            uiRegressions.trayProxyProgress = require("./tray-progress").verifyTrayProgress(require("electron"));
+            uiRegressions.trayNodeMetadata = await require("./tray-node-metadata").verifyTrayNodeMetadata(require("electron"));
+            uiRegressions.mihomoVersionNavigation = dashboardOpened;
+            uiRegressions.languageHotload = languageHotload;
+            uiRegressions.profileStartupTime = profileStartupTime;
+            uiRegressions.editorDigits = editorDigits;
+            const indicatorWindow = BrowserWindow.getAllWindows().find(candidate => candidate.webContents.getURL().endsWith("/cfw-sub.html"));
+            let indicatorUpdates = false;
+            if (indicatorWindow) {
+                const initialFrame = await indicatorWindow.webContents.executeJavaScript(`document.querySelector("#img").src`);
+                const frameDeadline = Date.now() + 1500;
+                while (Date.now() < frameDeadline && !indicatorUpdates) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    indicatorUpdates = initialFrame !== await indicatorWindow.webContents.executeJavaScript(`document.querySelector("#img").src`);
+                }
+            }
+            uiRegressions.enhancedTray = enhancedTrayFrames > 0 && enhancedTrayRendered && indicatorUpdates;
+            phase = "recursive page interaction audit";
+            dialog.showMessageBox = async () => ({ response: 0 });
+            const { verifyInteractionAudit } = require("./interaction-audit");
+            const interactionAudit = await window.webContents.executeJavaScriptInIsolatedWorld(999, [{ code: `(${verifyInteractionAudit.toString()})()` }]);
             finish({
                 ok: result.processType === "undefined"
                     && result.requireType === "undefined"
                     && result.staticType === "undefined"
                     && result.monacoType === "undefined"
+                    && result.hostType === "undefined"
+                    && isolation.rendererSandboxed && isolation.nodeModulesBlocked
+                    && monacoEditingVerified
                     && result.appChildren > 0
                     && settingsClick
                     && settings.visible
+                    && defaultMihomo
                     && proxiesClick
                     && scriptClick
                     && proxies.scriptSelected
@@ -214,10 +449,20 @@ app.on("browser-window-created", (_event, window) => {
                     && updateAllClick
                     && profileRequestCount > 1
                     && profileUpdatePersisted
-                    && allPagesRendered,
+                    && allPagesRendered
+                    && scriptWorkerIsolated && isolatedEvalBlocked
+                    && Object.values(uiRegressions).every(Boolean) && securityConfirmations === 2,
+                uiRegressions,
+                connectionsPerformance,
+                interactionAudit,
+                error: Object.values(uiRegressions).every(Boolean) ? undefined : `UI regressions failed: ${Object.entries(uiRegressions).filter(([_name, passed]) => !passed).map(([name]) => name).join(", ")}`,
                 result,
+                scriptWorkerIsolated,
+                isolatedEvalBlocked,
+                isolation,
+                monacoEditingVerified,
                 navigation: {
-                    settingsClick, settings, proxiesClick, scriptClick, proxies,
+                    settingsClick, settings, defaultMihomo, proxiesClick, scriptClick, proxies,
                     profilesClick, downloadClick, profiles, profileRequestSeen,
                     updateAllClick, profileRequestCount, profileUpdatePersisted, pageResults, allPagesRendered
                 },
@@ -252,7 +497,7 @@ process.on("exit", () => {
 });
 
 controllerServer.on("error", error => finish({ ok: false, error: error.message, consoleMessages }));
-controllerServer.listen(0, "127.0.0.1", () => {
+controllerServer.listen(0, "127.0.0.1", async () => {
     const { port } = controllerServer.address();
     profileUrl = `http://127.0.0.1:${port}/profile.yaml`;
     const clashDirectory = path.join(app.getPath("home"), ".config", "clash");
@@ -264,13 +509,16 @@ controllerServer.listen(0, "127.0.0.1", () => {
     fs.mkdirSync(path.join(fixtureFiles, "win", "x64"), { recursive: true });
     fs.copyFileSync(path.join(packagedFiles, "default", "Country.mmdb"), path.join(fixtureFiles, "default", "Country.mmdb"));
     fs.copyFileSync(path.join(packagedFiles, "win", "x64", "wintun.dll"), path.join(fixtureFiles, "win", "x64", "wintun.dll"));
+    for (const core of ["clash-win64.exe", "mihomo-windows-amd64.exe"]) {
+        fs.copyFileSync(path.join(packagedFiles, "win", "x64", core), path.join(fixtureFiles, "win", "x64", core));
+    }
     fs.writeFileSync(path.join(fixtureWorkingDirectory, "package.json"), JSON.stringify({
         name: "cfw-electron-security-smoke",
         version: "1.0.0"
     }));
     process.chdir(fixtureWorkingDirectory);
     fs.writeFileSync(path.join(clashDirectory, "config.yml"), [
-        "mixed-port: 7890",
+        `mixed-port: ${await require(path.join(root, "app/main/node_modules/get-port"))({ host: "127.0.0.1" })}`,
         `external-controller: 127.0.0.1:${port}`,
         "secret: ''",
         "mode: rule",
@@ -280,5 +528,5 @@ controllerServer.listen(0, "127.0.0.1", () => {
         "  - MATCH,DIRECT",
         ""
     ].join("\n"));
-    require(path.join(root, "app/main/dist/electron/main.js"));
+    require(path.join(applicationRoot, "dist/electron/main.js"));
 });

@@ -27,10 +27,10 @@ test("network interface listing excludes internal and IPv6 addresses", () => {
     assert.deepEqual(result, [{ name: "Ethernet", address: "192.0.2.10" }]);
 });
 
-test("Windows default interface follows the lowest-metric route and ignores cfw-tap", () => {
-    const result = detectDefaultInterface({
+test("Windows default interface follows the lowest-metric route and ignores cfw-tap", async () => {
+    const result = await detectDefaultInterface({
         platform: "win32",
-        execSync: () => Buffer.from([
+        exec: (_command, _options, callback) => callback(null, [
             "0.0.0.0 0.0.0.0 192.0.2.1 192.0.2.20 50",
             "0.0.0.0 0.0.0.0 198.51.100.1 198.51.100.20 10"
         ].join("\n")),
@@ -44,10 +44,10 @@ test("Windows default interface follows the lowest-metric route and ignores cfw-
     assert.equal(result, "Ethernet");
 });
 
-test("WLAN parsing separates repeated interface records", () => {
-    const result = listWlanInterfaces({
+test("WLAN parsing separates repeated interface records", async () => {
+    const result = await listWlanInterfaces({
         platform: "win32",
-        execSync: () => Buffer.from("Name : Wi-Fi\nSSID : first\nName : Wi-Fi 2\nSSID : second\n")
+        exec: (_command, _options, callback) => callback(null, "Name : Wi-Fi\nSSID : first\nName : Wi-Fi 2\nSSID : second\n")
     });
     assert.deepEqual(result, [
         { Name: "Wi-Fi", SSID: "first" },

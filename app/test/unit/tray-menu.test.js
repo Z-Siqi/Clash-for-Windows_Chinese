@@ -34,6 +34,7 @@ const Menu = {
     }
 };
 const actions = {
+    requestProxyOperation: (operation, target) => calls.push(["send", `${operation}-changed`, target]),
     showDashboard: () => calls.push(["dashboard"]),
     sendRenderer: (...args) => calls.push(["send", ...args]),
     toggleDevTools: () => calls.push(["devtools"]),
@@ -58,9 +59,13 @@ const chinese = buildStaticTrayMenu({
 
 assert.equal(english.template[0].label, "Dashboard");
 assert.equal(chinese.template[0].label, "仪表盘");
+assert.equal(english.getMenuItemById("mixin").label, "Mixin");
+assert.equal(chinese.getMenuItemById("mixin").label, "配置覆写（Mixin）");
 assert.equal(english.getMenuItemById("mode-rule").enabled, true);
 assert.equal(english.getMenuItemById("mode-rule").checked, true);
-assert.equal(english.getMenuItemById("mode-script").visible, true);
+assert.equal(english.getMenuItemById("mode-script").visible, false);
+const legacy = buildStaticTrayMenu({ Menu, locale: "en", state: { coreType: "clash", isReady: true }, actions });
+assert.equal(legacy.getMenuItemById("mode-script").visible, true);
 assert.equal(chinese.getMenuItemById("mode-rule").enabled, false);
 
 english.template[0].click();
@@ -144,6 +149,7 @@ async function checkDynamicMenu() {
         actions: {
             ...actions,
             sendRenderer: (...args) => dynamicCalls.push(args),
+            requestProxyOperation: (operation, target) => dynamicCalls.push([operation === "system" ? "system-proxy-changed" : `${operation}-changed`, target]),
             runTrayScript: () => dynamicCalls.push(["run-tray-script"])
         }
     });

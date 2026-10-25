@@ -1,6 +1,7 @@
 "use strict";
 
 const { defineComponent } = require("../component");
+const searches = new WeakMap();
 
 const DNS_STATUS_NAMES = {
     0: "NOERROR",
@@ -33,7 +34,7 @@ function flattenDnsRecords(records, recordTypes) {
     ]);
 }
 
-function createDns({ Vuex, escCaptureComponent, Language, modifyState } = {}) {
+function createDns({ Vuex, escCaptureComponent, getLanguage } = {}) {
     const options = {
         components: { EscCapture: escCaptureComponent },
         name: "DNSView",
@@ -85,6 +86,7 @@ function createDns({ Vuex, escCaptureComponent, Language, modifyState } = {}) {
         },
         methods: {
             show() {
+                searches.delete(this);
                 this.isShow = true;
                 this.$nextTick(() => this.$refs["search-input"].focus());
                 return new Promise((resolve, reject) => {
@@ -129,7 +131,9 @@ function createDns({ Vuex, escCaptureComponent, Language, modifyState } = {}) {
                 this.server = "";
             },
             async handleSearch() {
-                const labels = new Language(modifyState.language);
+                const request = {};
+                searches.set(this, request);
+                const labels = getLanguage();
                 this.error = "";
                 if (!this.searchHost) {
                     this.error = labels.pleaseInputDomain();
@@ -139,24 +143,28 @@ function createDns({ Vuex, escCaptureComponent, Language, modifyState } = {}) {
 
                 try {
                     const response = await this.clashApi.queryDns(this.searchHost, this.searchType);
+                    if (searches.get(this) !== request) return;
                     this.parseDoHData(response?.data);
                 } catch (error) {
+                    if (searches.get(this) !== request) return;
                     this.error = error.response?.data?.message || error.message;
                     this.clearResults();
                 }
             },
             handleKeyDown() {},
             handleCancel() {
+                searches.delete(this);
                 this.isShow = false;
                 this.reject();
             }
-        }
+        },
+        beforeDestroy() { searches.delete(this); }
     };
 
     return defineComponent(options, function renderDns() {
         const viewModel = this;
         const createElement = viewModel._self._c;
-        const labels = new Language(modifyState.language);
+        const labels = getLanguage();
         if (!viewModel.isShow) return viewModel._e();
 
         const renderRecordGrid = (title, records) => records.length > 0
@@ -247,11 +255,11 @@ function createDns({ Vuex, escCaptureComponent, Language, modifyState } = {}) {
                     ])
                 ]),
                 viewModel._v(" "),
-                renderRecordGrid("Answer", viewModel.answerMixed),
+                renderRecordGrid(labels.dnsAnswer(), viewModel.answerMixed),
                 viewModel._v(" "),
                 renderRecordGrid(labels.authority(), viewModel.authorityMixed),
                 viewModel._v(" "),
-                renderRecordGrid("Additional", viewModel.additionalMixed)
+                renderRecordGrid(labels.dnsAdditional(), viewModel.additionalMixed)
             ]) : viewModel._e(),
             viewModel._v(" "),
             viewModel.status === "" && viewModel.error !== ""

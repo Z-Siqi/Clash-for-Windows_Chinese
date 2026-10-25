@@ -6,7 +6,7 @@ const Vue = require("../../main/node_modules/vue");
 const Vuex = require("../../main/node_modules/vuex");
 const yaml = require("../../main/node_modules/yaml");
 const lodash = require("../../main/node_modules/lodash");
-const { Language } = require("../../main/dist/electron/core/i18n/language");
+const { createTranslator } = require("../../main/dist/electron/core/i18n/language");
 const { createJsonCache } = require("../../main/dist/electron/core/storage/json-cache");
 const { connectionStatus, proxyStatus } = require("../../main/dist/electron/features/application-state/status");
 const { preferenceKeys } = require("../../main/dist/electron/features/settings/preference-keys");
@@ -15,13 +15,13 @@ const {
     createRendererStore
 } = require("../../main/dist/electron/entry/renderer/create-renderer-store");
 
-function buildStore({ home, storage = new Map(), fileSystem = fs, axios = { create: () => null } }) {
+function buildStore({ home, storage = new Map(), fileSystem = fs, axios = { create: () => null }, systemLanguage = "zh-CN" }) {
     const cache = createJsonCache({
         getItem: key => storage.has(key) ? storage.get(key) : null,
         setItem: (key, value) => storage.set(key, value)
     });
     const ipcCalls = [];
-    const modifyState = { language: -1 };
+    const modifyState = Vue.observable({ language: -1 });
     const app = createRendererAppModule({
         fs: fileSystem, path, yaml, axios,
         got: { extend: () => ({}) },
@@ -33,9 +33,10 @@ function buildStore({ home, storage = new Map(), fileSystem = fs, axios = { crea
         keys: preferenceKeys,
         connectionStatus,
         proxyStatus,
+        systemLanguage,
         ipcRenderer: { invoke: async (...args) => { ipcCalls.push(args); return home; } },
         modifyState,
-        labels: new Language(cache.get("language"))
+        labels: createTranslator(() => modifyState.language)
     });
     const store = createRendererStore({ Vue, Vuex, modules: { app } });
     store.commit("SET_CLASH_PATH", { path: home });

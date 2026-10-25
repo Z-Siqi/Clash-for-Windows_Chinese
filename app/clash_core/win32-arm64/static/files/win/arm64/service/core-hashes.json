@@ -6,7 +6,14 @@
     },
     {
       "name": "mihomo-windows-arm64.exe",
-      "sha256": "4C63F401F013896A75FD9048878EA8340F0DCDE7B84FBDC5397325691F0A4355"
+      "sha256": "6F6E471B2FEA55C54C0D98FC4B559FB06627456ED50FEBAF7A5572508B225529"
+    }
+  ],
+  "dependencies": [
+    {
+      "core": "clash-win-arm64.exe",
+      "name": "wintun.dll",
+      "sha256": "F7BA89005544BE9D85231A9E0D5F23B2D15B3311667E2DAD0DEBD344918A3F80"
     }
   ]
 }

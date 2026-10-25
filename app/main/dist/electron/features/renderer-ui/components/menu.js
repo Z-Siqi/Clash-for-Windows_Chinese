@@ -2,7 +2,7 @@
 
 const { defineComponent } = require("../component");
 
-function createMenu({ escCaptureComponent, Language, modifyState } = {}) {
+function createMenu({ escCaptureComponent, getLanguage } = {}) {
     const options = {
         name: "MenuView",
         props: [],
@@ -55,9 +55,15 @@ function createMenu({ escCaptureComponent, Language, modifyState } = {}) {
             handleCancel() {
                 this.isShow = false;
             },
-            handleItemSelect(item) {
+            async handleItemSelect(item) {
+                if (!item || item.disabled || item.hide) return;
                 this.isShow = false;
-                if (item) item.click();
+                try { return await item.click(); }
+                catch (error) {
+                    // Select/input cancellation rejects without an Error. Keep
+                    // genuine asynchronous menu failures visible to the user.
+                    if (error && this.$alert) await this.$alert({ title: getLanguage().failed(), content: error.message || String(error) }).catch(() => {});
+                }
             },
             handleMenuScroll(event) {
                 const menuElement = event.target;
@@ -69,7 +75,7 @@ function createMenu({ escCaptureComponent, Language, modifyState } = {}) {
     return defineComponent(options, function renderMenu() {
         const viewModel = this;
         const createElement = viewModel._self._c;
-        const labels = new Language(modifyState.language);
+        const labels = getLanguage();
         if (!viewModel.isShow) return viewModel._e();
 
         return createElement("EscCapture", {

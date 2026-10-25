@@ -5,6 +5,7 @@ function createClashCoreRuntime({
     fs,
     path,
     serviceApi,
+    getSensitiveValues = () => [],
     logger = console,
     sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
 }) {
@@ -12,10 +13,9 @@ function createClashCoreRuntime({
         const pid = processHandle && processHandle.pid;
         if (!pid) return;
         try {
-            const command = platform === "darwin" || platform === "linux"
-                ? `kill -9 ${pid}`
-                : `taskkill /F /PID ${pid}`;
-            childProcess.execSync(command, { windowsHide: true });
+            if (!Number.isSafeInteger(pid) || pid <= 0) return;
+            if (platform === "win32") childProcess.execFileSync("taskkill", ["/F", "/PID", String(pid)], { windowsHide: true });
+            else processHandle.kill("SIGKILL");
         } catch (_error) {}
     }
 
@@ -73,7 +73,8 @@ function createClashCoreRuntime({
                 response = await serviceApi.start({
                     path: devMode ? path.join(process.cwd(), binaryPath) : binaryPath,
                     cwd: clashPath,
-                    silent: logLevel === "silent"
+                    silent: logLevel === "silent",
+                    redactValues: getSensitiveValues().filter(value => typeof value === "string" && value.length > 0)
                 });
             } catch (_error) {
                 // Process creation can outlive the HTTP request (for example
@@ -88,6 +89,7 @@ function createClashCoreRuntime({
                 // become reachable before reporting Service Mode as successful.
                 for (let attempt = 0; attempt < 15; attempt += 1) {
                     if ((await getStatus(clashApi, 150)).connected) {
+                        await onCoreReady();
                         return { processHandle: null, serviceMode: true };
                     }
                     if (attempt < 14) await sleep(100);
@@ -122,6 +124,7 @@ function createClashCoreRuntime({
         processHandle.stdout.on("data", handleOutput);
         processHandle.stderr.on("data", handleOutput);
         processHandle.on("exit", () => {});
+        processHandle.on("error", () => logger.error(startupErrorMessage));
 
         if (logLevel !== "silent") {
             const stream = fs.createWriteStream(logPath, { flags: "a" });
@@ -136,7 +139,8 @@ function createClashCoreRuntime({
         fs.readdir(logDirectory, (error, files) => {
             if (error || !files) return;
             for (const file of files) {
-                const match = file.match(/^(\d{4}-\d{2}-\d{2}-\d{6})\.log$/);
+                // Service helpers append a unique suffix to avoid log collisions.
+                const match = file.match(/^(\d{4}-\d{2}-\d{2}-\d{6})(?:-[a-fA-F0-9-]{1,64})?\.log$/);
                 if (!match) continue;
                 const timestamp = parseLogTimestamp(match[1]);
                 if (timestamp && Date.now() - timestamp > 7 * 24 * 60 * 60 * 1000) {

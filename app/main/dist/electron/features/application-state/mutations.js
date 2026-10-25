@@ -11,8 +11,10 @@ function createAppMutations({ path, connectionStatus, schedule = setTimeout }) {
         SET_MENU_ITEMS: ["menuItems", "items"], SET_UPDATE_DOWNLOAD_PROGRESS: ["updateDownloadProgress", "progress"],
         SET_IS_SYSTEM_PROXY_ON: ["isSystemProxyOn", "isOn"], SET_CURRENT_ROUTE_PATH: ["currentRoutePath", "path"],
         SET_ROUTER_HIJACK_MAC_ADDRESSES: ["routerHijackMacAddresses", "addresses"], SET_CURRENT_PROFILE_PAYLOAD: ["currentProfilePayload", "payload"],
+        SET_ROUTER_HIJACK_IDENTITY_TOKENS: ["routerHijackIdentityTokens", "tokens"],
         SET_IS_SILENT_UPGRADED: ["isSilentUpgraded", "isUpgraded"], SET_TUN_SETTINGS: ["tunSettings", "settings"],
         CHANGE_IS_TUN_ENABLE: ["isTunEnable", "isTun"], SET_IS_FIREWALL_RULE_EXIST: ["isFirewallRuleExist", "isExist"],
+        SET_PROXY_OPERATION_STATE: ["proxyOperationState", "state"],
         SET_USER_DNS: ["userDNS", "dns"], SET_MATCHED_SSID: ["matchedSSID", "ssid"]
     };
     const mutations = Object.fromEntries(Object.entries(fields).map(([name, [field, key]]) => [name, (state, payload) => { state[field] = payload[key]; }]));
@@ -38,6 +40,7 @@ function createAppMutations({ path, connectionStatus, schedule = setTimeout }) {
         ADD_AXIOS_FLYING_REQUEST_COUNT(state, { count }) { state.clashAxiosFlyingRequestCount += count; },
         SET_IS_SUB_VIEW_SHOW(state, { isShow }) { if (isShow) state.isSubViewShow = true; else schedule(() => { state.isSubViewShow = false; }, 50); },
         ADD_PROFILE_REFRESH_TIMES(state, { times = 1 }) { state.profileRefreshTimes += times; },
+        ADD_PROXY_REFRESH_TIMES(state, { times = 1 }) { state.proxyRefreshTimes += times; },
         CHANGE_MODE(state, { mode }) { if (["direct", "rule", "global", "script"].includes(mode)) state.mode = mode; }
     };
 }

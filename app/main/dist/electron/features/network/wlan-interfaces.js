@@ -1,13 +1,15 @@
 "use strict";
 
-function listWlanInterfaces({ platform, execSync }) {
+const { execAsync } = require("../../core/process/commands");
+
+async function listWlanInterfaces({ platform, exec }) {
     let command;
     if (platform === "win32") command = "chcp 65001 && netsh wlan show interfaces";
     else if (platform === "darwin") {
         command = "/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport --getinfo";
     } else return [];
 
-    const lines = execSync(command).toString().split("\n");
+    const lines = (await execAsync({ exec }, command)).toString().split("\n");
     const interfaces = [];
     let current = {};
     for (const [index, line] of lines.entries()) {

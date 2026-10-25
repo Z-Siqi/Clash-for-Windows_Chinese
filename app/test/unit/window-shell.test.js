@@ -3,12 +3,13 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const { createTranslator } = require("../../main/dist/electron/core/i18n/language");
 
 const root = path.resolve(__dirname, "../../..");
 const mainPath = path.join(root, "app/main/dist/electron/main.js");
 const preloadPath = path.join(root, "app/main/dist/electron/preload.js");
 const indexPath = path.join(root, "app/main/dist/electron/index.html");
-const preloadLoaderPath = path.join(root, "app/main/dist/electron/entry/renderer/preload-loader.js");
+const preloadLoaderPath = path.join(root, "app/main/dist/electron/entry/main/load-sandboxed-renderer.js");
 const {
     createMainWindow
 } = require(path.join(root, "app/main/dist/electron/features/window/create-main-window"));
@@ -38,6 +39,8 @@ async function main() {
         }
     }
     let crashChoice = 0;
+    let language = 0;
+    const labels = createTranslator(() => language);
     const app = {
         getVersion: () => "1.2.3",
         quit: () => calls.push(["quit"])
@@ -52,13 +55,13 @@ async function main() {
         app,
         dialog: {
             showMessageBox: async (_window, options) => {
-                calls.push(["crash-dialog", options.message]);
+                calls.push(["crash-dialog", options.message, options.buttons]);
                 return { response: crashChoice };
             }
         },
         platform: "win32",
         url: "file:///index.html",
-        localize: (english, chinese) => `${english}|${chinese}`,
+        getLanguage: () => labels,
         onRelaunch: () => calls.push(["relaunch"])
     });
     assert.equal(createdWindow.options.width, 850);
@@ -68,7 +71,7 @@ async function main() {
     assert.equal(createdWindow.options.webPreferences.nodeIntegration, false);
     assert.equal(createdWindow.options.webPreferences.nodeIntegrationInWorker, false);
     assert.equal(createdWindow.options.webPreferences.contextIsolation, true);
-    assert.equal(createdWindow.options.webPreferences.sandbox, false);
+    assert.equal(createdWindow.options.webPreferences.sandbox, true);
     assert.equal(createdWindow.options.webPreferences.webSecurity, true);
     assert.deepEqual(calls.at(-1), [
         "load-url",
@@ -97,11 +100,14 @@ async function main() {
         reason: "crashed"
     });
     assert.deepEqual(calls.at(-1), ["relaunch"]);
+    assert.deepEqual(calls.at(-2), ["crash-dialog", "仪表盘崩溃了！", ["重新加载", "退出"]]);
     crashChoice = 1;
+    language = 1;
     await createdWindow.webContents.listeners.get("render-process-gone")(null, {
         reason: "crashed"
     });
     assert.deepEqual(calls.at(-1), ["quit"]);
+    assert.deepEqual(calls.at(-2), ["crash-dialog", "Dashboard has crashed!", ["Reload", "Exit"]]);
 
     const showWindow = {
         isMinimized: () => true,
@@ -142,8 +148,10 @@ function verifyDelegation() {
     const preload = fs.readFileSync(preloadPath, "utf8");
     assert.match(preload, /webFrame\.setIsolatedWorldInfo\(999, \{/);
     assert.match(preload, /securityOrigin: "cfw-preload:\/\/renderer"/);
-    assert.match(preload, /script-src 'self' 'unsafe-eval' file:/);
-    assert.match(preload, /createPreloadLoader\(\{/);
+    assert.match(preload, /script-src 'self' file:/);
+    assert.doesNotMatch(preload, /unsafe-eval/, "isolated renderer must not allow string evaluation");
+    assert.match(preload, /rendererSandboxed: process\.sandboxed === true/);
+    assert.deepEqual(Array.from(preload.matchAll(/require\("([^"]+)"\)/g), match => match[1]), ["electron"]);
     assert.doesNotMatch(preload, /contextBridge\.exposeInMainWorld/, "main page must not receive a generic preload bridge");
     const source = fs.readFileSync(mainPath, "utf8");
     assert.match(source, /require\("\.\/features\/window\/create-main-window"\)/);

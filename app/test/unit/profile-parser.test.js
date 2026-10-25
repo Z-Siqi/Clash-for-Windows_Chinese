@@ -7,6 +7,7 @@ const os = require("node:os");
 const path = require("node:path");
 const yaml = require("../../main/node_modules/yaml");
 const lodash = require("../../main/node_modules/lodash");
+const releaseConfig = require("../../main/dist/electron/core/release/release-config.json");
 const {
     createProfileParser,
     mergeProfileYaml,
@@ -21,6 +22,23 @@ const mergeDependencies = {
     reduce: lodash.reduce,
     shuffle: values => values.slice().reverse()
 };
+
+test("Parser deletion ignores missing names, resolves numeric-prefix names, and retains numeric index syntax", () => {
+    const source = { proxies: [{ name: "first" }, { name: "01-US" }, { name: "last" }] };
+    const run = key => yaml.parse(mergeProfileYaml(yaml.stringify(source), { commands: [`proxies.(${key})-`] }, mergeDependencies)).proxies.map(item => item.name);
+    assert.deepEqual(run("absent"), ["first", "01-US", "last"]);
+    assert.deepEqual(run("01-US"), ["first", "last"]);
+    for (const key of ["1", "01", "0x1", "1e0", "1.5"]) assert.deepEqual(run(key), ["first", "last"], key);
+    assert.deepEqual(run("999"), ["first", "01-US", "last"]);
+});
+
+test("Profile header values preserve colons and blank lines without relaxing malformed-header handling", () => {
+    assert.deepEqual(parseHeaderString("\r\nReferer: https://example.test/path\r\nX-Time: 12:34:56\n\n"), {
+        Referer: "https://example.test/path", "X-Time": "12:34:56"
+    });
+    assert.deepEqual(parseHeaderString("X-Empty:\n"), { "X-Empty": "" });
+    assert.deepEqual(parseHeaderString("malformed"), {});
+});
 
 test("profile parser commands retain nested names, generated proxy lists and scalar types", () => {
     assert.deepEqual(parseCommand("proxy-groups.(Group.One).proxies=[]proxyNames|^A$"), {
@@ -73,7 +91,9 @@ test("profile parser applies inline, YAML file, declarative and remote parsers i
         state: { app: {
             clashPath: "C:/cfw",
             profiles: { files: [{ url: "https://example/profile", name: "saved" }] },
-            settings: { allowRemoteProfileParsers: true, profileParsersText: yaml.stringify({ parsers: [{
+            settings: { allowRemoteProfileParsers: true,
+                profileDownloadExceptionsText: yaml.stringify({ exceptions: [{ url: "https://example/parser.js", maxSizeMiB: 64, timeoutSeconds: 180 }] }),
+                profileParsersText: yaml.stringify({ parsers: [{
                 reg: "example", code: "inline-script", file: "parser.yaml",
                 yaml: { "append-rules": ["DOMAIN,declarative,DIRECT"] },
                 remote: { url: "https://example/parser.js", cache: true }
@@ -106,6 +126,8 @@ test("profile parser applies inline, YAML file, declarative and remote parsers i
     assert.equal(yaml.parse(result).inlineApplied, true);
     assert.equal(yaml.parse(result).remoteApplied, true);
     assert.equal(calls[0][1].headers["cache-control"], "max-age=3600");
+    assert.equal(calls[0][1].maxContentLength, 64 * 1024 * 1024);
+    assert.equal(calls[0][1].timeout, 180000);
 });
 
 test("profile parser rejects remote JavaScript unless the unsafe compatibility switch is explicit", async () => {
@@ -142,7 +164,7 @@ test("profile download preserves request headers and appends a parsed profile", 
         createWriteStream: () => ({}),
         existsSync: fs.existsSync,
         readFileSync: fs.readFileSync,
-        writeFileSync: fs.writeFileSync
+        writeFileSync: fs.writeFileSync, renameSync: fs.renameSync, unlinkSync: fs.unlinkSync
     };
     const commits = [];
     const store = {
@@ -189,6 +211,13 @@ test("profile download preserves request headers and appends a parsed profile", 
         assert.deepEqual(result, { success: true, targetIndex: 0 });
         assert.equal(request.options.headers["X-Request"], "request");
         assert.equal(request.options.headers["X-Global"], "global");
+        assert.equal(request.options.headers["user-agent"], releaseConfig.subscriptionUserAgent);
+        await parser.downloadProfile({ url: "https://example/custom.yaml", headersString: "User-Agent: custom-client" });
+        assert.equal(request.options.headers["user-agent"], "custom-client");
+        store.state.app.settings.headersText = "headers:\n  USER-AGENT: global-client\n";
+        await parser.downloadProfile({ url: "https://example/global.yaml", headersString: "user-agent: custom-client" });
+        assert.equal(request.options.headers["user-agent"], "global-client");
+        assert.equal(Object.keys(request.options.headers).filter(name => name.toLowerCase() === "user-agent").length, 1);
         assert.equal(commits[0][0], "APPEND_PROFILE");
         assert.equal(commits[0][1].profile.name, "named.yml");
         assert.equal(commits[0][1].profile.interval, 12);
@@ -206,7 +235,7 @@ test("profile download through Clash uses Axios with an authenticated loopback p
         createWriteStream: () => ({}),
         existsSync: fs.existsSync,
         readFileSync: fs.readFileSync,
-        writeFileSync: fs.writeFileSync
+        writeFileSync: fs.writeFileSync, renameSync: fs.renameSync, unlinkSync: fs.unlinkSync
     };
     class FakeHttpsProxyAgent {
         constructor(options) { this.options = options; }

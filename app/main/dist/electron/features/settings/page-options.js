@@ -1,50 +1,36 @@
 "use strict";
 
 const { supportsScriptMode } = require("../../core/clash-core/core-capabilities");
+const { readDownloadExceptions } = require("../../core/network/profile-download-policy");
+const { normalizeCertificateExceptions } = require("../../core/network/certificate-exceptions");
+const { guardSettingsMethods, isProxySetting } = require("./proxy-operation-guards");
 
-function createExternalEditor({ electron, fs, path, childProcess }) {
-    let rejectCurrentEdit = null;
-
-    return {
-        cancel() {
-            if (rejectCurrentEdit) rejectCurrentEdit();
-        },
-        async edit(extension, content = "", command = "code --wait") {
-            return new Promise((resolve, reject) => {
-                rejectCurrentEdit = reject;
-                electron.ipcRenderer.invoke("app", "getPath", "temp").then(tempDirectory => {
-                    const target = path.join(tempDirectory, `close-to-save.${extension}`);
-                    fs.writeFileSync(target, content);
-                    childProcess.exec(`${command} ${target}`, { windowsHide: true }, error => {
-                        if (error) reject(error);
-                    }).on("exit", () => resolve(fs.readFileSync(target).toString()));
-                }).catch(reject);
-            });
-        }
-    };
-}
+const SECTION_KEYS = [
+    "security", "general", "appearance", "sysProxy", "mixin", "proxies", "connections",
+    "providers", "outbound", "childProcesses", "profiles", "logs", "ssid", "actions",
+    "shortcut", "settingsEditor", "cache", "experimentalFeatures"
+];
 
 function createSettingsPageOptions({
     Vuex,
     components,
     yaml,
-    fs,
     defaultBypass,
     defaultPac,
     getNetworkInterfaces,
     electron,
     path,
-    childProcess,
+    externalEditor,
+    profileDirectory,
+    openApplicationLog,
     uuid,
     isMacOS,
     isWindows,
-    logger,
     showMessageBox,
     updateYaml,
     getWlanInterfaces,
     getLanguage
 }) {
-    const externalEditor = createExternalEditor({ electron, fs, path, childProcess });
 
     return {
         components,
@@ -53,12 +39,22 @@ function createSettingsPageOptions({
                 scrollTop: 0,
                 fontFamilyPlaceholder: isMacOS() ? "PingFang SC" : isWindows() ? "Microsoft Yahei" : "system-ui",
                 isEditingExternal: false,
-                sections: []
+                profilePathDraft: ""
             };
         },
         computed: {
+            proxyBusy() { return !!this.$parent?.proxyBusy; },
+            sections() {
+                const labels = getLanguage();
+                // The experimental section currently renders only macOS DHCP controls.
+                const keys = SECTION_KEYS.filter(key =>
+                    (key !== "experimentalFeatures" || this.isMacOS)
+                    && (key !== "sysProxy" || this.isWindows || this.isMacOS));
+                return keys.map(key => labels[key]());
+            },
             ...Vuex.mapState({
                 detectedInterfaceName: state => state.app.detectedInterfaceName,
+                pacRuntimePort: state => state.app.innerServerPort,
                 clashPath: state => state.app.clashPath,
                 confData: state => state.app.confData,
                 scriptModeVisible: state => supportsScriptMode(state.app.settings.proxyCore)
@@ -66,9 +62,9 @@ function createSettingsPageOptions({
             ...Vuex.mapGetters(["clashAxiosClient", "secret"])
         },
         watch: {
-            "sts.profilePath"() { this.refreshCore(); }
+            "sts.profilePath": { immediate: true, handler(value) { this.profilePathDraft = value || ""; } }
         },
-        methods: {
+        methods: guardSettingsMethods({
             ...Vuex.mapMutations({
                 saveSettingsObject: "SAVE_SETTINGS_OBJECT",
                 setConfData: "SET_CONF_DATA"
@@ -77,25 +73,32 @@ function createSettingsPageOptions({
             async handleProxyCoreChange(index) {
                 const nextCore = index === 1 ? "mihomo" : "clash";
                 if (this.settings.proxyCore === nextCore) return;
-                if (!supportsScriptMode(nextCore) && this.$parent.mode === "script") {
-                    await this.$parent.switchMode("rule");
-                }
-                this.$set(this.settings, "proxyCore", nextCore);
-                electron.ipcRenderer.send("core-type-changed", nextCore);
-                return this.refreshCore();
+                const change = async () => {
+                    if (!supportsScriptMode(nextCore) && this.$parent.mode === "script") await this.$parent.switchMode("rule");
+                    // This write belongs to the acquired core operation, bypassing
+                    // only the UI settings guard; preserve all other current values.
+                    this.saveSettingsObject({ obj: { ...this.settings, proxyCore: nextCore } });
+                    electron.ipcRenderer.send("core-type-changed", nextCore);
+                    await this.$parent.handlerRestartClash();
+                    return true;
+                };
+                return this.$parent.runProxyOperation("core", change);
             },
             async refreshCore() {
                 await this.$parent.handlerRestartClash();
             },
             handleNavigateToGroup(index) {
-                const scrollContainer = this.$refs["mixin-scroll-content"];
-                const section = scrollContainer.children[index];
-                this.$nextTick(() => { scrollContainer.scrollTop = section.offsetTop - 110; });
+                this.$nextTick(() => {
+                    const scrollContainer = this.$refs["mixin-scroll-content"];
+                    const section = scrollContainer?.children[index];
+                    if (section) scrollContainer.scrollTop = section.offsetTop - 110;
+                });
             },
             cancelExternalEdit() {
                 externalEditor.cancel();
             },
-            async edit(settingName, fallback = "", language = "yaml") {
+            async edit(settingName, fallback = "", language = "yaml", validate) {
+                if (isProxySetting(settingName) && this.$parent?.proxyBusy) return false;
                 let changed = false;
                 try {
                     const currentValue = this.settings[settingName] || fallback;
@@ -107,13 +110,16 @@ function createSettingsPageOptions({
                                 language,
                                 fontSize: this.settings.editorFontSize
                             });
+                            if (validate) await validate(code);
+                            if (isProxySetting(settingName) && this.$parent?.proxyBusy) return false;
                             this.settings[settingName] = code;
                             changed = code !== currentValue;
                         } catch (_error) {}
                     } else {
                         this.isEditingExternal = true;
-                        const command = editor === 1 ? "code --wait" : this.settings.editorCustomCommand || "subl --wait";
-                        const value = await externalEditor.edit(language, currentValue, command);
+                        const value = await externalEditor.edit(language, currentValue);
+                        if (validate) await validate(value);
+                        if (isProxySetting(settingName) && this.$parent?.proxyBusy) return false;
                         this.settings[settingName] = value;
                         changed = value !== currentValue;
                     }
@@ -140,6 +146,52 @@ function createSettingsPageOptions({
             async handleEditUnsafeURLs() {
                 await this.edit("unsafeURLsText", "urls: # array\n");
             },
+            async editSecuritySetting(name, template, validate) {
+                return this.edit(name, template, "yaml", async code => {
+                    try { validate(code); }
+                    catch (error) {
+                        await showMessageBox({ type: "error", message: getLanguage().invalidSecuritySetting(), detail: error.message });
+                        throw error;
+                    }
+                });
+            },
+            async handleEditUnsafeOrigins() {
+                return this.editSecuritySetting("unsafeURLOriginsText", "origins: []\n# origins:\n#   - https://trusted.example:8443\n", code => {
+                    let document;
+                    try { document = yaml.parse(code); } catch { throw new Error("Invalid origins YAML"); }
+                    if (document == null) return;
+                    const entries = document.origins ?? [];
+                    if (!document || typeof document !== "object" || Array.isArray(document)
+                        || Object.keys(document).some(key => key !== "origins") || !Array.isArray(entries)
+                        || normalizeCertificateExceptions(entries, true).length !== entries.length) {
+                        throw new Error("Use origins: [] with at most 128 exact HTTPS origins; paths, queries, credentials and wildcards are not allowed");
+                    }
+                });
+            },
+            async handleEditDownloadExceptions() {
+                const template = "exceptions: []\n# exceptions:\n#   - url: https://trusted.example/profile.yaml\n#     maxSizeMiB: 64\n#     timeoutSeconds: 180\n#     processingTimeoutSeconds: 600\n";
+                return this.editSecuritySetting("profileDownloadExceptionsText", template, text => readDownloadExceptions({ yaml, text }));
+            },
+            async handleRemoteProfileParsersChange(enabled) {
+                if (enabled === (this.settings.allowRemoteProfileParsers === true)) return;
+                if (enabled) {
+                    const labels = getLanguage();
+                    const result = await showMessageBox({ type: "warning", message: labels.confirmRemoteProfileParsers(),
+                        buttons: [labels.no(), labels.yes()], defaultId: 0, cancelId: 0 });
+                    if (result.response !== 1) return;
+                }
+                this.$set(this.settings, "allowRemoteProfileParsers", enabled === true);
+            },
+            async handleHttpExternalLinksChange(enabled) {
+                if (enabled === (this.settings.allowHttpExternalLinks === true)) return;
+                if (enabled) {
+                    const labels = getLanguage();
+                    const result = await showMessageBox({ type: "warning", message: labels.confirmHttpExternalLinks(),
+                        buttons: [labels.no(), labels.yes()], defaultId: 0, cancelId: 0 });
+                    if (result.response !== 1) return;
+                }
+                this.$set(this.settings, "allowHttpExternalLinks", enabled === true);
+            },
             async handleEditHeaders() {
                 await this.edit("headersText", "headers: # object\n");
             },
@@ -149,7 +201,7 @@ function createSettingsPageOptions({
             async handleSelectInterface() {
                 const labels = getLanguage();
                 try {
-                    const interfaces = getNetworkInterfaces().map(networkInterface => networkInterface.name);
+                    const interfaces = (await getNetworkInterfaces()).map(networkInterface => networkInterface.name);
                     const [selectedIndex] = await this.$select({
                         title: labels.chooseOutboundInterface(),
                         message: labels.chooseOutboundInterfaceDescribe(),
@@ -167,26 +219,24 @@ function createSettingsPageOptions({
             },
             async handleFetchCurrentSSID() {
                 const labels = getLanguage();
-                const ssids = getWlanInterfaces().map(networkInterface => networkInterface.SSID).filter(Boolean);
-                const [selectedIndex] = await this.$select({
-                    title: labels.currentSSID(),
-                    message: labels.currentSSIDDescribe(),
-                    items: [...ssids, labels.cancel()]
-                });
-                if (selectedIndex !== ssids.length) electron.clipboard.writeText(ssids[selectedIndex]);
+                let ssids;
+                try { ssids = (await getWlanInterfaces()).map(networkInterface => networkInterface.SSID).filter(Boolean); }
+                catch (_error) { await showMessageBox({ type: "error", message: labels.failed() }); return false; }
+                try {
+                    const [selectedIndex] = await this.$select({
+                        title: labels.currentSSID(), message: labels.currentSSIDDescribe(), items: [...ssids, labels.cancel()]
+                    });
+                    if (ssids[selectedIndex]) electron.clipboard.writeText(ssids[selectedIndex]);
+                } catch (_cancelled) {}
             },
             async handleOpenActionScriptsConsoleFile() {
-                const logPath = await this.getScriptLogPath();
-                if (!fs.existsSync(logPath)) fs.writeFileSync(logPath, "");
-                electron.shell.openPath(logPath);
+                await openApplicationLog("script");
             },
             async handleEditProfileParsers() {
                 await this.edit("profileParsersText", "parsers: # array\n");
             },
             async handleOpenConsoleFile() {
-                const logPath = await this.getParserLogPath();
-                if (!fs.existsSync(logPath)) fs.writeFileSync(logPath, "");
-                electron.shell.openPath(logPath);
+                await openApplicationLog("parser");
             },
             async handleChooseDefaultIcon() {
                 const selectedPath = await this.chooseFileOrPath();
@@ -198,7 +248,60 @@ function createSettingsPageOptions({
             },
             async handleChooseProfilePath() {
                 const selectedPath = await this.chooseFileOrPath(false);
-                if (selectedPath) this.settings.profilePath = selectedPath;
+                if (selectedPath && !this.$parent?.proxyBusy) this.profilePathDraft = selectedPath;
+            },
+            async handleSaveProfilePath() {
+                this.$refs.profilePathInput?.handleBlur?.();
+                return this.restartWithProfileDirectory(this.profilePathDraft);
+            },
+            async restartWithProfileDirectory(directory, reset = false, confirmed = false) {
+                const labels = getLanguage();
+                if (this.$parent?.proxyBusy) return false;
+                if (profileDirectory.isBusy()) {
+                    await showMessageBox({ type: "info", message: labels.profileDirectoryBusy() });
+                    return false;
+                }
+                if (!confirmed) {
+                    const result = await showMessageBox({ type: "warning",
+                        message: labels.profileDirectoryConfirm({ path: directory.trim() || path.join(this.clashPath, "profiles") }),
+                        buttons: [labels.no(), labels.saveAndRestart()], defaultId: 0, cancelId: 0 });
+                    if (result.response !== 1 || this.$parent.proxyBusy) return false;
+                }
+                return this.$parent.runProxyOperation("core", async () => {
+                    let token, stopped = false, systemProxyStopped = false;
+                    try {
+                        const prepared = await profileDirectory.prepare(directory, reset);
+                        if (prepared.unchanged) return true;
+                        token = prepared.token;
+                        this.$parent.serviceOperation = "restarting";
+                        stopped = true;
+                        await this.$parent.killClashCore();
+                        await this.$parent.killSpawned(this.$parent.tun2socks);
+                        this.$parent.tun2socks = null;
+                        await this.$parent.resetDNS();
+                        if (this.$parent.isSystemProxyOn) {
+                            if (!await this.$parent.$setSystemProxy(false, this.confData)) throw new Error("Proxy cleanup failed");
+                            systemProxyStopped = true;
+                        }
+                        await profileDirectory.commit(token);
+                        return true;
+                    } catch (error) {
+                        if (error.code === "CFW_PROFILE_DIRECTORY_ROLLBACK_FAILED") {
+                            await showMessageBox({ type: "error", message: labels.profileDirectoryRecoveryFailed() });
+                            return false;
+                        }
+                        if (token) await profileDirectory.cancel(token).catch(() => {});
+                        this.$parent.serviceOperation = "";
+                        if (stopped) await this.$parent.handlerRestartClash();
+                        if (systemProxyStopped) {
+                            const restored = await this.$parent.$setSystemProxy(true, this.confData).catch(() => false);
+                            this.$parent.setIsSystemProxyOn({ isOn: !!restored });
+                        }
+                        await showMessageBox({ type: "error", message: error.code === "CFW_PROFILE_ACTIVITY_BUSY"
+                            ? labels.profileDirectoryBusy() : labels.profileDirectoryFailed() });
+                        return false;
+                    }
+                });
             },
             async handleSelectTrayScriptPath() {
                 const selectedPath = await this.chooseFileOrPath();
@@ -209,6 +312,8 @@ function createSettingsPageOptions({
             },
             async chooseFileOrPath(chooseFile = true) {
                 const selectedPaths = await electron.ipcRenderer.invoke("dialog", "showOpenDialogSync", {
+                    title: chooseFile ? getLanguage().openFile() : getLanguage().openFolder(),
+                    buttonLabel: getLanguage().open(),
                     properties: [chooseFile ? "openFile" : "openDirectory"]
                 });
                 return selectedPaths?.[0];
@@ -218,19 +323,18 @@ function createSettingsPageOptions({
                 try {
                     await this.$alert({
                         title: labels.warning(),
-                        content: labels.askResetAllSettings(),
+                        content: `${labels.askResetAllSettings()}\n${labels.settingsResetRestart()}`,
                         isShowErrorBtn: true
                     });
-                    this.saveSettingsObject({ obj: {} });
-                    this.loadSettings();
+                    if (this.$parent?.proxyBusy) return false;
+                    return this.restartWithProfileDirectory("", true, true);
                 } catch (_error) {}
             },
             handleOpenGUILog() {
-                electron.shell.openPath(path.dirname(logger.transports.file.getFile().path));
+                return openApplicationLog("gui");
             },
             async handleOpenGUIDataFolder() {
-                const userDataPath = await electron.ipcRenderer.invoke("app", "getPath", "userData");
-                electron.shell.showItemInFolder(userDataPath);
+                await electron.ipcRenderer.invoke("application-folder", "gui");
             },
             async handleQuit(cleanupDone = false) {
                 const labels = getLanguage();
@@ -239,7 +343,7 @@ function createSettingsPageOptions({
                     message: labels.askQuit(),
                     buttons: [labels.no(), labels.yes()]
                 });
-                if (result.response === 0) return;
+                if (result.response !== 1) return;
                 if (cleanupDone) electron.ipcRenderer.send("cleanup-done");
                 else this.$parent.quit();
             },
@@ -247,7 +351,7 @@ function createSettingsPageOptions({
                 const response = await this.clashApi.flushFakeIpCache({ validateStatus: () => true });
                 const message = response.data?.message || "";
                 await showMessageBox({
-                    message: response.status === 204 ? "Fake IP cache cleared" : `Failed with reason: ${message}`
+                    message: response.status === 204 ? getLanguage().fakeIPCacheCleared() : getLanguage().fakeIPCacheClearFailed({ reason: message })
                 });
             },
             async handleGenerateUUIDSecret() {
@@ -258,17 +362,17 @@ function createSettingsPageOptions({
                     buttons: [labels.no(), labels.yes()]
                 });
                 if (result.response !== 1) return;
-                const secret = uuid.v4();
-                await updateYaml(path.join(this.clashPath, "config.yaml"), "secret", secret);
-                this.reloadElectron();
+                if (this.$parent?.proxyBusy) return false;
+                const save = async () => {
+                    const secret = uuid.v4();
+                    await updateYaml(path.join(this.clashPath, "config.yaml"), "secret", secret);
+                    await this.reloadElectron();
+                };
+                return this.$parent?.runProxyOperation ? this.$parent.runProxyOperation("core", save) : save();
             }
-        },
-        mounted() {
-            const sectionElements = this.$refs["mixin-scroll-content"].children;
-            this.sections = [...sectionElements].map(section => section.children[0].innerText);
-        },
+        }),
         beforeRouteLeave(_route, _previousRoute, next) { next(); }
     };
 }
 
-module.exports = { createExternalEditor, createSettingsPageOptions };
+module.exports = { createSettingsPageOptions };

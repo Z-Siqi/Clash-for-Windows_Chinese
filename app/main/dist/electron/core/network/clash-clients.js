@@ -12,6 +12,9 @@ function createAxiosClient({ axios, controllerPort, secret = "" }) {
     return axios.create({
         baseURL: `http://127.0.0.1:${controllerPort}/`,
         timeout: 5000,
+        // Controller credentials must never follow environment proxies or redirects.
+        proxy: false,
+        maxRedirects: 0,
         headers: { Authorization: `Bearer ${secret}` }
     });
 }
@@ -20,6 +23,8 @@ function createGotClient({ got, controllerPort, secret = "" }) {
     if (controllerPort <= 0) return null;
     return got.extend({
         baseUrl: `http://127.0.0.1:${controllerPort}`,
+        cache: false,
+        followRedirect: false,
         headers: { Authorization: `Bearer ${secret}` }
     });
 }
@@ -30,7 +35,7 @@ function createWebSocketFactory({ WebSocket, controllerPort, secret = "" }) {
         const normalizedEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
         const querySuffix = query.length > 0 ? `&${query.join("&")}` : "";
         return new WebSocket(
-            `ws://127.0.0.1:${controllerPort}${normalizedEndpoint}?token=${secret}${querySuffix}`
+            `ws://127.0.0.1:${controllerPort}${normalizedEndpoint}?token=${encodeURIComponent(secret)}${querySuffix}`
         );
     };
 }

@@ -37,26 +37,43 @@ WORK_ROOT="$(mktemp -d)"
 HELPER_PID=""
 cleanup() {
     if [[ -n "${SERVICE_BASE_URL:-}" ]]; then
-        curl --silent --max-time 1 "$SERVICE_BASE_URL/stop" >/dev/null 2>&1 || true
+        curl --silent --max-time 1 --request POST --header "Authorization: Bearer $SERVICE_TOKEN" "$SERVICE_BASE_URL/stop" >/dev/null 2>&1 || true
     fi
     if [[ -n "$HELPER_PID" ]]; then kill "$HELPER_PID" >/dev/null 2>&1 || true; fi
     rm -rf -- "$WORK_ROOT"
 }
-trap cleanup EXIT
+report_and_cleanup() {
+    local result=$?
+    if [[ "$result" != "0" && "${CFW_TEST_TUN:-0}" == "1" ]]; then
+        printf 'Isolated TUN smoke failed during %s\n' "${STAGE:-setup}" >&2
+        python3 - "$WORK_ROOT" "${SERVICE_TOKEN:-}" <<'PY'
+import glob,sys
+for file in glob.glob(sys.argv[1]+"/profile/logs/*.log")+[sys.argv[1]+"/helper.log"]:
+    try:
+        for line in open(file):
+            if "error" in line.lower() or "tun" in line.lower():
+                print(line.rstrip().replace(sys.argv[2],"<redacted>").replace("smoke-test","<redacted>"),file=sys.stderr)
+    except OSError: pass
+PY
+    fi
+    cleanup
+}
+trap report_and_cleanup EXIT
 
-mkdir -p "$WORK_ROOT/service" "$WORK_ROOT/cores" "$WORK_ROOT/profile/logs"
+mkdir -p "$WORK_ROOT/service" "$WORK_ROOT/service/cores" "$WORK_ROOT/profile/logs"
+cp "$TARGET_ROOT/../../default/Country.mmdb" "$WORK_ROOT/profile/"
 cp "$TARGET_ROOT/service/clash-core-service" "$WORK_ROOT/service/"
 cp "$TARGET_ROOT/service/core-hashes.json" "$WORK_ROOT/service/"
-cp "$TARGET_ROOT/$CLASH_NAME" "$WORK_ROOT/cores/"
-cp "$TARGET_ROOT/$MIHOMO_NAME" "$WORK_ROOT/cores/"
-chmod 755 "$WORK_ROOT/service/clash-core-service" "$WORK_ROOT/cores/$CLASH_NAME" "$WORK_ROOT/cores/$MIHOMO_NAME"
+cp "$TARGET_ROOT/$CLASH_NAME" "$WORK_ROOT/service/cores/"
+cp "$TARGET_ROOT/$MIHOMO_NAME" "$WORK_ROOT/service/cores/"
+chmod 755 "$WORK_ROOT/service/clash-core-service" "$WORK_ROOT/service/cores/$CLASH_NAME" "$WORK_ROOT/service/cores/$MIHOMO_NAME"
 
 if [[ "$HOST_OS" == "Darwin" ]]; then
-    mkdir -p "$WORK_ROOT/helpers"
-    printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\\n" "$@"' > "$WORK_ROOT/helpers/sysproxy"
-    chmod 755 "$WORK_ROOT/helpers/sysproxy"
+    mkdir -p "$WORK_ROOT/service/cores"
+    printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\\n" "$@"' > "$WORK_ROOT/service/cores/sysproxy"
+    chmod 755 "$WORK_ROOT/service/cores/sysproxy"
     python3 -c 'import hashlib,json,sys; manifest_path,helper_path=sys.argv[1:]; data=json.load(open(manifest_path)); data["helpers"]=[{"name":"sysproxy","sha256":hashlib.sha256(open(helper_path,"rb").read()).hexdigest()}]; open(manifest_path,"w").write(json.dumps(data))' \
-        "$WORK_ROOT/service/core-hashes.json" "$WORK_ROOT/helpers/sysproxy"
+        "$WORK_ROOT/service/core-hashes.json" "$WORK_ROOT/service/cores/sysproxy"
 fi
 
 free_port() {
@@ -66,77 +83,100 @@ MIXED_PORT="$(free_port)"
 CONTROLLER_PORT="$(free_port)"
 SERVICE_PORT="$(free_port)"
 SERVICE_BASE_URL="http://127.0.0.1:$SERVICE_PORT"
+SERVICE_TOKEN="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
+python3 -c 'import json,sys; folder,home,token=sys.argv[1:]; open(folder+"/service-config.json","w").write(json.dumps({"dataDirectory":home,"token":token}))' "$WORK_ROOT/service" "$WORK_ROOT/profile" "$SERVICE_TOKEN"
 printf '%s\n' \
     "mixed-port: $MIXED_PORT" \
     "external-controller: 127.0.0.1:$CONTROLLER_PORT" \
     'secret: smoke-test' \
     'mode: rule' \
-    'log-level: silent' \
+    'log-level: info' \
     'proxies: []' \
     'proxy-groups: []' \
     'rules:' \
     '  - MATCH,DIRECT' > "$WORK_ROOT/profile/config.yaml"
 
+if [[ "${CFW_TEST_TUN:-0}" == "1" ]]; then
+    # Native TUN tests must run in a separate network namespace, never the host.
+    [[ "$HOST_OS" == "Linux" && "$EUID" == "0" ]]
+    [[ "$(readlink /proc/self/ns/net)" != "$(readlink /proc/1/ns/net)" ]]
+    printf '%s\n' 'interface-name: lo' 'tun:' '  enable: true' '  stack: gvisor' \
+        '  auto-route: false' '  auto-detect-interface: false' >> "$WORK_ROOT/profile/config.yaml"
+fi
+
+verify_tun() {
+    if [[ "${CFW_TEST_TUN:-0}" != "1" ]]; then return; fi
+    for _ in $(seq 1 100); do
+        if ip -j -d link show | python3 -c 'import json,sys; assert any(v.get("linkinfo",{}).get("info_kind")=="tun" for v in json.load(sys.stdin))' 2>/dev/null; then
+            printf 'Verified native TUN interface for %s in isolated network namespace\n' "$1"
+            return
+        fi
+        sleep 0.1
+    done
+    printf 'Native TUN interface was not created for %s\n' "$1" >&2
+    exit 1
+}
+
 CFW_SERVICE_TEST_MODE=1 CFW_SERVICE_TEST_LISTEN_ADDRESS="127.0.0.1:$SERVICE_PORT" \
     "$WORK_ROOT/service/clash-core-service" >"$WORK_ROOT/helper.log" 2>&1 &
 HELPER_PID="$!"
 for _ in $(seq 1 50); do
-    if curl --silent --fail --max-time 1 "$SERVICE_BASE_URL/ping" >/dev/null; then break; fi
+    if curl --silent --fail --max-time 1 --header "Authorization: Bearer $SERVICE_TOKEN" "$SERVICE_BASE_URL/ping" >/dev/null; then break; fi
     sleep 0.1
 done
-curl --silent --fail --max-time 1 "$SERVICE_BASE_URL/ping" >/dev/null
+curl --silent --fail --max-time 1 --header "Authorization: Bearer $SERVICE_TOKEN" "$SERVICE_BASE_URL/ping" >/dev/null
 
 payload() {
-    python3 -c 'import json,sys; print(json.dumps({"path":sys.argv[1],"cwd":sys.argv[2],"silent":True}))' "$1" "$WORK_ROOT/profile"
+    python3 -c 'import json,sys; print(json.dumps({"core":sys.argv[1].rsplit("/",1)[-1],"silent":sys.argv[2]!="1"}))' "$1" "${CFW_TEST_TUN:-0}"
 }
 UNTRUSTED_STATUS="$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 2 \
     --request POST --header 'Content-Type: application/json' --data "$(payload /bin/true)" \
-    "$SERVICE_BASE_URL/start")"
+    --header "Authorization: Bearer $SERVICE_TOKEN" "$SERVICE_BASE_URL/start")"
 [[ "$UNTRUSTED_STATUS" == "403" ]]
 
 if [[ "$HOST_OS" == "Darwin" ]]; then
     proxy_payload() {
-        python3 -c 'import json,sys; print(json.dumps({"path":sys.argv[1],"args":sys.argv[2:]}))' "$@"
+        python3 -c 'import json,sys; print(json.dumps({"args":sys.argv[2:]}))' "$@"
     }
-    UNTRUSTED_PROXY_STATUS="$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 2 \
-        --request POST --header 'Content-Type: application/json' \
-        --data "$(proxy_payload /bin/true -show)" "$SERVICE_BASE_URL/system-proxy")"
-    [[ "$UNTRUSTED_PROXY_STATUS" == "403" ]]
     INVALID_PROXY_STATUS="$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 2 \
         --request POST --header 'Content-Type: application/json' \
-        --data "$(proxy_payload "$WORK_ROOT/helpers/sysproxy" -http 127.0.0.1:7890)" \
-        "$SERVICE_BASE_URL/system-proxy")"
+        --data "$(proxy_payload "$WORK_ROOT/service/cores/sysproxy" -http 127.0.0.1:7890)" \
+        --header "Authorization: Bearer $SERVICE_TOKEN" "$SERVICE_BASE_URL/system-proxy")"
     [[ "$INVALID_PROXY_STATUS" == "400" ]]
     PROXY_OUTPUT="$(curl --silent --fail --max-time 3 --request POST --header 'Content-Type: application/json' \
-        --data "$(proxy_payload "$WORK_ROOT/helpers/sysproxy" -show)" \
-        "$SERVICE_BASE_URL/system-proxy")"
+        --data "$(proxy_payload "$WORK_ROOT/service/cores/sysproxy" -show)" \
+        --header "Authorization: Bearer $SERVICE_TOKEN" "$SERVICE_BASE_URL/system-proxy")"
     [[ "$PROXY_OUTPUT" == *-show* ]]
     LEGACY_COMMAND_STATUS="$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 2 \
         --request POST --header 'Content-Type: application/json' --data '{}' \
-        "$SERVICE_BASE_URL/command")"
+        --header "Authorization: Bearer $SERVICE_TOKEN" "$SERVICE_BASE_URL/command")"
     [[ "$LEGACY_COMMAND_STATUS" == "404" ]]
 fi
 
+STAGE=clash-start
 curl --silent --fail --max-time 3 --request POST --header 'Content-Type: application/json' \
-    --data "$(payload "$WORK_ROOT/cores/$CLASH_NAME")" "$SERVICE_BASE_URL/start" >/dev/null
+    --data "$(payload "$WORK_ROOT/service/cores/$CLASH_NAME")" --header "Authorization: Bearer $SERVICE_TOKEN" "$SERVICE_BASE_URL/start" >/dev/null
+STAGE=clash-controller
 for _ in $(seq 1 100); do
     if curl --silent --fail --max-time 1 --header 'Authorization: Bearer smoke-test' \
         "http://127.0.0.1:$CONTROLLER_PORT/version" >/dev/null; then break; fi
     sleep 0.1
 done
-pgrep -f "$WORK_ROOT/cores/$CLASH_NAME -d $WORK_ROOT/profile" >/dev/null
+pgrep -f "$WORK_ROOT/service/cores/$CLASH_NAME -d $WORK_ROOT/profile" >/dev/null
+verify_tun "$CLASH_NAME"
 
 curl --silent --fail --max-time 3 --request POST --header 'Content-Type: application/json' \
-    --data "$(payload "$WORK_ROOT/cores/$MIHOMO_NAME")" "$SERVICE_BASE_URL/start" >/dev/null
+    --data "$(payload "$WORK_ROOT/service/cores/$MIHOMO_NAME")" --header "Authorization: Bearer $SERVICE_TOKEN" "$SERVICE_BASE_URL/start" >/dev/null
 for _ in $(seq 1 100); do
-    if pgrep -f "$WORK_ROOT/cores/$MIHOMO_NAME -d $WORK_ROOT/profile" >/dev/null; then break; fi
+    if pgrep -f "$WORK_ROOT/service/cores/$MIHOMO_NAME -d $WORK_ROOT/profile" >/dev/null; then break; fi
     sleep 0.1
 done
-if pgrep -f "$WORK_ROOT/cores/$CLASH_NAME -d $WORK_ROOT/profile" >/dev/null; then
+if pgrep -f "$WORK_ROOT/service/cores/$CLASH_NAME -d $WORK_ROOT/profile" >/dev/null; then
     printf 'legacy core remained alive after switching to Mihomo\n' >&2
     exit 1
 fi
-pgrep -f "$WORK_ROOT/cores/$MIHOMO_NAME -d $WORK_ROOT/profile" >/dev/null
-curl --silent --fail --max-time 2 "$SERVICE_BASE_URL/stop" >/dev/null
+pgrep -f "$WORK_ROOT/service/cores/$MIHOMO_NAME -d $WORK_ROOT/profile" >/dev/null
+verify_tun "$MIHOMO_NAME"
+curl --silent --fail --max-time 2 --request POST --header "Authorization: Bearer $SERVICE_TOKEN" "$SERVICE_BASE_URL/stop" >/dev/null
 
 printf '%s Service Mode switched from Clash to Mihomo through the allow-listed helper\n' "$HOST_OS"

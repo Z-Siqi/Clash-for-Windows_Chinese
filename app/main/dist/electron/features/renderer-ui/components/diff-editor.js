@@ -10,8 +10,7 @@ function createDiffEditor({
     utilities,
     preferenceKeys,
     cache,
-    Language,
-    modifyState
+    getLanguage
 } = {}) {
     const options = {
         components: {
@@ -35,8 +34,7 @@ function createDiffEditor({
         watch: {
             isShow(isVisible) {
                 if (isVisible) return;
-                if (this.editor) this.editor.dispose();
-                this.editor = null;
+                this.disposeEditor();
             },
             renderSideBySide(isEnabled) {
                 if (this.editor) this.editor.updateOptions({ renderSideBySide: isEnabled });
@@ -45,13 +43,21 @@ function createDiffEditor({
         },
         computed: {
             saveHint() {
-                const labels = new Language(modifyState.language);
+                const labels = getLanguage();
                 return platform.isMacOS() ? "Command+S" : `${labels.save()}(Ctrl+S)`;
             }
         },
         methods: {
+            disposeEditor() {
+                this.editor?.dispose();
+                this.editor = null;
+                // Diff models are explicitly owned by this dialog, not its editor.
+                this.baseModel?.dispose?.();
+                this.changeModel?.dispose?.();
+                this.baseModel = this.changeModel = null;
+            },
             show({ base, change }) {
-                const labels = new Language(modifyState.language);
+                const labels = getLanguage();
                 this.isShow = true;
                 this.renderSideBySide = cache.get(preferenceKeys.IS_DIFF_EIDTOR_SEPARATED);
                 this.originalChangeCode = change;
@@ -65,6 +71,8 @@ function createDiffEditor({
                         fontSize: 12,
                         automaticLayout: true,
                         renderSideBySide: this.renderSideBySide,
+                        // The explicit toolbar choice must also work in the default narrow window.
+                        useInlineViewWhenSpaceIsLimited: false,
                         minimap: { enabled: false },
                         links: false,
                         contextmenu: false,
@@ -91,7 +99,7 @@ function createDiffEditor({
                 });
             },
             async handleCancel() {
-                const labels = new Language(modifyState.language);
+                const labels = getLanguage();
                 if (this.changeModel.getValue() === this.originalChangeCode) {
                     this.reject();
                     this.isShow = false;
@@ -118,13 +126,14 @@ function createDiffEditor({
                 this.renderSideBySide = !this.renderSideBySide;
             }
         },
-        mounted() {}
+        mounted() {},
+        beforeDestroy() { this.disposeEditor(); }
     };
 
     return defineComponent(options, function renderDiffEditor() {
         const viewModel = this;
         const createElement = viewModel._self._c;
-        const labels = new Language(modifyState.language);
+        const labels = getLanguage();
         if (!viewModel.isShow) return viewModel._e();
 
         return createElement("esc-capture", {
@@ -142,7 +151,7 @@ function createDiffEditor({
                 createElement("Hint", {
                     staticClass: "change-btn-off clickable",
                     class: { "change-btn-on": viewModel.renderSideBySide },
-                    attrs: { hint: "并排模式" },
+                    attrs: { hint: labels.sideBySideMode() },
                     on: { click: viewModel.handleChangeStyle }
                 }, [createElement("span", {
                     staticClass: "icon text-[20px] text-white"

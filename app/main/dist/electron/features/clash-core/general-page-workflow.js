@@ -1,59 +1,33 @@
 "use strict";
 
 const { parsePort, buildDashboardUrl } = require("./general-settings");
+const { isIPv4 } = require("../../core/network/browser-ip");
 const { normalizeCoreVersion } = require("./core-api-compat");
+const { supportsScriptMode } = require("../../core/clash-core/core-capabilities");
+const { TAP_MODES, resolveTapMode } = require("../../core/network/legacy-tap-policy");
+const { setManualMixedPort } = require("../../core/network/manual-mixed-port");
 
-const DEFAULT_MIXIN = `mixin: # object
-  dns:
-    enable: true
-    listen: :53
-    enhanced-mode: fake-ip
-    nameserver:
-      - 8.8.8.8
-    fallback:
-      - 8.8.4.4
-    fake-ip-filter:
-      - +.stun.*.*
-      - +.stun.*.*.*
-      - +.stun.*.*.*.*
-      - +.stun.*.*.*.*.*
-      - " *.n.n.srv.nintendo.net"
-      - +.stun.playstation.net
-      - xbox.*.*.microsoft.com
-      - "*.*.xboxlive.com"
-      - "*.msftncsi.com"
-      - "*.msftconnecttest.com"
-      - WORKGROUP
-`;
-
-const DEFAULT_MIXIN_CODE = `module.exports.parse = ({ content, name, url }, { yaml, axios, notify }) => {
-  return content
-}`;
+const { DEFAULT_YAML_MIXIN: DEFAULT_MIXIN, DEFAULT_CODE_MIXIN: DEFAULT_MIXIN_CODE } = require("../../core/config/mixin-defaults");
 
 function createGeneralPageWorkflow({
     getLanguage,
     path,
-    fs,
     moment,
     yaml,
-    httpClient,
-    zlib,
-    tarStream,
-    childProcess,
-    sudoExec,
+    terminal,
+    coreConfigRepository,
     electron,
     cache,
     keys,
     getNetworkInterfaces,
+    getTapInstalled = async () => false,
+    getNetworkDiagnostics = () => [],
     platform,
-    updateApplication,
-    logger,
     connectedStatus,
     service,
     firewall,
     utilities,
-    ensureMixinDefaults,
-    validateMixinSettings,
+    checkMixedPort,
     schedule = setTimeout,
     repeat = setInterval
 }) {
@@ -66,17 +40,24 @@ function createGeneralPageWorkflow({
         logLevel: "unknow",
         isIPV6: false,
         geoipUpdateTime: "",
+        geoipUpdating: false,
         systemProxyLoading: true,
         autoLaunch: cache.get(keys.AUTO_LAUNCH) || false,
         autoLaunchLoading: true,
+        autoLaunchPending: false,
         protableMode: false,
         version: "",
         clashCoreVersion: "",
+        coreVersionRequest: 0,
         serviceNeedUpdate: false,
+        serviceDialogOpen: false,
+        allowLanLoading: false,
+        ipv6Loading: false,
         isTunSettingsVisible: false,
         isInterfacesVisible: false,
         isFetchingFirewallRule: false,
-        isResetDNSSettingsVisible: false
+        isResetDNSSettingsVisible: false,
+        isTapManagementVisible: false, tapInstalled: null, tapStatusRequest: 0
     });
 
     const watch = {
@@ -84,11 +65,29 @@ function createGeneralPageWorkflow({
         mixedPort(value) { if (value) this.port = value; },
         isWindowShow(value) { if (value) { this.setupComponent(); this.setupSwitches(); } },
         isLaunching(value) { if (!value) this.setupComponent(); },
-        clashStatus(value) { if (value === connectedStatus) this.setupComponent(); },
-        clashPath() { this.serviceNeedUpdate = service.needUpdate(); }
+        confData() { this.setupComponent(); },
+        "$parent.coreStatusPending"(value) { if (!value) this.setupComponent(); },
+        clashStatus(value) {
+            this.invalidateCoreVersion();
+            if (value === connectedStatus) this.setupComponent();
+        },
+        "settings.proxyCore"() { this.invalidateCoreVersion(); this.refreshFirewallStatus(); },
+        isLocalMode() { this.refreshFirewallStatus(); },
+        "$parent.isCoreRestarting"(value) { if (value) this.invalidateCoreVersion(); else this.refreshFirewallStatus(); },
+        async clashPath() { this.serviceNeedUpdate = await service.needUpdate(); }
     };
 
     const computed = {
+        scriptModeVisible() { return supportsScriptMode(this.settings.proxyCore); },
+        proxyBusy() { return this.$parent.proxyBusy; },
+        coreErrorVisible() { return !this.$parent.coreStatusPending && this.clashStatus !== connectedStatus; },
+        tunLoading() { return this.$parent.proxyOperation === "tun" || !!(this.isTunEnable && this.$parent.coreRestorePending); },
+        mixinLoading() { return this.$parent.proxyOperation === "mixin" || !!(this.isMixinEnable && this.$parent.coreRestorePending); },
+        tapLoading() { return this.$parent.proxyOperation === "tap"; },
+        legacyTapMode() { return resolveTapMode(this.settings); },
+        networkStateKnown() { return this.clashStatus === connectedStatus && Object.keys(this.currentProfilePayload || {}).length > 0; },
+        networkWarnings() { return this.networkStateKnown ? getNetworkDiagnostics(this) : []; },
+        systemProxyBusy() { return this.systemProxyLoading || this.$parent.proxyOperation === "system"; },
         autoLaunchHint() {
             const labels = getLanguage();
             return platform.isMacOS() ? labels.startWithMacOS()
@@ -102,21 +101,58 @@ function createGeneralPageWorkflow({
     };
 
     const methods = {
+        handleTapModeChange(mode) {
+            if (this.proxyBusy || !TAP_MODES.includes(mode)) return false;
+            return this.$parent.requestProfileToggle("tap", mode);
+        },
+        handleTapMulticastChange(value) {
+            if (this.proxyBusy || typeof value !== "boolean") return false;
+            return this.$parent.requestProfileToggle("tapMulticast", value);
+        },
+        async refreshTapStatus() {
+            if (!platform.isWindows()) return;
+            const request = this.tapStatusRequest = (this.tapStatusRequest || 0) + 1;
+            try {
+                const installed = await getTapInstalled();
+                if (request === this.tapStatusRequest && (installed === true || installed === false)) this.tapInstalled = installed;
+            } catch (_error) { /* Keep the last confirmed status during transient OS/IPC failures. */ }
+        },
         handleTitleClick() { electron.ipcRenderer.invoke("window", "reload"); },
         handleShowDNSQueryDialog() { this.$dns().catch(() => {}); },
-        handleShowScriptTestDialog() { this.$script({}).catch(() => {}); },
-        handlePreviewCurrentPayload() {
-            this.$code({ code: yaml.stringify(this.currentProfilePayload), readOnly: true }).catch(() => {});
+        handleShowScriptTestDialog() {
+            if (!supportsScriptMode(this.settings.proxyCore)) return false;
+            return this.$script({}).catch(() => {});
+        },
+        async handlePreviewCurrentPayload() {
+            const labels = getLanguage();
+            const state = this.networkStateKnown
+                ? `${labels.networkAppliedState()} TUN: ${this.currentProfilePayload.tun?.enable ? labels.networkEnabled() : labels.networkDisabled()} · TAP: ${this.$parent.tun2socks ? labels.networkEnabled() : labels.networkDisabled()}`
+                : labels.networkStateUnavailable();
+            const message = [state, ...(this.proxyBusy ? [labels.networkApplying()] : []),
+                ...this.networkWarnings.map(key => labels[key]())].join("\n\n");
+            try {
+                const [selection] = await this.$select({ title: labels.networkConfiguration(), message,
+                    items: [labels.previewSubmittedConfiguration(), labels.cancel()], isLastDifferent: true });
+                if (selection === 0) await this.$code({ code: yaml.stringify(this.currentProfilePayload), readOnly: true });
+            } catch (_cancelled) {}
+        },
+        async refreshFirewallStatus() {
+            if (!platform.isWindows()) return;
+            const request = this.firewallStatusRequest = (this.firewallStatusRequest || 0) + 1;
+            const core = this.settings?.proxyCore;
+            const exists = await firewall.status();
+            if (request === this.firewallStatusRequest && core === this.settings?.proxyCore) this.setIsFirewallRuleExist({ isExist: exists });
         },
         async handleAddFirewallRules() {
-            if (this.isFetchingFirewallRule) return;
+            if (this.isFetchingFirewallRule || this.proxyBusy) return;
             this.isFetchingFirewallRule = true;
             try {
-                if (this.isFirewallRuleExist) await firewall.remove();
-                else await firewall.add();
-            } catch (_error) {}
-            this.setIsFirewallRuleExist({ isExist: await firewall.status() });
-            this.isFetchingFirewallRule = false;
+                try {
+                    if (await firewall.status()) await firewall.remove();
+                    else await firewall.add();
+                } catch (_error) {}
+                this.setIsFirewallRuleExist({ isExist: await firewall.status() });
+            } finally { this.isFetchingFirewallRule = false; }
         },
         async handleEditMixin() {
             const { mixinText = DEFAULT_MIXIN, mixinType = 0, mixinCode = DEFAULT_MIXIN_CODE } = this.settings;
@@ -143,59 +179,97 @@ function createGeneralPageWorkflow({
             } catch (_error) {}
         },
         async installService() {
+            if (this.serviceDialogOpen || this.proxyBusy) return;
+            this.serviceDialogOpen = true;
             const labels = getLanguage();
             const items = [labels.install(), labels.uninstall()];
             if (this.serviceNeedUpdate) items.push(labels.update());
-            const [selection, method] = await this.$select({
-                title: labels.serviceManagement(),
-                message: `${labels.serviceManagementDescribe()}${this.isLocalMode ? labels.inactive() : labels.active()}`,
-                items,
-                subSelectItems: platform.isWindows() ? [`schtasks(${labels.recommended()})`, "winsw"] : [],
-                subSelectTitle: labels.installMethod()
-            });
+            let selection;
             try {
+                const [selected, method] = await this.$select({
+                    title: labels.serviceManagement(),
+                    message: `${labels.serviceManagementDescribe()}${this.isLocalMode ? labels.inactive() : labels.active()}`,
+                    items,
+                    subSelectItems: platform.isWindows() ? [`schtasks(${labels.recommended()})`, "winsw"] : [],
+                    subSelectTitle: labels.installMethod()
+                });
+                selection = selected;
                 if (selection === 0) {
                     if (!this.isLocalMode) {
-                        await utilities.showMessageBox({ type: "error", message: "The service is already installed." });
+                        await utilities.showMessageBox({ type: "error", message: labels.serviceAlreadyInstalled() });
                         return;
                     }
-                    await service.install(method);
-                    if (!this.devMode) this.reloadElectron();
+                    await this.applyServiceChange("install", method);
                 }
                 if (selection === 1) {
-                    await service.uninstall();
-                    if (!this.devMode) this.reloadElectron();
+                    await this.applyServiceChange("uninstall");
                 }
                 if (selection === 2) {
-                    await service.update();
-                    if (!this.devMode) this.reloadElectron();
+                    await this.applyServiceChange("update");
                 }
             } catch (error) {
+                if (selection === undefined) return;
                 const [action] = await this.$select({
                     title: `${labels.failTo()}${items[selection].toLowerCase()}${labels.serviceMode()}`,
                     message: error.message,
                     items: [labels.reloadAPP(), labels.cancel()]
                 });
-                if (action === 0) this.reloadElectron();
+                if (action === 0) {
+                    this.$parent.serviceOperation = "restarting";
+                    try { await this.reloadElectron(); }
+                    catch (reloadError) { this.$parent.serviceOperation = ""; throw reloadError; }
+                }
+            } finally {
+                this.serviceDialogOpen = false;
+            }
+        },
+        async applyServiceChange(action, method) {
+            const home = this.$parent;
+            if (home.proxyBusy) return false;
+            home.serviceOperation = "applying";
+            try {
+                await this.$nextTick();
+                await service[action](method);
+                if (this.devMode) home.serviceOperation = "";
+                else {
+                    home.serviceOperation = "restarting";
+                    await this.$nextTick();
+                    await this.reloadElectron();
+                    // Keep the blocker until the old renderer exits, including quit cleanup.
+                }
+                return true;
+            } catch (error) {
+                home.serviceOperation = "";
+                throw error;
             }
         },
         async handleAllowLANChange() {
-            const next = !this.isAllowLan;
-            const response = await this.clashApi.patchConfig({ "allow-lan": next });
-            if (response.status === 204) {
-                this.isAllowLan = next;
-                await utilities.updateYaml(path.join(this.clashPath, "config.yaml"), "allow-lan", next);
-                this.setConfData({ data: { ...this.confData, "allow-lan": next } });
-            }
+            if (this.allowLanLoading || this.proxyBusy) return;
+            this.allowLanLoading = true;
+            try {
+                return await this.$parent.runProxyOperation("allow-lan", async () => {
+                    const next = !this.isAllowLan;
+                    const response = await this.clashApi.patchConfig({ "allow-lan": next });
+                    if (response.status !== 204) throw new Error(`Could not apply Allow LAN (${response.status})`);
+                    this.isAllowLan = next;
+                    await utilities.updateYaml(path.join(this.clashPath, "config.yaml"), "allow-lan", next);
+                    this.setConfData({ data: { ...this.confData, "allow-lan": next } });
+                }, !this.isAllowLan);
+            } finally { this.allowLanLoading = false; }
         },
         async handleIPV6Change() {
-            const next = !this.isIPV6;
-            const response = await this.clashApi.patchConfig({ ipv6: next });
-            if (response.status === 204) {
-                this.isIPV6 = next;
-                await utilities.updateYaml(path.join(this.clashPath, "config.yaml"), "ipv6", next);
-                this.setConfData({ data: { ...this.confData, ipv6: next } });
-            }
+            if (this.ipv6Loading || this.proxyBusy) return;
+            this.ipv6Loading = true;
+            try {
+                return await this.$parent.runProxyOperation("ipv6", async () => {
+                    const next = !this.isIPV6;
+                    const response = await this.clashApi.patchConfig({ ipv6: next });
+                    if (response.status !== 204) throw new Error(`Could not apply IPv6 (${response.status})`);
+                    this.isIPV6 = next;
+                    await utilities.updateYaml(path.join(this.clashPath, "config.yaml"), "ipv6", next);
+                    this.setConfData({ data: { ...this.confData, ipv6: next } });
+                }, !this.isIPV6);
+            } finally { this.ipv6Loading = false; }
         },
         async handleEditLogLevel() {
             const labels = getLanguage();
@@ -213,37 +287,23 @@ function createGeneralPageWorkflow({
                 }
             } catch (_error) {}
         },
-        handleMixinSwitchClick() {
-            try {
-                if (!this.isMixinEnable) {
-                    ensureMixinDefaults(this.settings);
-                    validateMixinSettings(this.settings, { parseYaml: yaml.parse });
-                }
-                this.changeIsMixinEnable({ isMixin: !this.isMixinEnable });
-            } catch (error) {
-                console.error("toggle mixin failed:", error);
-                utilities.notify("Mixin", error.message, { silent: false });
-            }
+        async handleMixinSwitchClick() {
+            return this.$parent.requestProfileToggle("mixin", !this.isMixinEnable);
         },
-        async handleTunSwitchClick() { this.changeIsTunEnable({ isTun: !this.isTunEnable }); },
+        async handleTunSwitchClick() { return this.$parent.requestProfileToggle("tun", !this.isTunEnable); },
         async handleSystemProxySwitchClick() {
             const labels = getLanguage();
-            if (this.systemProxyLoading) return;
-            this.systemProxyLoading = true;
+            if (this.systemProxyBusy || this.proxyBusy) return;
             const next = !this.isSystemProxyOn;
-            if (await this.$setSystemProxy(next, this.confData)) {
-                this.setIsSystemProxyOn({ isOn: next });
-            } else if (platform.isMacOS() && this.isLocalMode) {
+            if (!await this.$parent.requestSystemProxy(next) && platform.isMacOS() && this.isLocalMode) {
                 const { response } = await utilities.showMessageBox({
                     type: "error",
                     message: `${labels.makeSureYouHave()}${this.serviceNeedUpdate ? labels.updated() : labels.installed()} ${labels.serviceModeCtrlSysProxy()}`,
-                    buttons: [`${this.serviceNeedUpdate ? labels.update() : labels.install()} ${labels.now()}`, "Later"]
+                    buttons: [`${this.serviceNeedUpdate ? labels.update() : labels.install()} ${labels.now()}`, labels.later()]
                 });
                 try {
                     if (response === 0) {
-                        if (this.serviceNeedUpdate) await service.update();
-                        else await service.install();
-                        if (!this.$parent.devMode) this.reloadElectron();
+                        await this.applyServiceChange(this.serviceNeedUpdate ? "update" : "install");
                     }
                 } catch (error) {
                     const [selection] = await this.$select({
@@ -254,53 +314,66 @@ function createGeneralPageWorkflow({
                     if (selection === 0) this.reloadElectron();
                 }
             }
-            this.systemProxyLoading = false;
         },
         async handleAutoLaunchSwitchClick() {
             const next = !this.autoLaunch;
-            if (this.autoLaunchLoading) return;
+            if (this.autoLaunchLoading || this.autoLaunchPending) return;
             this.autoLaunchLoading = true;
-            this.$setAutoLaunch(next);
-            this.autoLaunch = next;
-            cache.put(keys.AUTO_LAUNCH, next);
-            this.autoLaunchLoading = false;
+            this.autoLaunchPending = true;
+            try {
+                await this.$setAutoLaunch(next);
+                this.autoLaunch = next;
+                cache.put(keys.AUTO_LAUNCH, next);
+                return true;
+            } catch (_error) {
+                await utilities.showMessageBox({ type: "error", message: getLanguage().failed() });
+                return false;
+            } finally { this.autoLaunchLoading = false; this.autoLaunchPending = false; }
         },
         async installTapDevice() {
-            if (!platform.isWindows()) return;
+            if (!platform.isWindows() || this.proxyBusy) return false;
+            this.isTapManagementVisible = true;
+            await this.refreshTapStatus();
+        },
+        async handleTapManagementAction(selection) {
+            if (!platform.isWindows() || this.proxyBusy || ![0, 1, 2].includes(selection)) return false;
             const labels = getLanguage();
-            try {
-                const [selection] = await this.$select({
-                    title: labels.TAPdeviceManagement(), message: labels.TAPinstallDescribe(),
-                    items: [labels.install(), labels.uninstall(), labels.customize()]
-                });
-                if (selection === 0) {
-                    try {
-                        await this.$parent.setupTapDevice(true);
-                        utilities.notify(labels.success(), labels.tapDeviceInstalled(), true);
-                        if (this.isMixinEnable || this.isTunEnable) this.$parent.refreshProfile();
-                    } catch (_error) { utilities.notify(labels.failed(), labels.notInstallTapDevice(), true); }
-                } else if (selection === 1) {
-                    try {
-                        await this.$parent.setupTapDevice(false);
-                        utilities.notify(labels.success(), labels.tapDeviceRemoved(), true);
-                    } catch (_error) { utilities.notify(labels.failed(), labels.notRemoveTapDevice(), true); }
-                } else if (selection === 2) {
-                    const { ip, subnet, gateway } = cache.get(keys.TAP_INFO) ?? {};
-                    try {
-                        const result = await this.$input({
-                            title: labels.deviceTAP(),
-                            data: [
-                                { name: labels.IPaddress(), key: "ip", placeholder: "10.0.0.1", value: ip ?? "" },
-                                { name: labels.subnetMask(), key: "subnet", placeholder: "255.255.255.0", value: subnet ?? "" },
-                                { name: labels.defaultGateway(), key: "gateway", placeholder: "10.0.0.0", value: gateway ?? "" }
-                            ],
-                            hint: labels.reinstallDescribeWithTAP()
-                        });
-                        cache.put(keys.TAP_INFO, result);
-                    } catch (_error) {}
-                    this.installTapDevice();
-                }
-            } catch (_error) {}
+            return this.$parent.runProxyOperation("tap", async () => {
+                try {
+                    if (selection === 2) {
+                        const { ip, subnet, gateway } = cache.get(keys.TAP_INFO) ?? {};
+                        try {
+                            const result = await this.$input({
+                                title: labels.deviceTAP(),
+                                data: [
+                                    { name: labels.IPaddress(), key: "ip", placeholder: "10.0.0.1", value: ip ?? "", validate: value => value === "" || isIPv4(value) ? "" : labels.ipv4Required() },
+                                    { name: labels.subnetMask(), key: "subnet", placeholder: "255.255.255.0", value: subnet ?? "", validate: value => value === "" || isIPv4(value) ? "" : labels.ipv4Required() },
+                                    { name: labels.defaultGateway(), key: "gateway", placeholder: "10.0.0.0", value: gateway ?? "", validate: value => value === "" || isIPv4(value) ? "" : labels.ipv4Required() }
+                                ],
+                                hint: labels.reinstallDescribeWithTAP()
+                            });
+                            cache.put(keys.TAP_INFO, result);
+                        } catch (_error) {}
+                    }
+                    if (selection !== 2) {
+                        let setupError;
+                        try {
+                            if (await this.$parent.setupTapDevice(selection === 0) === false) {
+                                throw new Error(selection === 0 ? labels.notInstallTapDevice() : labels.notRemoveTapDevice());
+                            }
+                        } catch (error) { setupError = error; }
+                        // A cancelled elevation can leave the driver installed after
+                        // its owned process was stopped. Reapply the current policy.
+                        const result = this.$parent.refreshTapAfterSetup
+                            ? await this.$parent.refreshTapAfterSetup(setupError ? undefined : selection === 0)
+                            : await this.$parent.refreshProfile();
+                        if (setupError) throw setupError;
+                        if (!result.success && result.message) throw new Error(result.message);
+                        utilities.notify(labels.success(), selection === 0 ? labels.tapDeviceInstalled() : labels.tapDeviceRemoved(), true);
+                    }
+                    return true;
+                } finally { await this.refreshTapStatus(); }
+            });
         },
         async openCmdWithProxy() {
             const labels = getLanguage();
@@ -315,40 +388,48 @@ function createGeneralPageWorkflow({
                     });
                     if (selection === 3) this.handlePortClick();
                     else {
-                        const terminals = ["cmd", "powershell", "wt"];
-                        const exec = checks[0].value ? sudoExec : childProcess.exec;
-                        exec(`start ${terminals[selection]}`, {
-                            cwd: this.$parent.userPath,
-                            windowsHide: true,
-                            env: {
-                                http_proxy: `http://127.0.0.1:${this.port}`,
-                                https_proxy: `http://127.0.0.1:${this.port}`
-                            }
-                        });
+                        await terminal.open(selection, checks[0].value === true, this.port);
                     }
                 }
             } catch (_error) {}
         },
         async handleEditMixedPort() {
+            if (this.proxyBusy) return false;
             const labels = getLanguage();
+            let result;
             try {
-                const result = await this.$input({
+                result = await this.$input({
                     title: labels.changeMixedPort(),
+                    submitOnEnter: true,
                     data: [{
                         name: labels.newPort(), key: "port", placeholder: this.port, value: "",
-                        validate: value => parsePort(value) !== null ? "" : "Port must be an integer between 1 and 65535"
+                        validate: value => parsePort(value) !== null ? "" : labels.invalidPort()
                     }],
                     hint: "mixed = http + socks"
                 });
-                const port = parsePort(result.port);
-                if (port !== null && (await this.clashApi.patchConfig({ "mixed-port": port })).status === 204) {
+            } catch (_cancelled) { return false; }
+            const port = parsePort(result.port);
+            if (port === null) return false;
+            return this.$parent.runProxyOperation("port", async () => {
+                try {
+                    await setManualMixedPort({
+                        clashApi: this.clashApi, port, checkAvailable: checkMixedPort,
+                        sleep: delay => new Promise(resolve => schedule(resolve, delay)),
+                        persist: value => utilities.updateYaml(path.join(this.clashPath, "config.yaml"), "mixed-port", value)
+                    });
                     this.port = port;
                     this.settings.randomMixedPort = false;
-                    await utilities.updateYaml(path.join(this.clashPath, "config.yaml"), "mixed-port", port);
                     this.setConfData({ data: { ...this.confData, "mixed-port": port } });
-                }
-            } catch (_error) {}
-            this.setupComponent();
+                    return true;
+                } catch (error) {
+                    if (error.actualPort !== undefined) this.port = error.actualPort;
+                    const content = error.reason === "unavailable" ? labels.portUnavailable()
+                        : error.reason === "rollback" ? labels.mixedPortRollbackFailed()
+                            : error.reason === "persist" ? labels.mixedPortSaveFailed() : labels.mixedPortChangeFailed();
+                    await this.$alert({ title: labels.changeMixedPort(), content });
+                    return false;
+                } finally { await this.setupComponent(); }
+            });
         },
         async handleEditBindAddress() {
             const labels = getLanguage();
@@ -367,10 +448,10 @@ function createGeneralPageWorkflow({
             this.setupComponent();
         },
         handleCopyControllerURL() {
-            electron.shell.openExternal(buildDashboardUrl({ controllerPort: this.controllerPort, secret: this.secret }));
+            return electron.shell.openExternal(buildDashboardUrl({ controllerPort: this.controllerPort, secret: this.secret }));
         },
         spawnLoopback() {
-            if (platform.isWindows()) electron.shell.openPath(path.join(this.filesPath, "win", "common", "EnableLoopback.exe"));
+            if (platform.isWindows()) return terminal.loopback();
         },
         async openGithubRelease() {
             const labels = getLanguage();
@@ -382,14 +463,20 @@ function createGeneralPageWorkflow({
                 if (selection === 0) await this.reloadElectron();
                 return;
             }
-            await this.$parent.checkForUpdate();
-            const { url, version, log, releasePage, reactions, reactionClick } = this.$parent.newVersionInfo;
+            let checked;
+            try { checked = await this.$parent.checkForUpdate(); }
+            catch (_error) { checked = false; }
+            if (checked === false) {
+                await this.$alert({ title: labels.checkForUpdate(), content: labels.updateCheckFailed() });
+                return false;
+            }
+            const { url, version, displayVersion, log, releasePage, reactions, reactionClick } = this.$parent.newVersionInfo;
             if (!url) {
                 this.$alert({ title: labels.nowVersionUpToDate(), content: labels.nowVersionUpToDateDescribe() });
                 return;
             }
             const [selection] = await this.$select({
-                title: `${version}${labels.hadBeenReleased()}`,
+                title: `${displayVersion || version}${labels.hadBeenReleased()}`,
                 message: log,
                 reactions,
                 reactionClick,
@@ -399,7 +486,7 @@ function createGeneralPageWorkflow({
                 await electron.shell.openExternal(releasePage);
             } else if (selection === 1) electron.clipboard.writeText(releasePage);
         },
-        handleHomeDirectoryOpen() { electron.shell.openPath(path.resolve(this.clashPath)); },
+        handleHomeDirectoryOpen() { return electron.ipcRenderer.invoke("application-folder", "home", this.clashPath); },
         handleGeoipDatabaseUpdate() { this.updateGeoipDB(); },
         async handlePortClick() {
             const labels = getLanguage();
@@ -408,14 +495,15 @@ function createGeneralPageWorkflow({
                 const result = await this.$input({
                     title: labels.copyCommand(),
                     data: [{ name: "", key: "command", placeholder: "", value: cached || fallback }],
-                    hint: "", confirmText: "Copy"
+                    hint: "", confirmText: labels.copy()
                 }).catch(() => undefined);
                 if (!result) return "";
                 const command = result.command;
                 cache.put(keys.SYSTEM_PROXY_COMMAND, command || "");
+                const interfaces = await getNetworkInterfaces();
                 return (command || "")
                     .replace(/%mixedPort%/g, this.port)
-                    .replace(/%(.+?)%/g, token => (getNetworkInterfaces().find(item => item.name === token.slice(1, -1)) || {}).address || "");
+                    .replace(/%(.+?)%/g, token => (interfaces.find(item => item.name === token.slice(1, -1)) || {}).address || "");
             };
             let command;
             if (platform.isMacOS() || platform.isLinux()) {
@@ -437,23 +525,24 @@ function createGeneralPageWorkflow({
             }
         },
         async autoFix() {
-            try { fs.unlinkSync(path.join(this.clashPath, "config.yaml")); } catch (_error) {}
-            try { fs.unlinkSync(path.join(this.clashPath, "country.mmdb")); } catch (_error) {}
+            try { await coreConfigRepository.reset(this.clashPath); } catch (_error) {}
             await this.reloadElectron();
         },
         async updateGeoipDB() {
             const labels = getLanguage();
             if (platform.isWindows()) {
-                this.$alert({ content: labels.updatingDbNotAllowedCFW(), title: "Note" });
+                this.$alert({ content: labels.updatingDbNotAllowedCFW(), title: labels.note() });
                 return;
             }
             const originalTime = this.geoipUpdateTime;
-            if (/^Updating/.test(originalTime)) return;
+            if (this.geoipUpdating) return;
+            this.geoipUpdating = true;
+            let started = false;
             try {
                 const { url = "", token = "" } = await this.$input({
                     title: labels.updateDbGeoIP(),
                     data: [
-                        { name: "MaxMind User License Key", key: "token", placeholder: "", value: cache.get(keys.GEOIP_TOKEN) || "" },
+                        { name: labels.maxMindLicenseKey(), key: "token", placeholder: "", value: cache.get(keys.GEOIP_TOKEN) || "" },
                         { name: "URL", key: "url", placeholder: "", value: cache.get(keys.GEOIP_URL) || "https://github.com/Dreamacro/maxmind-geoip/releases/latest/download/Country.mmdb" }
                     ],
                     hint: labels.inputFieldAlternative()
@@ -461,58 +550,30 @@ function createGeneralPageWorkflow({
                 cache.put(keys.GEOIP_TOKEN, token);
                 cache.put(keys.GEOIP_URL, url);
                 if (!this.clashPath) return;
-                const finish = (target, size) => {
-                    fs.ftruncateSync(fs.openSync(target, "r+"), size);
-                    this.$parent.handlerRestartClash();
-                };
-                if (token) {
-                    this.geoipUpdateTime = `${labels.updating()}... (0%)`;
-                    const temp = await electron.ipcRenderer.invoke("app", "getPath", "temp");
-                    const stream = httpClient.stream(`https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-Country&license_key=${token}&suffix=tar.gz`);
-                    stream.on("downloadProgress", progress => {
-                        this.geoipUpdateTime = progress.percent === 1 ? labels.restartingCore() : `${labels.updating()}... (${Math.round(100 * progress.percent)}%)`;
-                    });
-                    stream.on("error", error => {
-                        this.$alert({ content: `${labels.downloadDbErrGeoIP()}: ${error.name}` });
-                        this.geoipUpdateTime = originalTime;
-                    });
-                    path.join(temp, "cfw_geoip.tag.gz");
-                    const target = path.join(this.clashPath, "Country.mmdb");
-                    const archive = tarStream.extract();
-                    let size = 0;
-                    archive.on("entry", (header, entry, next) => {
-                        entry.on("end", next);
-                        if (/GeoLite2-Country\.mmdb$/.test(header.name)) {
-                            size = header.size;
-                            entry.pipe(fs.createWriteStream(target, { flags: "r+" }));
-                        } else entry.resume();
-                    });
-                    archive.on("finish", () => finish(target, size));
-                    stream.pipe(zlib.createGunzip()).pipe(archive);
-                } else if (url) {
-                    this.geoipUpdateTime = `${labels.updating()}... (0%)`;
-                    const stream = httpClient.stream(url);
-                    let size = 0;
-                    stream.on("downloadProgress", progress => {
-                        if (progress.percent === 1) {
-                            size = progress.total;
-                            this.geoipUpdateTime = labels.restartingCore();
-                        } else this.geoipUpdateTime = `Updating... (${Math.round(100 * progress.percent)}%)`;
-                    });
-                    stream.on("error", error => {
-                        this.$alert({ content: `${labels.downloadDbErrGeoIP()}: ${error.name}` });
-                        this.geoipUpdateTime = originalTime;
-                    });
-                    const target = path.join(this.clashPath, "Country.mmdb");
-                    const output = fs.createWriteStream(target, { flags: "r+" });
-                    output.on("finish", () => finish(target, size));
-                    stream.pipe(output);
-                }
-            } catch (_error) {}
+                if (!token && !url) return;
+                started = true;
+                this.geoipUpdateTime = `${labels.updating()}... (0%)`;
+                await coreConfigRepository.updateGeoip(this.clashPath, { url, token }, percent => {
+                    this.geoipUpdateTime = percent === 1 ? labels.restartingCore() : `${labels.updating()}... (${Math.round(100 * percent)}%)`;
+                });
+                await this.$parent.handlerRestartClash();
+            } catch (_error) {
+                this.geoipUpdateTime = originalTime;
+                if (started) this.$alert({ content: labels.downloadDbErrGeoIP() });
+            } finally { this.geoipUpdating = false; }
         },
-        setupSwitches() { this.autoLaunchLoading = false; this.systemProxyLoading = false; },
+        setupSwitches() { if (!this.autoLaunchPending) this.autoLaunchLoading = false; this.systemProxyLoading = false; },
         async setupComponent() {
-            if (!this.clashApi.isReady()) return;
+            this.refreshTapStatus();
+            // Saved configuration is available before the controller finishes
+            // starting. Refresh it from the core once the owned operation settles.
+            if (this.$parent?.coreStatusPending || this.clashStatus !== connectedStatus) {
+                for (const [field, key] of [["port", "mixed-port"], ["isAllowLan", "allow-lan"], ["bindAddress", "bind-address"], ["logLevel", "log-level"], ["isIPV6", "ipv6"]]) {
+                    if (Object.hasOwn(this.confData || {}, key)) this[field] = this.confData[key];
+                }
+            }
+            if (this.$parent?.coreStatusPending) return;
+            if (!this.clashApi.isReady() || this.clashStatus !== connectedStatus) return;
             try {
                 const [{ status, data }] = await Promise.all([this.clashApi.getConfig(), this.fetchCoreVersion()]);
                 if (status === 200) {
@@ -521,14 +582,23 @@ function createGeneralPageWorkflow({
                     this.bindAddress = data["bind-address"];
                     this.logLevel = data["log-level"];
                     this.isIPV6 = data.ipv6;
-                    this.geoipUpdateTime = moment(fs.statSync(path.join(this.clashPath, "Country.mmdb")).mtimeMs).format("YYYY-MM-DD HH:mm");
+                    this.geoipUpdateTime = moment((await coreConfigRepository.metadata(this.clashPath)).geoipModifiedAt).format("YYYY-MM-DD HH:mm");
                 }
             } catch (error) { console.error(error.stack); }
         },
+        invalidateCoreVersion() {
+            this.coreVersionRequest = (this.coreVersionRequest || 0) + 1;
+            this.clashCoreVersion = "";
+        },
         async fetchCoreVersion() {
-            if (!this.clashApi.isReady()) return;
+            if (!this.clashApi.isReady() || this.clashStatus !== connectedStatus) return;
+            const core = this.settings.proxyCore;
+            const request = this.coreVersionRequest = (this.coreVersionRequest || 0) + 1;
             const response = await this.clashApi.getVersion();
-            this.clashCoreVersion = normalizeCoreVersion(response.data, this.settings.proxyCore);
+            // A previous core's in-flight response must not overwrite the new version.
+            if (request !== this.coreVersionRequest || core !== this.settings.proxyCore
+                || this.clashStatus !== connectedStatus || response.status !== 200) return;
+            this.clashCoreVersion = normalizeCoreVersion(response.data, core);
         }
     };
 
@@ -537,7 +607,7 @@ function createGeneralPageWorkflow({
     function beforeRouteEnter(_to, _from, next) {
         next(async vm => {
             vm.version = `v${await electron.ipcRenderer.invoke("app", "getVersion")}`;
-            vm.serviceNeedUpdate = service.needUpdate();
+            vm.serviceNeedUpdate = await service.needUpdate();
             vm.setupComponent();
             schedule(vm.setupSwitches, 1);
         });

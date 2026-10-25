@@ -4,7 +4,6 @@ function createServerPage({
     defineComponent,
     Vuex,
     getLanguage,
-    getLanguageIndex,
     workflow,
     draggable,
     ProfileEditor,
@@ -55,6 +54,7 @@ function createServerPage({
 
     const ServerPage = defineComponent({
         data: workflow.data,
+        watch: workflow.watch,
         components: { draggable, ConfigView: ProfileEditor, RuleView: RuleEditor, QRCodeView, Hint },
         directives: {
             focus: { update(element, binding) { if (binding.value) element.focus(); } }
@@ -90,17 +90,8 @@ function createServerPage({
             viewModel.editProfileType = -1;
         };
         const renderProfile = (profile, index) => {
-            const updatedTimeChinese = `\n                (${viewModel._s(viewModel.parseTime(profile))})\n              `;
-            const updatedTimeEnglish = updatedTimeChinese
-                .replace(/前/g, " ago")
-                .replace(/几秒/g, "seconds")
-                .replace(/秒/g, "seconds")
-                .replace(/分钟/g, "minutes")
-                .replace(/小时/g, "hours")
-                .replace(/天/g, "days")
-                .replace(/个月/g, "month")
-                .replace(/年/g, "years");
-            const updatedTime = getLanguageIndex() === 0 ? updatedTimeChinese : updatedTimeEnglish;
+            const relativeTime = viewModel.parseTime(profile);
+            const updatedTime = relativeTime ? `\n                (${viewModel._s(relativeTime)})\n              ` : "";
             const stopAndRun = action => event => {
                 event.stopPropagation();
                 action();
@@ -108,9 +99,18 @@ function createServerPage({
 
             return createElement("div", {
                 key: index,
-                class: ["list-item", index === viewModel.pfs.index ? "item-cur" : ""],
+                class: ["list-item", index === viewModel.pfs.index ? "item-cur" : "", { "cfw-profile-switch-blocked": viewModel.profileSwitchBlocked }],
+                attrs: { role: "button", tabindex: viewModel.profileSwitchBlocked ? -1 : 0,
+                    "aria-disabled": String(!!viewModel.profileSwitchBlocked),
+                    "aria-busy": String(viewModel.loadingProfileIndex.includes(index)),
+                    title: viewModel.profileSwitchBlocked ? labels.profileSwitching() : undefined },
                 on: {
                     click: () => viewModel.handleProfileClick(index),
+                    keydown: event => {
+                        if (event.target !== event.currentTarget || !["Enter", " "].includes(event.key)) return;
+                        event.preventDefault();
+                        viewModel.handleProfileClick(index);
+                    },
                     contextmenu: event => viewModel.handleProfileRightClick(event, profile, index)
                 }
             }, [
@@ -233,7 +233,7 @@ function createServerPage({
         }, [viewModel._v(labels.import())])])]), viewModel._v(" "), createElement("draggable", {
             ref: "mixin-scroll-content",
             staticClass: "list-view",
-            attrs: { delay: 300, animation: 200, "delay-on-touch-only": true },
+            attrs: { delay: 300, animation: 200, "delay-on-touch-only": true, disabled: !!viewModel.profileSwitchBlocked },
             on: { start: viewModel.handleDragStart, end: viewModel.handleDragEnd },
             model: {
                 value: viewModel.profiles,

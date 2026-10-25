@@ -5,8 +5,12 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const Vuex = require("../../main/node_modules/vuex");
+const Vue = require("../../main/node_modules/vue");
+Vue.use(Vuex);
+const { largeConnections } = require("../fixtures/large-connections");
 const { defineComponent } = require("../../main/dist/electron/features/renderer-ui/component");
 const { createConnectionsPage } = require("../../main/dist/electron/features/connections/page");
+const { createConnectionModel } = require("../../main/dist/electron/features/connections/connection-model");
 const { assertRendererComposition } = require("../fixtures/assert-renderer-composition");
 
 const EmptyComponent = { render: h => h("span") };
@@ -34,11 +38,9 @@ test("Connections page: extracted owner sorts, filters and formats connection da
     const page = createPage();
     const first = { id: "a", start: "2026-01-01", upload: 20, download: 10, metadata: { host: "a", destinationIP: "1", network: "tcp" }, chains: [] };
     const second = { id: "b", start: "2026-01-02", upload: 5, download: 50, metadata: { host: "b", destinationIP: "2", network: "tcp" }, chains: [] };
-    const context = {
-        data: { connections: [first, second] }, lastData: { connections: [] },
-        labelSelected: 3, reverseTags: [], searchText: "", searchTextReg: null
-    };
-    const ordered = page.computed.orderedConnections.call(context);
+    const model = createConnectionModel();
+    model.ingest({ connections: [first, second] });
+    const ordered = page.computed.orderedConnections.call({ data: model.view({ sort: 3 }) });
     assert.deepEqual(ordered.map(value => value.id), ["b", "a"]);
     assert.equal(page.methods.traffic(1536), "1.50 KB");
     assert.equal(page.methods.calcSpeedText.call({ traffic: page.methods.traffic }, { speed: { upload: 1024, download: 0 } }), "↑1.00 KB/s");
@@ -46,22 +48,123 @@ test("Connections page: extracted owner sorts, filters and formats connection da
     assert.equal(page.components.ConnectionInfoView._scopeId, "data-v-947c6bac");
 });
 
-test("Connections page: stream lifecycle normalizes snapshots and closes the socket", () => {
+test("Connections page: stream lifecycle delegates raw snapshots and ignores retired sockets", () => {
     let messageHandler;
     let terminated = 0;
     const client = { on(name, callback) { if (name === "message") messageHandler = callback; }, terminate() { terminated++; } };
     const page = createPage({ normalizeConnectionsSnapshot: value => ({ ...value, normalized: true }) });
-    const context = { clashWSClient: () => client, client: null, data: { connections: [] }, lastData: null };
+    const received = [];
+    const context = { clashWSClient: () => client, client: null, updateView: value => received.push(value) };
     page.methods.openStream.call(context);
     messageHandler(JSON.stringify({ connections: [] }));
-    assert.equal(context.data.normalized, true);
+    assert.deepEqual(received, ['{"connections":[]}']);
     page.methods.closeStream.call(context);
     assert.equal(terminated, 1);
     assert.equal(context.client, null);
+    messageHandler("obsolete");
+    assert.equal(received.length, 1);
+});
+
+test("Connections page: unfiltered Close All uses one semantic API request", async () => {
+    let calls = 0;
+    await createPage().methods.handleCloseAllConnections.call({ searchText: "", closingConnections: false,
+        clashApi: { closeConnections: async () => calls++ } });
+    assert.equal(calls, 1);
+});
+
+test("Connections page: filtered Close All covers offscreen matches with bounded request concurrency", async t => {
+    const model = createConnectionModel();
+    const worker = {
+        postMessage(message) {
+            queueMicrotask(() => {
+                if (message.payload !== undefined) model.ingest(JSON.parse(message.payload));
+                if (message.operation === "beginClose") model.beginClose(message.query);
+                worker.onmessage({ data: { id: message.id, ...(message.operation === "closeBatch"
+                    ? { batch: model.closeBatch() } : { view: model.view(message.query) }) } });
+            });
+        }, terminate() {}
+    };
+    const vm = new Vue({ ...createPage({ createWorker: () => worker }),
+        store: new Vuex.Store({ state: { app: { clashStatus: "connected" } } }) });
+    t.after(() => vm.$destroy());
+    let concurrent = 0, maximum = 0;
+    const closed = [];
+    Object.defineProperty(vm, "clashApi", { value: { async closeConnection(id) {
+        concurrent++; maximum = Math.max(maximum, concurrent);
+        await new Promise(resolve => setImmediate(resolve));
+        closed.push(id); concurrent--;
+    } } });
+    vm.isActive = true;
+    vm.searchText = "network=udp";
+    vm.updateView(JSON.stringify({ connections: largeConnections(1000) }));
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(vm.data.count, 500);
+    assert.ok(vm.orderedConnections.length < 30);
+    await vm.handleCloseAllConnections();
+    assert.equal(closed.length, 500);
+    assert.ok(closed.includes("connection-999"));
+    assert.ok(closed.every(id => Number(id.split("-")[1]) % 2 === 1));
+    assert.ok(maximum <= 16);
 });
 
 test("Connections page: production entry delegates to the named factory", () => {
     assertRendererComposition("createConnectionsPage", [
         'name: "ConnectionInfoView"', "openStream()", "orderedConnections()"
     ]);
+});
+
+test("Connections returns to the saved viewport without an empty worker view, including paused pages", async t => {
+    let workers = 0;
+    const page = createPage({ createWorker: () => {
+        workers++;
+        const model = createConnectionModel();
+        const worker = { terminate() {}, postMessage(message) { queueMicrotask(() => {
+            if (message.payload !== undefined) model.ingest(message.payload);
+            worker.onmessage({ data: { id: message.id, view: model.view(message.query) } });
+        }); } };
+        return worker;
+    } });
+    const vm = new Vue({ ...page, store: new Vuex.Store({ state: { app: { clashStatus: "connected" } },
+        getters: { clashWSClient: () => () => ({ on() {}, terminate() {} }) } }) });
+    t.after(() => vm.$destroy());
+    vm.$refs.connectionsViewport = { scrollTop: 0, clientHeight: 600 };
+    vm.isActive = true;
+    vm.updateView({ connections: largeConnections(1000) });
+    await new Promise(resolve => setImmediate(resolve));
+    vm.scrollTop = vm.$refs.connectionsViewport.scrollTop = 63000;
+    vm.updateView();
+    await new Promise(resolve => setImmediate(resolve));
+    for (const paused of [false, true]) {
+        vm.isPause = paused;
+        page.beforeRouteLeave.call(vm, {}, {}, () => {});
+        vm.$refs.connectionsViewport.scrollTop = 0; // keep-alive DOM reinsertion
+        const count = vm.data.count, previousWorkers = workers;
+        page.beforeRouteEnter({ query: {} }, {}, callback => callback(vm));
+        await Vue.nextTick();
+        assert.equal(vm.$refs.connectionsViewport.scrollTop, 63000);
+        assert.equal(vm.data.count, count);
+        assert.equal(workers, previousWorkers, "measurement must not create an empty worker");
+        if (!paused) vm.updateView({ connections: largeConnections(1000) });
+        else vm.updateView();
+        await new Promise(resolve => setImmediate(resolve));
+        assert.ok(vm.data.range.offset > 60000);
+        assert.ok(vm.data.rows.length > 0);
+        assert.equal(vm.$refs.connectionsViewport.scrollTop, 63000);
+    }
+    vm.$refs.connectionsViewport.scrollTop = 30000; // a native scroll awaiting event delivery
+    vm.updateView({ connections: largeConnections(1000) });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(vm.$refs.connectionsViewport.scrollTop, 30000, "worker replies must not overwrite a pending user scroll");
+});
+
+test("Connection route searches treat equals in node names literally and retain manual metadata filters", () => {
+    const model = createConnectionModel();
+    model.ingest({ connections: [
+        { id: "node", start: "", metadata: { network: "tcp" }, chains: ["network=udp"] },
+        { id: "metadata", start: "", metadata: { network: "udp" }, chains: ["other"] }
+    ] });
+    const vm = { setupComponent() {} };
+    createPage().beforeRouteEnter({ query: { searchText: "network=udp" } }, {}, callback => callback(vm));
+    assert.deepEqual(model.view({ search: vm.searchText }).rows.map(row => row.id), ["node"]);
+    assert.deepEqual(model.view({ search: "network=udp" }).rows.map(row => row.id), ["metadata"]);
 });

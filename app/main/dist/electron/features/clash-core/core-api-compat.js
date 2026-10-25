@@ -43,20 +43,17 @@ function parseCoreLogLine(line) {
         });
     }
 
-    const mihomo = line.match(/^time="([^"]+)"\s+level=([^\s]+)\s+msg="((?:\\.|[^"])*)"(.*)$/);
-    if (!mihomo) return null;
-    const fields = [];
-    const tail = mihomo[4];
-    const fieldPattern = /([^\s=]+)=("(?:\\.|[^"])*"|[^\s]+)/g;
-    let match;
-    while ((match = fieldPattern.exec(tail))) {
-        fields.push({ key: match[1], value: unquoteLogValue(match[2]) });
-    }
-    const timeMatch = mihomo[1].match(/T(\d{2}:\d{2}:\d{2})/);
+    // Scan once: overlapping escape alternatives in a regex can backtrack
+    // exponentially on malformed core output (including remote hostnames).
+    const entries = scanLogFields(line);
+    if (!entries || entries.length < 3 || entries[0].key !== "time"
+        || entries[1].key !== "level" || entries[2].key !== "msg") return null;
+    const [time, level, message, ...fields] = entries;
+    const timeMatch = time.value.match(/T(\d{2}:\d{2}:\d{2})/);
     return normalizeStructuredLog({
-        time: timeMatch ? timeMatch[1] : mihomo[1],
-        level: mihomo[2],
-        message: unescapeLogValue(mihomo[3]),
+        time: timeMatch ? timeMatch[1] : time.value,
+        level: level.value,
+        message: message.value,
         fields
     });
 }
@@ -76,13 +73,39 @@ function normalizeConnectionsSnapshot(snapshot = {}) {
     };
 }
 
-function unquoteLogValue(value) {
-    return value.startsWith('"') && value.endsWith('"')
-        ? unescapeLogValue(value.slice(1, -1)) : value;
-}
-
-function unescapeLogValue(value) {
-    return value.replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+function scanLogFields(line) {
+    const fields = [];
+    let index = 0;
+    const whitespace = character => /\s/.test(character);
+    while (index < line.length) {
+        while (index < line.length && whitespace(line[index])) index++;
+        if (index === line.length) break;
+        const start = index;
+        while (index < line.length && line[index] !== "=" && !whitespace(line[index])) index++;
+        if (index === start || line[index] !== "=") return null;
+        const key = line.slice(start, index++);
+        let value = "";
+        if (line[index] === '"') {
+            index++;
+            let closed = false;
+            while (index < line.length) {
+                const character = line[index++];
+                if (character === '"') { closed = true; break; }
+                if (character === "\\" && index < line.length) {
+                    const next = line[index++];
+                    value += next === '"' || next === "\\" ? next : `\\${next}`;
+                } else value += character;
+            }
+            if (!closed || (index < line.length && !whitespace(line[index]))) return null;
+        } else {
+            const valueStart = index;
+            while (index < line.length && !whitespace(line[index])) index++;
+            value = line.slice(valueStart, index);
+            if (!value) return null;
+        }
+        fields.push({ key, value });
+    }
+    return fields;
 }
 
 module.exports = {

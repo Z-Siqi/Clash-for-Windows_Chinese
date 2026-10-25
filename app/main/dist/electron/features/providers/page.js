@@ -6,12 +6,21 @@ function createProvidersPage({
     getLanguage,
     moment,
     connectedStatus,
-    electron,
-    fs,
-    path,
+    providerFiles,
+    onProxyProviderUpdated = () => {},
     Hint,
     AbortController = globalThis.AbortController
 }) {
+    const generations = new WeakMap();
+    function patchProvider(vm, collection, name, generation, patch) {
+        if (generations.get(vm) !== generation) return;
+        const index = vm[collection].findIndex(item => item.name === name);
+        if (index !== -1) vm.$set(vm[collection], index, { ...vm[collection][index], ...patch });
+    }
+    function providerMetadata(value) {
+        const { isChecking: _checking, isUpdating: _updating, message: _message, ...metadata } = value || {};
+        return metadata;
+    }
     const Button = defineComponent({
         props: { text: String, size: String, isLoading: Boolean },
         methods: {
@@ -110,17 +119,20 @@ function createProvidersPage({
             },
             async handleHealthCheck(index) {
                 const provider = this.providers[index];
-                if (!provider.name) return;
+                if (!provider?.name || provider.isChecking) return;
+                const generation = generations.get(this);
                 this.$set(this.providers, index, { ...provider, isChecking: true });
                 try {
                     await this.clashApi.healthCheckProxyProvider(provider.name, {
                         timeout: 0, signal: this.healthCheckAbortCtl.signal
                     });
                 } catch (_error) {}
-                this.$set(this.providers, index, { ...provider, isChecking: false });
+                patchProvider(this, "providers", provider.name, generation, { isChecking: false });
             },
             async handleProviderUpdate(index) {
                 const provider = this.providers[index];
+                if (!provider) return;
+                const generation = generations.get(this);
                 const { name, vehicleType, isUpdating } = provider;
                 if (!["File", "HTTP"].includes(vehicleType) || !name || isUpdating) return;
                 this.$set(this.providers, index, { ...provider, isUpdating: true, message: "" });
@@ -128,21 +140,25 @@ function createProvidersPage({
                     const { status, data } = await this.clashApi.updateProxyProvider(name, {
                         validateStatus: () => true, timeout: 0, signal: this.updateAbortCtl.signal
                     });
+                    if (generations.get(this) !== generation) return;
                     if (status === 204) {
+                        onProxyProviderUpdated();
                         const refreshed = await this.fetchSingleData("proxies", name) ?? provider;
-                        this.$set(this.providers, index, { ...refreshed, isUpdating: false, message: "" });
+                        patchProvider(this, "providers", name, generation, { ...providerMetadata(refreshed), isUpdating: false, message: "" });
                     } else {
-                        this.$set(this.providers, index, {
-                            ...provider, isUpdating: false,
+                        patchProvider(this, "providers", name, generation, {
+                            isUpdating: false,
                             message: data.message ?? getLanguage().couldNotUpdateProvider()
                         });
                     }
                 } catch (error) {
-                    this.$set(this.providers, index, { ...provider, isUpdating: false, message: error });
+                    patchProvider(this, "providers", name, generation, { isUpdating: false, message: error });
                 }
             },
             async handleRuleProviderUpdate(index) {
                 const provider = this.ruleProviders[index];
+                if (!provider) return;
+                const generation = generations.get(this);
                 const { name, vehicleType, isUpdating } = provider;
                 if (!["File", "HTTP"].includes(vehicleType) || !name || isUpdating) return;
                 this.$set(this.ruleProviders, index, { ...provider, isUpdating: true, message: "" });
@@ -150,40 +166,32 @@ function createProvidersPage({
                     const { status, data } = await this.clashApi.updateRuleProvider(name, {
                         validateStatus: () => true, timeout: 0, signal: this.updateAbortCtl.signal
                     });
+                    if (generations.get(this) !== generation) return;
                     if (status === 204) {
                         const refreshed = await this.fetchSingleData("rules", name) ?? provider;
-                        this.$set(this.ruleProviders, index, { ...refreshed, isUpdating: false, message: "" });
+                        patchProvider(this, "ruleProviders", name, generation, { ...providerMetadata(refreshed), isUpdating: false, message: "" });
                     } else {
-                        this.$set(this.ruleProviders, index, {
-                            ...provider, isUpdating: false,
+                        patchProvider(this, "ruleProviders", name, generation, {
+                            isUpdating: false,
                             message: data.message ?? getLanguage().couldNotUpdateProvider()
                         });
                     }
                 } catch (error) {
-                    this.$set(this.ruleProviders, index, { ...provider, isUpdating: false, message: error });
+                    patchProvider(this, "ruleProviders", name, generation, { isUpdating: false, message: error });
                 }
             },
-            handleEditProviderFile(type, provider) {
+            async handleEditProviderFile(type, provider) {
                 const useEditor = this.settings.editProfileWithCFWEditor ?? false;
-                const providers = {
-                    rule: this.currentProfilePayload["rule-providers"] || {},
-                    proxy: this.currentProfilePayload["proxy-providers"] || {}
-                };
-                const providerPath = (providers[type][provider.name] || {}).path;
-                const open = async target => {
+                try {
                     if (!useEditor) {
-                        electron.shell.openPath(target);
+                        await providerFiles.open(type, provider.name);
                         return;
                     }
-                    try {
-                        const { code = "" } = await this.$code({
-                            code: fs.readFileSync(target).toString(),
-                            fontSize: this.settings.editorFontSize
-                        });
-                        fs.writeFileSync(target, code);
-                    } catch (_error) {}
-                };
-                if (providerPath) open(path.isAbsolute(providerPath) ? providerPath : path.join(this.clashPath, providerPath));
+                    const { code = "" } = await this.$code({
+                        code: await providerFiles.read(type, provider.name), fontSize: this.settings.editorFontSize
+                    });
+                    await providerFiles.write(type, provider.name, code);
+                } catch (_error) {}
             },
             async fetchSingleData(type, name) {
                 const { status, data } = await this.clashApi.getProvider(type, name, {
@@ -192,19 +200,30 @@ function createProvidersPage({
                 return status === 200 ? data : null;
             },
             async fetchData() {
-                const [proxyResponse, ruleResponse] = await Promise.all([
-                    this.clashApi.getProxyProviders(), this.clashApi.getRuleProviders()
-                ]);
-                if (proxyResponse.status === 200) {
-                    this.providers = Object.values(proxyResponse.data?.providers || {})
-                        .map(provider => ({ ...provider, isChecking: false, isUpdating: false, message: "" }))
-                        .filter(provider => ["HTTP", "File"].includes(provider.vehicleType));
-                } else this.providers = [];
-                if (ruleResponse.status === 200) {
-                    this.ruleProviders = Object.values(ruleResponse.data?.providers || {})
-                        .map(provider => ({ ...provider, isUpdating: false, message: "" }))
-                        .filter(provider => ["HTTP", "File"].includes(provider.vehicleType));
-                } else this.ruleProviders = [];
+                const generation = {};
+                generations.set(this, generation);
+                try {
+                    const [proxyResponse, ruleResponse] = await Promise.all([
+                        this.clashApi.getProxyProviders(), this.clashApi.getRuleProviders()
+                    ]);
+                    if (generations.get(this) !== generation) return;
+                    if (proxyResponse.status === 200) {
+                        this.providers = Object.values(proxyResponse.data?.providers || {})
+                            .map(provider => ({ ...provider, isChecking: false, isUpdating: false, message: "" }))
+                            .filter(provider => ["HTTP", "File"].includes(provider.vehicleType));
+                    } else this.providers = [];
+                    if (ruleResponse.status === 200) {
+                        this.ruleProviders = Object.values(ruleResponse.data?.providers || {})
+                            .map(provider => ({ ...provider, isUpdating: false, message: "" }))
+                            .filter(provider => ["HTTP", "File"].includes(provider.vehicleType));
+                    } else this.ruleProviders = [];
+                } catch (_offline) {
+                    if (generations.get(this) !== generation) return;
+                    // Obsolete operations no longer own these progress flags.
+                    for (const collection of ["providers", "ruleProviders"]) {
+                        this[collection] = this[collection].map(provider => ({ ...provider, isUpdating: false, isChecking: false }));
+                    }
+                }
             }
         },
         beforeRouteEnter(_to, _from, next) {
@@ -215,6 +234,7 @@ function createProvidersPage({
             });
         },
         beforeRouteLeave(_to, _from, next) {
+            generations.set(this, {});
             this.updateAbortCtl.abort();
             this.healthCheckAbortCtl.abort();
             next();
